@@ -259,6 +259,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
   const sideTotal = (pool.bySide[side] || 0) + amount;
   const potentialPayout = sideTotal > 0 ? Math.round((amount / sideTotal) * totalPool) : 0;
 
+
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={e => e.stopPropagation()}>
@@ -332,7 +333,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
           fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 36,
           color: overBalance ? 'var(--loss)' : 'var(--ink)',
         }}>
-          {CURRENCY_SYMBOL}{amount.toLocaleString('en-IN')}
+          {fmtMoney(amount)}
         </div>
 
         <input
@@ -346,7 +347,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
         <div className="amount-presets" style={{ marginBottom: 18 }}>
           {presets.map(p => (
             <button key={p} className={amount === p ? 'active' : ''} onClick={() => setAmount(p)}>
-              {CURRENCY_SYMBOL}{p}
+              {fmtMoney(p)}
             </button>
           ))}
         </div>
@@ -376,7 +377,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
           disabled={overBalance}
           onClick={() => onConfirm({ matchId: match.id, pick: side, amount })}
         >
-          {overBalance ? 'Insufficient balance' : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
+          {overBalance ? 'Insufficient balance' : `Place ${fmtMoney(amount)} bet`}
         </button>
       </div>
     </div>

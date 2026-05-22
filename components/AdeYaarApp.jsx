@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { MATCHES, getMatch, getTeam, ME_ID } from '@/lib/data';
+import { MATCHES, getFriend, getMatch, getTeam, ME_ID, fmtCompact } from '@/lib/data';
+import { useUser } from '@/lib/hooks';
 import { STARTING_BALANCE, fmtMoney } from '@/lib/currency';
 import { initBetStore, placeBet, getBalance, getMyBets, getPoolForMatch } from '@/lib/bet-store';
 import { AppHeader, TabBar, PlaceBetSheet, Toast } from '@/components';
@@ -40,6 +41,7 @@ function mergeWithFifa(staticMatch, fifaResults) {
 
 export default function AdeYaarApp() {
   const theme = 'midnight';
+  const { user, loading } = useUser();
   const [tab, setTab]           = useState('home');
   const [betSheet, setBetSheet] = useState(null);
   const [toast, setToast]       = useState(null);
@@ -98,6 +100,20 @@ export default function AdeYaarApp() {
 
   const poolInfo = betSheet ? getPoolForMatch(betSheet.match.id) : null;
 
+  if (loading || balance === null) {
+    return (
+      <div className="stage">
+        <div className="phone-frame">
+          <div className="app" data-theme={theme}>
+            <div style={{ display: 'grid', placeItems: 'center', height: '100%', color: 'var(--ink-3)' }}>
+              Loading...
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isDesktop) {
     return (
       <>
@@ -105,6 +121,7 @@ export default function AdeYaarApp() {
           tab={tab} setTab={setTab}
           balance={balance} openBet={openBet}
           matches={matches}
+          user={user}
         />
         {betSheet && (
           <PlaceBetSheet
