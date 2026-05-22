@@ -21,8 +21,8 @@ const DIcon = {
 };
 
 // ── Desktop Shell ─────────────────────────────────────────────
-function DesktopShell({ tab, onNav, balance, children, title, sub, hideSearch }) {
-  const me = getFriend(ME_ID);
+function DesktopShell({ tab, onNav, balance, children, title, sub, hideSearch, user }) {
+  const me = user || getFriend(ME_ID);
   const myOpen = BETS.filter(b => b.user === ME_ID && b.status === 'open').length;
 
   const navItems = [
@@ -69,10 +69,10 @@ function DesktopShell({ tab, onNav, balance, children, title, sub, hideSearch })
         */}
 
         <div className="desk-user">
-          <div className="desk-user__avatar">{me?.name[0]}</div>
+          <div className="desk-user__avatar">{(me?.display_name || me?.name || '?')[0]}</div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="desk-user__name">{me?.name}</div>
-            <div className="desk-user__id">@{me?.id}</div>
+            <div className="desk-user__name">{me?.display_name || me?.name}</div>
+            <div className="desk-user__id">@{me?.username || me?.id}</div>
           </div>
           <button className="desk-icon-btn" style={{ width: 32, height: 32 }}>
             {DIcon.settings}
@@ -717,7 +717,7 @@ function DBetsScreen() {
 }
 
 // ── Desktop App (root) ────────────────────────────────────────
-export default function DesktopApp({ tab, setTab, balance, openBet, matches }) {
+export default function DesktopApp({ tab, setTab, balance, openBet, matches, user }) {
   const titles = {
     home:    { title: 'Dashboard',    sub: 'FIFA World Cup 2026 · Group stage underway' },
     matches: { title: 'Fixtures',     sub: 'All matches · group stage + knockout' },
@@ -732,6 +732,7 @@ export default function DesktopApp({ tab, setTab, balance, openBet, matches }) {
       tab={tab} onNav={setTab} balance={balance}
       title={t.title} sub={t.sub}
       hideSearch={tab === 'bracket'}
+      user={user}
     >
       {tab === 'home'    && <DHomeScreen matches={matches} balance={balance} onBet={openBet} onNav={setTab} />}
       {tab === 'matches' && <DMatchesScreen matches={matches} onBet={openBet} />}

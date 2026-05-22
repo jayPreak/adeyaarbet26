@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MATCHES, getFriend, getMatch, getTeam, ME_ID, fmtCompact } from '@/lib/data';
+import { MATCHES, getFriend, getMatch, getTeam, fmtCompact } from '@/lib/data';
+import { useUser } from '@/lib/hooks';
 import { AppHeader, TabBar, PlaceBetSheet, Toast } from '@/components';
 import HomeScreen from '@/components/screens/HomeScreen';
 import MatchesScreen from '@/components/screens/MatchesScreen';
@@ -38,12 +39,20 @@ function mergeWithFifa(staticMatch, fifaResults) {
 
 export default function AdeYaarApp() {
   const theme = 'midnight';
+  const { user, loading } = useUser();
   const [tab, setTab]           = useState('home');
   const [betSheet, setBetSheet] = useState(null);
   const [toast, setToast]       = useState(null);
-  const [balance, setBalance]   = useState(getFriend(ME_ID).balance);
+  const [balance, setBalance]   = useState(null);
   const [fifaData, setFifaData] = useState(null);
   const [isDesktop, setIsDesktop] = useState(false);
+
+  // Sync balance from user once resolved
+  useEffect(() => {
+    if (!loading && user) {
+      setBalance(prev => prev === null ? user.balance : prev);
+    }
+  }, [user, loading]);
 
   useEffect(() => {
     fetch('/api/fifa/matches')
@@ -74,6 +83,20 @@ export default function AdeYaarApp() {
     setToast(`Bet placed · ₹${amount.toLocaleString('en-IN')} on ${team ? team.name : 'Draw'}`);
   };
 
+  if (loading || balance === null) {
+    return (
+      <div className="stage">
+        <div className="phone-frame">
+          <div className="app" data-theme={theme}>
+            <div style={{ display: 'grid', placeItems: 'center', height: '100%', color: 'var(--ink-3)' }}>
+              Loading...
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isDesktop) {
     return (
       <>
@@ -81,6 +104,7 @@ export default function AdeYaarApp() {
           tab={tab} setTab={setTab}
           balance={balance} openBet={openBet}
           matches={matches}
+          user={user}
         />
         {betSheet && (
           <PlaceBetSheet

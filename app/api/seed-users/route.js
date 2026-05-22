@@ -3,6 +3,10 @@ import supabase from '@/lib/supabase';
 import { FRIENDS } from '@/lib/data';
 
 export async function GET() {
+  if (!supabase) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+  }
+
   const users = FRIENDS.map(f => ({
     username: f.id,
     password: `${f.id}2026`,
