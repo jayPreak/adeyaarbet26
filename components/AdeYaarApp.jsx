@@ -7,7 +7,7 @@ import { computeBalance, computeWallet } from '@/lib/ledger';
 import { useUser } from '@/lib/hooks';
 import { AppHeader, TabBar, PlaceBetSheet, Toast, NewsTicker } from '@/components';
 import HomeScreen from '@/components/screens/HomeScreen';
-import MatchesScreen from '@/components/screens/MatchesScreen';
+import FixturesScreen from '@/components/screens/FixturesScreen';
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -34,7 +34,6 @@ class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
-import BracketScreen from '@/components/screens/BracketScreen';
 import LeaderboardScreen from '@/components/screens/LeaderboardScreen';
 import BetsScreen from '@/components/screens/BetsScreen';
 
@@ -213,11 +212,10 @@ export default function AdeYaarApp() {
 
           <div className="scroll">
             <ErrorBoundary>
-              {tab === 'home'    && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} />}
-              {tab === 'matches' && <MatchesScreen matches={matches} onBet={openBet} bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers} />}
-              {tab === 'bracket' && <BracketScreen matches={matches} />}
-              {tab === 'leaders' && <LeaderboardScreen user={user} />}
-              {tab === 'bets'    && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} wallet={wallet} />}
+              {tab === 'home'     && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} />}
+              {tab === 'fixtures' && <FixturesScreen matches={matches} onBet={openBet} bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers} />}
+              {tab === 'leaders'  && <LeaderboardScreen user={user} />}
+              {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} wallet={wallet} />}
             </ErrorBoundary>
           </div>
 

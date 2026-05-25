@@ -194,11 +194,10 @@ export function AppHeader({ balance, onTap, user, betsLoaded }) {
 // ── Tab bar ──────────────────────────────────────────────────
 export function TabBar({ active, onChange }) {
   const tabs = [
-    { id: 'home',    label: 'Home',    icon: Icon.home },
-    { id: 'matches', label: 'Matches', icon: Icon.ball },
-    { id: 'bracket', label: 'Bracket', icon: Icon.bracket },
-    { id: 'leaders', label: 'Leaders', icon: Icon.trophy },
-    { id: 'bets',    label: 'Account', icon: Icon.receipt },
+    { id: 'home',     label: 'Home',     icon: Icon.home },
+    { id: 'fixtures', label: 'Fixtures', icon: Icon.ball },
+    { id: 'leaders',  label: 'Leaders',  icon: Icon.trophy },
+    { id: 'bets',     label: 'Account',  icon: Icon.receipt },
   ];
   return (
     <div className="tabbar">

@@ -73,17 +73,35 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
       {/* Live matches */}
       {live.length > 0 && (
         <>
-          <SectionHead title="Live now" more="All matches" onMore={() => onNav('matches')} />
+          <SectionHead title="Live now" more="All matches" onMore={() => onNav('fixtures')} />
           <div className="date-group" style={{ marginBottom: 8 }}>
             {live.map(m => <MatchCard key={m.id} match={m} onBet={onBet} myBets={bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending')} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} />)}
           </div>
         </>
       )}
 
-      {/* Upcoming */}
-      <SectionHead title="Up next" more="Fixtures" onMore={() => onNav('matches')} />
-      <div className="date-group" style={{ marginBottom: 8 }}>
-        {upcoming.map(m => <MatchCard key={m.id} match={m} onBet={onBet} myBets={bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending')} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} />)}
+      {/* Upcoming CTA */}
+      <div
+        onClick={() => onNav('fixtures')}
+        style={{
+          margin: '8px 16px 12px',
+          padding: '16px 20px',
+          borderRadius: 14,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>Bet on upcoming matches</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>{upcoming.length} matches coming up</div>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--ink-3)' }}>
+          <path d="M9 18l6-6-6-6" />
+        </svg>
       </div>
 
       {/* Friend activity */}
