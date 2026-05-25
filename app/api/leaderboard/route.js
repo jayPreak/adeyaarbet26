@@ -17,7 +17,7 @@ export async function GET() {
 
   const { data: profiles, error: pErr } = await supabase
     .from('profiles')
-    .select('id, username, display_name');
+    .select('id, username, display_name, avatar_url');
 
   if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
 

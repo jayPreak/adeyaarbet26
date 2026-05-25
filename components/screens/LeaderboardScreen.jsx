@@ -97,7 +97,9 @@ export default function LeaderboardScreen({ user }) {
         <div className="podium">
           {podium.map(f => (
             <div key={f.id} className={'podium-block rank' + f.rank}>
-              <div className="podium-avatar">{(f.display_name || f.username)[0]}</div>
+              <div className="podium-avatar" style={f.avatar_url ? { backgroundImage: `url(${f.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+                {!f.avatar_url && (f.display_name || f.username)[0]}
+              </div>
               <div className="podium-name">{f.display_name || f.username}</div>
               <div className="podium-amt" style={{ color: displayColor(f) }}>{displayVal(f)}</div>
               <div className="podium-bar">{f.rank}</div>
@@ -113,7 +115,9 @@ export default function LeaderboardScreen({ user }) {
           return (
             <div key={f.id} className={'lb-row ' + (isMe ? 'me' : '')}>
               <span className="lb-rank">{i + 1}</span>
-              <div className="lb-avatar">{(f.display_name || f.username)[0]}</div>
+              <div className="lb-avatar" style={f.avatar_url ? { backgroundImage: `url(${f.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+                {!f.avatar_url && (f.display_name || f.username)[0]}
+              </div>
               <div className="lb-name">
                 {f.display_name || f.username}
                 {isMe && (
