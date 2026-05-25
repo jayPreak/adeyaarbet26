@@ -72,6 +72,7 @@ export default function AdeYaarApp() {
   const [betSheet, setBetSheet] = useState(null);
   const [toast, setToast]       = useState(null);
   const [bets, setBets]         = useState([]);
+  const [betsLoaded, setBetsLoaded] = useState(false);
   const [cancelling, setCancelling] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [fifaData, setFifaData] = useState(null);
@@ -93,8 +94,8 @@ export default function AdeYaarApp() {
     if (!user) return;
     fetch(`/api/bets?user_id=${user.id}`)
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setBets(data); })
-      .catch(() => {});
+      .then(data => { if (Array.isArray(data)) setBets(data); setBetsLoaded(true); })
+      .catch(() => { setBetsLoaded(true); });
   }, [user]);
 
   useEffect(() => { refreshData(); }, [refreshData]);
@@ -240,7 +241,7 @@ export default function AdeYaarApp() {
     <div className="stage">
       <div className="phone-frame">
         <div className="app" data-theme={theme}>
-          <AppHeader balance={wallet} user={user} onTap={() => setTab('bets')} />
+          <AppHeader balance={wallet} user={user} onTap={() => setTab('bets')} betsLoaded={betsLoaded} />
           <NewsTicker matches={matches} bets={bets} user={user} />
 
           <div className="scroll">

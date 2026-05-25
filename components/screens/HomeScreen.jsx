@@ -20,14 +20,15 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
   const upcoming = matches.filter(m => m.status === 'upcoming').slice(0, 3);
   const featured = live[0] || upcoming[0];
 
-  const myOpenBets = bets.filter(b => b.status === 'pending').length;
+  const realBets = bets.filter(b => b.match_id !== '_topup');
+  const myOpenBets = realBets.filter(b => b.status === 'pending').length;
   const myWonToday = useMemo(() => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    return bets
+    return realBets
       .filter(b => b.status === 'won' && new Date(b.created_at) >= todayStart)
       .reduce((s, b) => s + ((b.payout || 0) - b.amount), 0);
-  }, [bets]);
+  }, [realBets]);
 
   const [activity, setActivity] = useState([]);
 

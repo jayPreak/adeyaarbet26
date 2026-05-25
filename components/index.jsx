@@ -168,7 +168,7 @@ export function NewsTicker({ matches = [], bets = [], user }) {
 }
 
 // ── App Header ───────────────────────────────────────────────
-export function AppHeader({ balance, onTap, user }) {
+export function AppHeader({ balance, onTap, user, betsLoaded }) {
   return (
     <div className="app-header">
       <div className="app-header__brand">
@@ -181,7 +181,10 @@ export function AppHeader({ balance, onTap, user }) {
           <div className="balance-pill__icon" style={user?.avatar_url ? { backgroundImage: `url(${user.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center', fontSize: 0 } : undefined}>
             {!user?.avatar_url && (user?.display_name?.[0] || '₹')}
           </div>
-          <span className="balance-pill__amt">{fmtMoney(balance)}</span>
+          {betsLoaded === false
+            ? <span className="balance-pill__amt skeleton-text" style={{ width: 48 }}>&nbsp;</span>
+            : <span className="balance-pill__amt">{fmtMoney(balance)}</span>
+          }
         </button>
       </div>
     </div>

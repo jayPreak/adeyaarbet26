@@ -23,19 +23,24 @@ export async function GET() {
 
   const { data: bets, error: bErr } = await supabase
     .from('bets')
-    .select('user_id, amount, status, payout');
+    .select('user_id, amount, status, payout, match_id');
 
   if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 });
 
   // Group bets by user, compute balance via shared ledger formula
   const betsByUser = {};
+  const realBetsByUser = {};
   for (const b of bets) {
     (betsByUser[b.user_id] = betsByUser[b.user_id] || []).push(b);
+    if (b.match_id !== '_topup') {
+      (realBetsByUser[b.user_id] = realBetsByUser[b.user_id] || []).push(b);
+    }
   }
 
   const result = profiles.map(p => {
-    const pnl = computeBalance(betsByUser[p.id] || []);
-    return { ...p, balance: pnl, wallet: STARTING_BALANCE + pnl };
+    const pnl = computeBalance(realBetsByUser[p.id] || []);
+    const wallet = STARTING_BALANCE + computeBalance(betsByUser[p.id] || []);
+    return { ...p, balance: pnl, wallet };
   });
 
   result.sort((a, b) => b.balance - a.balance);
