@@ -179,8 +179,9 @@ function TopupSection({ user, onTopup }) {
   );
 }
 
-function SettlementCard({ user }) {
+function SettlementCard({ user, bets = [] }) {
   const [myPosition, setMyPosition] = useState(null);
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   useEffect(() => {
     fetch('/api/settlement')
@@ -196,6 +197,10 @@ function SettlementCard({ user }) {
 
   if (myPosition === null) return null;
 
+  const resolvedBets = bets.filter(b => b.match_id !== '_topup' && (b.status === 'won' || b.status === 'lost'));
+  const totalStaked = resolvedBets.reduce((s, b) => s + b.amount, 0);
+  const totalWon = resolvedBets.filter(b => b.status === 'won').reduce((s, b) => s + (b.payout || 0), 0);
+
   const isOwing = myPosition < 0;
   const isEven = myPosition === 0;
   return (
@@ -204,8 +209,18 @@ function SettlementCard({ user }) {
       background: isEven ? 'rgba(255,255,255,0.04)' : isOwing ? 'rgba(248,113,113,0.08)' : 'rgba(74,222,128,0.08)',
       border: `1px solid ${isEven ? 'rgba(255,255,255,0.08)' : isOwing ? 'rgba(248,113,113,0.2)' : 'rgba(74,222,128,0.2)'}`,
     }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
-        Real money settlement
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+          Real money settlement
+        </div>
+        {resolvedBets.length > 0 && (
+          <button
+            onClick={() => setShowBreakdown(!showBreakdown)}
+            style={{ background: 'none', border: 'none', color: 'var(--ink-3)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            {showBreakdown ? 'Hide' : 'How?'}
+          </button>
+        )}
       </div>
       <div style={{ fontSize: 18, fontWeight: 700, color: isEven ? 'var(--ink-2)' : isOwing ? 'var(--loss)' : 'var(--win)' }}>
         {isEven
@@ -218,6 +233,36 @@ function SettlementCard({ user }) {
       <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
         Based on resolved bets only · settled at end of tournament
       </div>
+
+      {showBreakdown && resolvedBets.length > 0 && (
+        <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 10 }}>
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 8, fontWeight: 600 }}>Breakdown</div>
+          {resolvedBets.map(b => (
+            <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+              <span style={{ color: 'var(--ink-2)' }}>
+                {b.match_id} · {b.pick} · staked {CURRENCY_SYMBOL}{b.amount.toLocaleString('en-IN')}
+              </span>
+              <span style={{ color: b.status === 'won' ? 'var(--win)' : 'var(--loss)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                {b.status === 'won' ? `+${CURRENCY_SYMBOL}${(b.payout || 0).toLocaleString('en-IN')}` : `-${CURRENCY_SYMBOL}${b.amount.toLocaleString('en-IN')}`}
+              </span>
+            </div>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 8, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>Total staked</span>
+            <span className="mono" style={{ fontWeight: 700 }}>-{CURRENCY_SYMBOL}{totalStaked.toLocaleString('en-IN')}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
+            <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>Total won back</span>
+            <span className="mono" style={{ fontWeight: 700, color: 'var(--win)' }}>+{CURRENCY_SYMBOL}{totalWon.toLocaleString('en-IN')}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ color: 'var(--ink)', fontWeight: 700 }}>Net</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: isOwing ? 'var(--loss)' : 'var(--win)' }}>
+              {myPosition >= 0 ? '+' : ''}{CURRENCY_SYMBOL}{myPosition.toLocaleString('en-IN')}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -248,7 +293,7 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
   return (
     <div>
       <AccountSection user={user} onProfileUpdate={onProfileUpdate} />
-      <SettlementCard user={user} />
+      <SettlementCard user={user} bets={bets} />
 
       {/* Wallet balance + topup */}
       <div style={{ padding: '0 16px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
