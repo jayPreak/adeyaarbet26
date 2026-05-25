@@ -123,9 +123,9 @@ body {
     min-height: unset;
   }
   .tabbar {
-    bottom: 36px;
-    left: 20px;
-    right: 20px;
+    bottom: 44px;
+    left: 24px;
+    right: 24px;
   }
 }
 
