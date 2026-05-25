@@ -77,14 +77,19 @@ export default function LeaderboardScreen({ user }) {
 
   return (
     <div>
-      <div className="section-head" style={{ marginTop: 8 }}>
-        <div className="section-head__title display">Leaderboard</div>
-      </div>
-
-      {/* Mode toggle */}
-      <div className="chip-row" style={{ marginBottom: 12 }}>
-        <button className={'chip ' + (mode === 'pnl' ? 'active' : '')} onClick={() => setMode('pnl')}>P&L</button>
-        <button className={'chip ' + (mode === 'wallet' ? 'active' : '')} onClick={() => setMode('wallet')}>Wallet</button>
+      <div className="material-tabs">
+        <button
+          className={'material-tab' + (mode === 'pnl' ? ' active' : '')}
+          onClick={() => setMode('pnl')}
+        >
+          P&L
+        </button>
+        <button
+          className={'material-tab' + (mode === 'wallet' ? ' active' : '')}
+          onClick={() => setMode('wallet')}
+        >
+          Wallet
+        </button>
       </div>
 
       {/* Podium */}

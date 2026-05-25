@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
-import { fmtCompact, getMatch, getTeam, fmtDate } from '@/lib/data';
-import { CURRENCY_SYMBOL } from '@/lib/currency';
-import { HeroMatch, MatchCard, SectionHead } from '@/components';
+import { useState, useEffect } from 'react';
+import { getMatch, getTeam } from '@/lib/data';
+import { HeroMatch, SectionHead } from '@/components';
 
 function relativeTime(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -20,15 +19,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
   const upcoming = matches.filter(m => m.status === 'upcoming').slice(0, 3);
   const featured = live[0] || upcoming[0];
 
-  const realBets = bets.filter(b => b.match_id !== '_topup');
-  const myOpenBets = realBets.filter(b => b.status === 'pending').length;
-  const myWonToday = useMemo(() => {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    return realBets
-      .filter(b => b.status === 'won' && new Date(b.created_at) >= todayStart)
-      .reduce((s, b) => s + ((b.payout || 0) - b.amount), 0);
-  }, [realBets]);
+
 
   const [activity, setActivity] = useState([]);
 
@@ -53,22 +44,6 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
     <div>
       {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending')} onCancelBet={onCancelBet} />}
 
-      {/* Stats strip */}
-      <div className="stats-strip">
-        {[
-          { label: 'Open bets', val: myOpenBets, sub: 'placed', tint: null },
-          { label: "Today's net", val: '+' + fmtCompact(myWonToday), sub: 'won', tint: 'win' },
-          { label: 'Group rank', val: '#-', sub: 'of 8', tint: 'gold' },
-        ].map(s => (
-          <div key={s.label} className="stat-card">
-            <div className="stat-label">{s.label}</div>
-            <div className="stat-value" style={{
-              color: s.tint === 'win' ? 'var(--win)' : s.tint === 'gold' ? 'var(--gold)' : 'var(--ink)',
-            }}>{s.val}</div>
-            <div className="stat-sub">{s.sub}</div>
-          </div>
-        ))}
-      </div>
 
       {/* Live matches */}
       {live.length > 0 && (
