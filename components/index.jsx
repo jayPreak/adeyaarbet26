@@ -195,7 +195,7 @@ export function AppHeader({ balance, onTap, user, betsLoaded }) {
 export function TabBar({ active, onChange }) {
   const tabs = [
     { id: 'home',     label: 'Home',     icon: Icon.home },
-    { id: 'fixtures', label: 'Fixtures', icon: Icon.ball },
+    { id: 'fixtures', label: 'Matches', icon: Icon.ball },
     { id: 'leaders',  label: 'Leaders',  icon: Icon.trophy },
     { id: 'bets',     label: 'Account',  icon: Icon.receipt },
   ];
