@@ -122,6 +122,11 @@ body {
     height: 100%;
     min-height: unset;
   }
+  .tabbar {
+    bottom: 36px;
+    left: 20px;
+    right: 20px;
+  }
 }
 
 @media (max-width: 639px) {
