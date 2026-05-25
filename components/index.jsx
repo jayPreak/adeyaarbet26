@@ -670,7 +670,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
           </div>
           <div className="row between">
             <span className="muted" style={{ fontSize: 12 }}>Pool size (with your bet)</span>
-            <span className="mono" style={{ fontWeight: 700 }}>{fmtMoney(pool.total + amount)}</span>
+            <span className="mono" style={{ fontWeight: 700 }}>{fmtMoney(totalPool)}</span>
           </div>
         </div>
 
