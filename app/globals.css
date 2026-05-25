@@ -96,13 +96,31 @@ body {
   }
 }
 
-/* ── Desktop: full-screen sidebar layout ───────────────────── */
+/* ── Desktop: centered phone frame ────────────────────────── */
 @media (min-width: 1024px) {
   body {
-    display: block;
-    padding: 0;
-    height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    min-height: 100dvh;
+  }
+  .stage {
+    gap: 56px;
+    min-height: unset;
+  }
+  .phone-frame {
+    width: 430px;
+    height: 900px;
+    border-radius: 48px;
     overflow: hidden;
+    box-shadow: 0 0 0 10px #1a1a1a, 0 40px 80px rgba(0,0,0,0.7);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .app {
+    height: 100%;
+    min-height: unset;
   }
 }
 

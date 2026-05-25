@@ -331,8 +331,8 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
           />
           <div style={{ fontSize: 13, color: 'var(--ink-2)' }}>
             {winRate >= 50
-              ? `Eating good — ${bets.filter(b => b.status === 'won').length} wins from ${settled.length} settled`
-              : `War mode — ${bets.filter(b => b.status === 'lost').length} losses from ${settled.length} settled`
+              ? `Eating good — ${realBets.filter(b => b.status === 'won').length} wins from ${settled.length} settled`
+              : `War mode — ${realBets.filter(b => b.status === 'lost').length} losses from ${settled.length} settled`
             }
           </div>
         </div>

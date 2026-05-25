@@ -37,7 +37,6 @@ class ErrorBoundary extends Component {
 import BracketScreen from '@/components/screens/BracketScreen';
 import LeaderboardScreen from '@/components/screens/LeaderboardScreen';
 import BetsScreen from '@/components/screens/BetsScreen';
-import DesktopApp from '@/components/desktop/DesktopApp';
 
 function getFifaStatus(fifa) {
   if (fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
@@ -76,7 +75,6 @@ export default function AdeYaarApp() {
   const [cancelling, setCancelling] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [fifaData, setFifaData] = useState(null);
-  const [isDesktop, setIsDesktop] = useState(false);
   const [poolMap, setPoolMap] = useState({});
 
   const balance = computeBalance(bets);
@@ -107,13 +105,6 @@ export default function AdeYaarApp() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    setIsDesktop(mq.matches);
-    const handler = (e) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
 
   const [allUsers, setAllUsers] = useState([]);
 
@@ -212,30 +203,6 @@ export default function AdeYaarApp() {
   }, [matches, user, placing, refreshData, refreshPools]);
 
   if (loading || !user) return null;
-
-  if (isDesktop) {
-    return (
-      <div data-theme={theme}>
-        <DesktopApp
-          tab={tab} setTab={setTab}
-          balance={wallet} openBet={openBet}
-          matches={matches} user={user} onLogout={handleLogout} bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers}
-        />
-        {betSheet && (
-          <PlaceBetSheet
-            match={betSheet.match}
-            pick={betSheet.pick}
-            balance={wallet}
-            poolInfo={poolMap[betSheet.match.id] || null}
-            existingBets={bets.filter(b => (b.match_id || b.matchId) === betSheet.match.id && b.status === 'pending')}
-            onClose={closeBet}
-            onConfirm={confirmBet}
-          />
-        )}
-        {toast && <Toast message={toast} onDone={() => setToast(null)} />}
-      </div>
-    );
-  }
 
   return (
     <div className="stage">
