@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getMatch, getTeam } from '@/lib/data';
+import { CURRENCY_SYMBOL } from '@/lib/currency';
 import { HeroMatch, SectionHead } from '@/components';
 
 function relativeTime(iso) {
