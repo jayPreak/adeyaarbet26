@@ -8,6 +8,9 @@ import { useUser } from '@/lib/hooks';
 import { AppHeader, TabBar, PlaceBetSheet, Toast, NewsTicker } from '@/components';
 import HomeScreen from '@/components/screens/HomeScreen';
 import FixturesScreen from '@/components/screens/FixturesScreen';
+import LeaderboardScreen from '@/components/screens/LeaderboardScreen';
+import BetsScreen from '@/components/screens/BetsScreen';
+import DesktopApp from '@/components/desktop/DesktopApp';
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -34,8 +37,6 @@ class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
-import LeaderboardScreen from '@/components/screens/LeaderboardScreen';
-import BetsScreen from '@/components/screens/BetsScreen';
 
 function getFifaStatus(fifa) {
   if (fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
@@ -74,10 +75,12 @@ export default function AdeYaarApp() {
   const [cancelling, setCancelling] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [fifaData, setFifaData] = useState(null);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [poolMap, setPoolMap] = useState({});
+  const [allUsers, setAllUsers] = useState([]);
 
   const balance = computeBalance(bets);
-  const wallet = computeWallet(bets);
+  const wallet  = computeWallet(bets);
 
   useEffect(() => {
     if (loading) return;
@@ -104,10 +107,14 @@ export default function AdeYaarApp() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    setIsDesktop(mq.matches);
+    const handler = (e) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
-  const [allUsers, setAllUsers] = useState([]);
-
-  // Fetch all active pools (single request) + all profiles
   const refreshPools = useCallback(() => {
     if (!user) return;
     fetch('/api/pool')
@@ -202,6 +209,33 @@ export default function AdeYaarApp() {
   }, [matches, user, placing, refreshData, refreshPools]);
 
   if (loading || !user) return null;
+
+  if (isDesktop) {
+    return (
+      <>
+        <DesktopApp
+          tab={tab} setTab={setTab}
+          balance={balance} openBet={openBet}
+          matches={matches} user={user} onLogout={handleLogout}
+          bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers}
+        />
+        {betSheet && (
+          <div data-theme={theme}>
+            <PlaceBetSheet
+              match={betSheet.match}
+              pick={betSheet.pick}
+              balance={wallet}
+              poolInfo={poolMap[betSheet.match.id] || null}
+              existingBets={bets.filter(b => (b.match_id || b.matchId) === betSheet.match.id && b.status === 'pending')}
+              onClose={closeBet}
+              onConfirm={confirmBet}
+            />
+          </div>
+        )}
+        {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+      </>
+    );
+  }
 
   return (
     <div className="stage">

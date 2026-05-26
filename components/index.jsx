@@ -3,6 +3,7 @@
 import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
 import { useState, useEffect } from 'react';
+import MiniCountdown from './MiniCountdown';
 
 // ── Icons ────────────────────────────────────────────────────
 export const Icon = {
@@ -170,24 +171,27 @@ export function NewsTicker({ matches = [], bets = [], user }) {
 // ── App Header ───────────────────────────────────────────────
 export function AppHeader({ balance, onTap, user, betsLoaded }) {
   return (
-    <div className="app-header">
-      <div className="app-header__brand">
-        <div className="brand-mark">A</div>
-        <div className="brand-name">AdeYaar <em>26</em></div>
+    <>
+      <div className="app-header">
+        <div className="app-header__brand">
+          <div className="brand-mark">A</div>
+          <div className="brand-name">AdeYaar <em>26</em></div>
+        </div>
+        <div className="app-header__right">
+          {user && <span className="app-header__user">{user.display_name || user.username}</span>}
+          <button className="balance-pill" onClick={onTap}>
+            <div className="balance-pill__icon" style={user?.avatar_url ? { backgroundImage: `url(${user.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center', fontSize: 0 } : undefined}>
+              {!user?.avatar_url && (user?.display_name?.[0] || '₹')}
+            </div>
+            {betsLoaded === false
+              ? <span className="balance-pill__amt skeleton-text" style={{ width: 48 }}>&nbsp;</span>
+              : <span className="balance-pill__amt">{fmtMoney(balance)}</span>
+            }
+          </button>
+        </div>
       </div>
-      <div className="app-header__right">
-        {user && <span className="app-header__user">{user.display_name || user.username}</span>}
-        <button className="balance-pill" onClick={onTap}>
-          <div className="balance-pill__icon" style={user?.avatar_url ? { backgroundImage: `url(${user.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center', fontSize: 0 } : undefined}>
-            {!user?.avatar_url && (user?.display_name?.[0] || '₹')}
-          </div>
-          {betsLoaded === false
-            ? <span className="balance-pill__amt skeleton-text" style={{ width: 48 }}>&nbsp;</span>
-            : <span className="balance-pill__amt">{fmtMoney(balance)}</span>
-          }
-        </button>
-      </div>
-    </div>
+      <MiniCountdown variant="mobile" />
+    </>
   );
 }
 
@@ -674,7 +678,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
           </div>
         </div>
 
-        </div>{/* end scrollable content */}
+        </div>
 
         <button
           className="btn primary block lg"
