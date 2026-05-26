@@ -9,6 +9,7 @@ import {
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 
 import { Flag, LiveDot } from '@/components';
+import MiniCountdown from '@/components/MiniCountdown';
 
 function formatDeskActivity(a) {
   const match = a.payload?.match_id ? getMatch(a.payload.match_id) : null;
@@ -134,6 +135,7 @@ function DesktopShell({ tab, onNav, balance, children, title, sub, hideSearch, u
             </div>
           )}
           <div className="desk-topbar__actions">
+            <MiniCountdown variant="desktop" />
             <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 14, color: balance >= 0 ? 'var(--win)' : 'var(--loss)', marginRight: 12 }}>
               {fmtNet(balance)}
             </div>

@@ -3,6 +3,7 @@
 import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST } from '@/lib/data';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 import { useState, useEffect } from 'react';
+import MiniCountdown from './MiniCountdown';
 
 // ── Icons ────────────────────────────────────────────────────
 export const Icon = {
@@ -171,19 +172,22 @@ export function NewsTicker({ matches = [], bets = [], user }) {
 export function AppHeader({ balance, onTap, user }) {
   const netColor = balance >= 0 ? 'var(--win)' : 'var(--loss)';
   return (
-    <div className="app-header">
-      <div className="app-header__brand">
-        <div className="brand-mark">A</div>
-        <div className="brand-name">AdeYaar <em>26</em></div>
+    <>
+      <div className="app-header">
+        <div className="app-header__brand">
+          <div className="brand-mark">A</div>
+          <div className="brand-name">AdeYaar <em>26</em></div>
+        </div>
+        <div className="app-header__right">
+          {user && <span className="app-header__user">{user.display_name || user.username}</span>}
+          <button className="balance-pill" onClick={onTap}>
+            <div className="balance-pill__icon">{user?.display_name?.[0] || '₹'}</div>
+            <span className="balance-pill__amt" style={{ color: netColor }}>{fmtNet(balance)}</span>
+          </button>
+        </div>
       </div>
-      <div className="app-header__right">
-        {user && <span className="app-header__user">{user.display_name || user.username}</span>}
-        <button className="balance-pill" onClick={onTap}>
-          <div className="balance-pill__icon">{user?.display_name?.[0] || '₹'}</div>
-          <span className="balance-pill__amt" style={{ color: netColor }}>{fmtNet(balance)}</span>
-        </button>
-      </div>
-    </div>
+      <MiniCountdown variant="mobile" />
+    </>
   );
 }
 
