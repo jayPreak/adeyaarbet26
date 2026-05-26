@@ -96,13 +96,31 @@ body {
   }
 }
 
-/* ── Desktop: full-screen sidebar layout ───────────────────── */
+/* ── Desktop: centered phone frame ────────────────────────── */
 @media (min-width: 1024px) {
   body {
-    display: block;
-    padding: 0;
-    height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    min-height: 100dvh;
+  }
+  .stage {
+    gap: 56px;
+    min-height: unset;
+  }
+  .phone-frame {
+    width: 430px;
+    height: 900px;
+    border-radius: 48px;
     overflow: hidden;
+    box-shadow: 0 0 0 10px #1a1a1a, 0 40px 80px rgba(0,0,0,0.7);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .app {
+    height: 100%;
+    min-height: unset;
   }
 }
 
@@ -198,21 +216,19 @@ body {
 
 /* ── Tab bar ───────────────────────────────────────────────── */
 .tabbar {
-  position: absolute;
-  left: 12px; right: 12px; bottom: 28px;
+  margin: 0 12px 12px;
+  padding: 8px;
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 22px;
-  padding: 8px;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   gap: 2px;
   backdrop-filter: blur(20px);
   box-shadow: 0 12px 40px rgba(0,0,0,0.4);
   z-index: 10;
-}
-@media (max-width: 639px) {
-  .tabbar { bottom: max(16px, env(safe-area-inset-bottom, 16px)); }
+  flex-shrink: 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
 }
 .tabbar__btn {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
@@ -264,6 +280,43 @@ body {
   flex-shrink: 0; white-space: nowrap;
 }
 .chip.active { background: var(--gold); color: #0a0a0a; border-color: transparent; }
+
+/* ── Material tabs ────────────────────────────────────────── */
+.material-tabs {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.material-tab {
+  flex: 1;
+  padding: 14px 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-align: center;
+  color: var(--ink-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+.material-tab.active {
+  color: var(--gold);
+}
+.material-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--gold);
+}
 
 /* ── Live dot ──────────────────────────────────────────────── */
 .live-dot {
@@ -392,20 +445,41 @@ body {
   position: fixed; inset: 0; z-index: 90;
   background: rgba(0,0,0,0.55);
   backdrop-filter: blur(8px);
-  display: flex; align-items: flex-end;
+  display: flex; align-items: flex-end; justify-content: center;
   animation: fadeIn 0.18s ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .sheet {
-  width: 100%; background: var(--surface);
-  border-radius: 28px 28px 0 0;
-  padding: 14px 20px 0;
-  max-height: 92dvh; overflow-y: auto; overflow-x: hidden;
+  width: 100%; background: var(--surface, #111317);
+  border-radius: 28px 28px 0 0; padding: 14px 20px 0;
+  max-height: 92dvh; overflow: hidden;
   display: flex; flex-direction: column;
   animation: slideUp 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
   border-top: 1px solid var(--line);
 }
+.sheet ::-webkit-scrollbar { width: 4px; }
+.sheet ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+.sheet ::-webkit-scrollbar-track { background: transparent; }
 @keyframes slideUp { from { transform: translateY(40px); } to { transform: translateY(0); } }
+@media (min-width: 1024px) {
+  .sheet-backdrop { align-items: center; }
+  .sheet {
+    max-width: 440px; width: 100%;
+    border-radius: 20px;
+    max-height: 80vh;
+    background: #111317;
+    color: #F2F3F5;
+    border: 1px solid rgba(255,255,255,0.1);
+    animation: scaleIn 0.2s ease;
+  }
+  .sheet .card { background: rgba(255,255,255,0.06); color: inherit; }
+  .sheet .muted { color: rgba(255,255,255,0.5); }
+  .sheet .eyebrow { color: rgba(255,255,255,0.6); }
+  .sheet .mono { color: inherit; }
+  .sheet .odds-btn { color: #F2F3F5; }
+  .sheet .odds-btn__label { color: inherit; }
+  @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+}
 .sheet-handle {
   width: 36px; height: 4px; border-radius: 2px;
   background: var(--line-strong); margin: 0 auto 14px;
@@ -585,6 +659,16 @@ body {
   animation: slideUp 0.25s ease;
   white-space: nowrap;
 }
+
+/* ── Skeleton shimmer ─────────────────────────────────────── */
+.skeleton-text {
+  display: inline-block;
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 /* ── Stats strip ───────────────────────────────────────────── */
 .stats-strip {

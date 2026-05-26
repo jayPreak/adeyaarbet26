@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
-import { fmtCompact, getMatch, getTeam, fmtDate } from '@/lib/data';
+import { useState, useEffect } from 'react';
+import { getMatch, getTeam } from '@/lib/data';
 import { CURRENCY_SYMBOL } from '@/lib/currency';
-import { HeroMatch, MatchCard, SectionHead } from '@/components';
+import { HeroMatch, SectionHead } from '@/components';
 
 function relativeTime(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -20,14 +20,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
   const upcoming = matches.filter(m => m.status === 'upcoming').slice(0, 3);
   const featured = live[0] || upcoming[0];
 
-  const myOpenBets = bets.filter(b => b.status === 'pending').length;
-  const myWonToday = useMemo(() => {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    return bets
-      .filter(b => b.status === 'won' && new Date(b.created_at) >= todayStart)
-      .reduce((s, b) => s + ((b.payout || 0) - b.amount), 0);
-  }, [bets]);
+
 
   const [activity, setActivity] = useState([]);
 
@@ -39,6 +32,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
           setActivity(data.map(a => ({
             id: a.id,
             username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
+            avatar_url: a.profiles?.avatar_url || null,
             text: formatActivityText(a),
             createdAt: a.created_at,
           })));
@@ -51,37 +45,39 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
     <div>
       {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending')} onCancelBet={onCancelBet} />}
 
-      {/* Stats strip */}
-      <div className="stats-strip">
-        {[
-          { label: 'Open bets', val: myOpenBets, sub: 'placed', tint: null },
-          { label: "Today's net", val: '+' + fmtCompact(myWonToday), sub: 'won', tint: 'win' },
-          { label: 'Group rank', val: '#-', sub: 'of 8', tint: 'gold' },
-        ].map(s => (
-          <div key={s.label} className="stat-card">
-            <div className="stat-label">{s.label}</div>
-            <div className="stat-value" style={{
-              color: s.tint === 'win' ? 'var(--win)' : s.tint === 'gold' ? 'var(--gold)' : 'var(--ink)',
-            }}>{s.val}</div>
-            <div className="stat-sub">{s.sub}</div>
-          </div>
-        ))}
-      </div>
 
       {/* Live matches */}
       {live.length > 0 && (
         <>
-          <SectionHead title="Live now" more="All matches" onMore={() => onNav('matches')} />
+          <SectionHead title="Live now" more="All matches" onMore={() => onNav('fixtures')} />
           <div className="date-group" style={{ marginBottom: 8 }}>
             {live.map(m => <MatchCard key={m.id} match={m} onBet={onBet} myBets={bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending')} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} />)}
           </div>
         </>
       )}
 
-      {/* Upcoming */}
-      <SectionHead title="Up next" more="Fixtures" onMore={() => onNav('matches')} />
-      <div className="date-group" style={{ marginBottom: 8 }}>
-        {upcoming.map(m => <MatchCard key={m.id} match={m} onBet={onBet} myBets={bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending')} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} />)}
+      {/* Upcoming CTA */}
+      <div
+        onClick={() => onNav('fixtures')}
+        style={{
+          margin: '8px 16px 12px',
+          padding: '16px 20px',
+          borderRadius: 14,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>Bet on upcoming matches</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>{upcoming.length} matches coming up</div>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--ink-3)' }}>
+          <path d="M9 18l6-6-6-6" />
+        </svg>
       </div>
 
       {/* Friend activity */}
@@ -94,7 +90,9 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
         )}
         {activity.map(a => (
           <div key={a.id} className="ticker-item">
-            <div className="ticker-avatar">{a.username[0]}</div>
+            <div className="ticker-avatar" style={a.avatar_url ? { backgroundImage: `url(${a.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+              {!a.avatar_url && a.username[0]}
+            </div>
             <div style={{ flex: 1 }}>
               <span style={{ fontWeight: 600 }}>{a.username}</span>{' '}
               <span style={{ color: 'var(--ink-2)' }}>{a.text}</span>
@@ -122,7 +120,10 @@ function formatActivityText(a) {
     return `bet ${CURRENCY_SYMBOL}${a.payload.amount} on ${pickTeam} · ${matchLabel}`;
   }
   if (a.type === 'bet_cancelled' && a.payload) {
-    return `cancelled bet · refund ${CURRENCY_SYMBOL}${a.payload.refunded} · ${matchLabel}`;
+    if (a.payload.reason === 'side_switch') {
+      return `switched sides · ${matchLabel}`;
+    }
+    return `cancelled bet${a.payload.refunded ? ` · refund ${CURRENCY_SYMBOL}${a.payload.refunded}` : ''} · ${matchLabel}`;
   }
   if (a.type === 'bet_won' && a.payload) {
     return `won ${CURRENCY_SYMBOL}${a.payload.payout} · ${matchLabel}`;

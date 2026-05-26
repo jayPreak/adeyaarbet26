@@ -1,7 +1,7 @@
 'use client';
 
 import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST } from '@/lib/data';
-import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
+import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
 import { useState, useEffect } from 'react';
 import MiniCountdown from './MiniCountdown';
 
@@ -169,8 +169,7 @@ export function NewsTicker({ matches = [], bets = [], user }) {
 }
 
 // ── App Header ───────────────────────────────────────────────
-export function AppHeader({ balance, onTap, user }) {
-  const netColor = balance >= 0 ? 'var(--win)' : 'var(--loss)';
+export function AppHeader({ balance, onTap, user, betsLoaded }) {
   return (
     <>
       <div className="app-header">
@@ -181,8 +180,13 @@ export function AppHeader({ balance, onTap, user }) {
         <div className="app-header__right">
           {user && <span className="app-header__user">{user.display_name || user.username}</span>}
           <button className="balance-pill" onClick={onTap}>
-            <div className="balance-pill__icon">{user?.display_name?.[0] || '₹'}</div>
-            <span className="balance-pill__amt" style={{ color: netColor }}>{fmtNet(balance)}</span>
+            <div className="balance-pill__icon" style={user?.avatar_url ? { backgroundImage: `url(${user.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center', fontSize: 0 } : undefined}>
+              {!user?.avatar_url && (user?.display_name?.[0] || '₹')}
+            </div>
+            {betsLoaded === false
+              ? <span className="balance-pill__amt skeleton-text" style={{ width: 48 }}>&nbsp;</span>
+              : <span className="balance-pill__amt">{fmtMoney(balance)}</span>
+            }
           </button>
         </div>
       </div>
@@ -194,11 +198,10 @@ export function AppHeader({ balance, onTap, user }) {
 // ── Tab bar ──────────────────────────────────────────────────
 export function TabBar({ active, onChange }) {
   const tabs = [
-    { id: 'home',    label: 'Home',    icon: Icon.home },
-    { id: 'matches', label: 'Matches', icon: Icon.ball },
-    { id: 'bracket', label: 'Bracket', icon: Icon.bracket },
-    { id: 'leaders', label: 'Leaders', icon: Icon.trophy },
-    { id: 'bets',    label: 'Account', icon: Icon.receipt },
+    { id: 'home',     label: 'Home',     icon: Icon.home },
+    { id: 'fixtures', label: 'Matches', icon: Icon.ball },
+    { id: 'leaders',  label: 'Leaders',  icon: Icon.trophy },
+    { id: 'bets',     label: 'Account',  icon: Icon.receipt },
   ];
   return (
     <div className="tabbar">
@@ -354,7 +357,7 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
           <tbody>
             {bets.map((b, i) => (
               <tr key={i}>
-                <td style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.9)', fontSize: 12 }}>{b.display_name.split(' ')[0]}</td>
+                <td style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.9)', fontSize: 12 }}>{(b.display_name || b.username || '?').split(' ')[0]}</td>
                 <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>{CURRENCY_SYMBOL}{b.amount}</td>
                 <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: '#4ade80', fontSize: 11 }}>{CURRENCY_SYMBOL}{b.possible_win}</td>
               </tr>
@@ -413,7 +416,7 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
           fontSize: 11, color: 'rgba(255,255,255,0.3)',
           textAlign: 'center',
         }}>
-          Haven&apos;t bet: {notBet.map(u => u.display_name.split(' ')[0]).join(', ')}
+          Haven&apos;t bet: {notBet.map(u => (u.display_name || u.username || '?').split(' ')[0]).join(', ')}
         </div>
       )}
     </div>
@@ -507,6 +510,8 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
   const existingTotal = existingBets.reduce((s, b) => s + b.amount, 0);
   const isSwitching = existingPick && existingPick !== side;
 
+  const overBalance = amount > balance;
+
   // Compute potential payout from pool info
   const pool = poolInfo || {};
   const bySide = pool.bySide || { home: 0, away: 0, draw: 0 };
@@ -529,7 +534,8 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
           </button>
         </div>
 
-        <div>
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0 }}>
 
         {/* Pool info */}
         {pool.bettorCount > 0 && (
@@ -587,6 +593,17 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
           }}>
             You have {fmtMoney(existingTotal)} on <b>{existingPick === 'home' ? home.name : existingPick === 'away' ? away.name : 'Draw'}</b>.
             Switching to <b>{sideName}</b> will cancel your previous bet and refund it.
+          </div>
+        )}
+
+        {/* Same-side existing bet info */}
+        {existingPick && existingPick === side && !isSwitching && (
+          <div style={{
+            padding: '10px 14px', borderRadius: 8, marginBottom: 14,
+            background: 'rgba(74, 222, 128, 0.08)', border: '1px solid rgba(74, 222, 128, 0.2)',
+            fontSize: 12, color: 'var(--win)', lineHeight: 1.4,
+          }}>
+            You already have <b>{fmtMoney(existingTotal)}</b> on <b>{sideName}</b>. Cancel your existing bet first to place a new one.
           </div>
         )}
 
@@ -657,30 +674,25 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
           </div>
           <div className="row between">
             <span className="muted" style={{ fontSize: 12 }}>Pool size (with your bet)</span>
-            <span className="mono" style={{ fontWeight: 700 }}>{fmtMoney(pool.total + amount)}</span>
+            <span className="mono" style={{ fontWeight: 700 }}>{fmtMoney(totalPool)}</span>
           </div>
         </div>
 
         </div>
 
-        <div style={{
-          position: 'sticky', bottom: 0,
-          background: 'var(--surface)',
-          padding: '12px 0 max(20px, env(safe-area-inset-bottom))',
-        }}>
-          <button
-            className="btn primary block lg"
-            disabled={submitting}
-            onClick={async () => {
-              setSubmitting(true);
-              try { await onConfirm({ matchId: match.id, pick: side, amount }); }
-              catch { /* parent handles */ }
-              finally { setSubmitting(false); }
-            }}
-          >
-            {submitting ? 'Placing...' : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
-          </button>
-        </div>
+        <button
+          className="btn primary block lg"
+          style={{ flexShrink: 0, marginTop: 12 }}
+          disabled={overBalance || submitting || (existingPick === side)}
+          onClick={async () => {
+            setSubmitting(true);
+            try { await onConfirm({ matchId: match.id, pick: side, amount }); }
+            catch { /* parent handles */ }
+            finally { setSubmitting(false); }
+          }}
+        >
+          {submitting ? 'Placing...' : (existingPick === side) ? 'Already placed — cancel to change' : overBalance ? 'Insufficient balance' : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
+        </button>
       </div>
     </div>
   );

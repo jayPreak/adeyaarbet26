@@ -12,7 +12,7 @@ export async function GET(request) {
 
   const { data, error } = await supabase
     .from('activity')
-    .select('*, profiles(username, display_name)')
+    .select('*, profiles(username, display_name, avatar_url)')
     .order('created_at', { ascending: false })
     .limit(limit);
 

@@ -1,17 +1,41 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Component } from 'react';
 import { MATCHES, getMatch, getTeam } from '@/lib/data';
 import { fmtMoney } from '@/lib/currency';
-import { computeBalance } from '@/lib/ledger';
+import { computeBalance, computeWallet } from '@/lib/ledger';
 import { useUser } from '@/lib/hooks';
 import { AppHeader, TabBar, PlaceBetSheet, Toast, NewsTicker } from '@/components';
 import HomeScreen from '@/components/screens/HomeScreen';
-import MatchesScreen from '@/components/screens/MatchesScreen';
-import BracketScreen from '@/components/screens/BracketScreen';
+import FixturesScreen from '@/components/screens/FixturesScreen';
+
+class ErrorBoundary extends Component {
+  state = { error: null };
+  static getDerivedStateFromError(error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 24, textAlign: 'center' }}>
+          <div style={{ color: '#f87171', fontSize: 14, marginBottom: 8 }}>
+            Something went wrong
+          </div>
+          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginBottom: 16, fontFamily: 'monospace' }}>
+            {this.state.error.message}
+          </div>
+          <button
+            onClick={() => this.setState({ error: null })}
+            style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, padding: '8px 16px', fontSize: 12, cursor: 'pointer' }}
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import LeaderboardScreen from '@/components/screens/LeaderboardScreen';
 import BetsScreen from '@/components/screens/BetsScreen';
-import DesktopApp from '@/components/desktop/DesktopApp';
 
 function getFifaStatus(fifa) {
   if (fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
@@ -41,18 +65,19 @@ function mergeWithFifa(staticMatch, fifaResults) {
 
 export default function AdeYaarApp() {
   const theme = 'midnight';
-  const { user, loading } = useUser();
+  const { user, loading, refreshUser } = useUser();
   const [tab, setTab]           = useState('home');
   const [betSheet, setBetSheet] = useState(null);
   const [toast, setToast]       = useState(null);
   const [bets, setBets]         = useState([]);
+  const [betsLoaded, setBetsLoaded] = useState(false);
   const [cancelling, setCancelling] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [fifaData, setFifaData] = useState(null);
-  const [isDesktop, setIsDesktop] = useState(false);
   const [poolMap, setPoolMap] = useState({});
 
   const balance = computeBalance(bets);
+  const wallet = computeWallet(bets);
 
   useEffect(() => {
     if (loading) return;
@@ -66,8 +91,8 @@ export default function AdeYaarApp() {
     if (!user) return;
     fetch(`/api/bets?user_id=${user.id}`)
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setBets(data); })
-      .catch(() => {});
+      .then(data => { if (Array.isArray(data)) setBets(data); setBetsLoaded(true); })
+      .catch(() => { setBetsLoaded(true); });
   }, [user]);
 
   useEffect(() => { refreshData(); }, [refreshData]);
@@ -79,13 +104,6 @@ export default function AdeYaarApp() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    setIsDesktop(mq.matches);
-    const handler = (e) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
 
   const [allUsers, setAllUsers] = useState([]);
 
@@ -176,6 +194,7 @@ export default function AdeYaarApp() {
                    pick === 'away' ? getTeam(match.away) : null;
       setToast(`Bet placed · ${fmtMoney(amount)} on ${team ? team.name : 'Draw'}`);
     } catch (err) {
+      setBetSheet(null);
       setToast(`Error: ${err.message}`);
     } finally {
       setPlacing(false);
@@ -184,62 +203,41 @@ export default function AdeYaarApp() {
 
   if (loading || !user) return null;
 
-  if (isDesktop) {
-    return (
-      <>
-        <DesktopApp
-          tab={tab} setTab={setTab}
-          balance={balance} openBet={openBet}
-          matches={matches} user={user} onLogout={handleLogout} bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers}
-        />
-        {betSheet && (
+  return (
+    <div className="stage">
+      <div className="phone-frame">
+        <div className="app" data-theme={theme}>
+          <AppHeader balance={wallet} user={user} onTap={() => setTab('bets')} betsLoaded={betsLoaded} />
+          <NewsTicker matches={matches} bets={bets} user={user} />
+
+          <div className="scroll">
+            <ErrorBoundary>
+              {tab === 'home'     && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} />}
+              {tab === 'fixtures' && <FixturesScreen matches={matches} onBet={openBet} bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers} />}
+              {tab === 'leaders'  && <LeaderboardScreen user={user} />}
+              {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} wallet={wallet} />}
+            </ErrorBoundary>
+          </div>
+
+          <TabBar active={tab} onChange={setTab} />
+
+          {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+        </div>
+      </div>
+
+      {betSheet && (
+        <div data-theme={theme}>
           <PlaceBetSheet
             match={betSheet.match}
             pick={betSheet.pick}
-            balance={balance}
+            balance={wallet}
             poolInfo={poolMap[betSheet.match.id] || null}
             existingBets={bets.filter(b => (b.match_id || b.matchId) === betSheet.match.id && b.status === 'pending')}
             onClose={closeBet}
             onConfirm={confirmBet}
           />
-        )}
-        {toast && <Toast message={toast} onDone={() => setToast(null)} />}
-      </>
-    );
-  }
-
-  return (
-    <div className="stage">
-      <div className="phone-frame">
-        <div className="app" data-theme={theme}>
-          <AppHeader balance={balance} user={user} onTap={() => setTab('bets')} />
-          <NewsTicker matches={matches} bets={bets} user={user} />
-
-          <div className="scroll">
-            {tab === 'home'    && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} />}
-            {tab === 'matches' && <MatchesScreen matches={matches} onBet={openBet} bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers} />}
-            {tab === 'bracket' && <BracketScreen matches={matches} />}
-            {tab === 'leaders' && <LeaderboardScreen user={user} />}
-            {tab === 'bets'    && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} />}
-          </div>
-
-          <TabBar active={tab} onChange={setTab} />
-
-          {betSheet && (
-            <PlaceBetSheet
-              match={betSheet.match}
-              pick={betSheet.pick}
-              balance={balance}
-              poolInfo={poolMap[betSheet.match.id] || null}
-              existingBets={bets.filter(b => (b.match_id || b.matchId) === betSheet.match.id && b.status === 'pending')}
-              onClose={closeBet}
-              onConfirm={confirmBet}
-            />
-          )}
-
-          {toast && <Toast message={toast} onDone={() => setToast(null)} />}
         </div>
-      </div>
+      )}
     </div>
   );
 }

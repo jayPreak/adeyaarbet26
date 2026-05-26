@@ -36,3 +36,5 @@ supabase/.temp/
 *.pem
 .vercel
 .claude/worktrees/
+
+chat.txt

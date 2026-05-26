@@ -44,11 +44,17 @@ export async function POST(request) {
       if (msg.includes('Insufficient balance')) {
         return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
       }
+      if (msg.includes('Already bet on this side')) {
+        return NextResponse.json({ error: 'You already have a bet on this side. Cancel first to change amount.' }, { status: 409 });
+      }
       if (msg.includes('Invalid pick') || msg.includes('Amount must be positive')) {
         return NextResponse.json({ error: msg }, { status: 400 });
       }
       if (msg.includes('User not found')) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      if (msg.includes('Match already resolved')) {
+        return NextResponse.json({ error: 'Match already resolved — betting closed' }, { status: 400 });
       }
       return NextResponse.json({ error: msg }, { status: 500 });
     }

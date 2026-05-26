@@ -13,13 +13,13 @@ export async function GET(request) {
   // If no match_id, return all active pools (matches with pending bets) + all profiles
   if (!matchId) {
     const [betsRes, profilesRes] = await Promise.all([
-      supabase.from('bets').select('match_id, user_id, pick, amount, profiles(display_name)').eq('status', 'pending'),
-      supabase.from('profiles').select('id, display_name'),
+      supabase.from('bets').select('match_id, user_id, pick, amount, profiles(display_name, avatar_url)').eq('status', 'pending'),
+      supabase.from('profiles').select('id, display_name, avatar_url'),
     ]);
 
     if (betsRes.error) return NextResponse.json({ error: betsRes.error.message }, { status: 500 });
 
-    const allUsers = (profilesRes.data || []).map(p => ({ id: p.id, display_name: p.display_name }));
+    const allUsers = (profilesRes.data || []).map(p => ({ id: p.id, display_name: p.display_name, avatar_url: p.avatar_url }));
     const bets = betsRes.data || [];
 
     if (!bets.length) return NextResponse.json({ pools: {}, allUsers });
