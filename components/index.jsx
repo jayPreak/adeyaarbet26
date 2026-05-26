@@ -525,8 +525,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
           </button>
         </div>
 
-        {/* Scrollable content */}
-        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        <div>
 
         {/* Pool info */}
         {pool.bettorCount > 0 && (
@@ -658,20 +657,26 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
           </div>
         </div>
 
-        </div>{/* end scrollable content */}
+        </div>
 
-        <button
-          className="btn primary block lg"
-          disabled={overBalance || submitting}
-          onClick={async () => {
-            setSubmitting(true);
-            try { await onConfirm({ matchId: match.id, pick: side, amount }); }
-            catch { /* parent handles */ }
-            finally { setSubmitting(false); }
-          }}
-        >
-          {submitting ? 'Placing...' : overBalance ? 'Insufficient balance' : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
-        </button>
+        <div style={{
+          position: 'sticky', bottom: 0,
+          background: 'var(--surface)',
+          padding: '12px 0 max(20px, env(safe-area-inset-bottom))',
+        }}>
+          <button
+            className="btn primary block lg"
+            disabled={submitting}
+            onClick={async () => {
+              setSubmitting(true);
+              try { await onConfirm({ matchId: match.id, pick: side, amount }); }
+              catch { /* parent handles */ }
+              finally { setSubmitting(false); }
+            }}
+          >
+            {submitting ? 'Placing...' : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
+          </button>
+        </div>
       </div>
     </div>
   );

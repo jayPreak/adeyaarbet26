@@ -398,8 +398,9 @@ body {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .sheet {
   width: 100%; background: var(--surface);
-  border-radius: 28px 28px 0 0; padding: 14px 20px 20px;
-  max-height: 92dvh; overflow: hidden;
+  border-radius: 28px 28px 0 0;
+  padding: 14px 20px 0;
+  max-height: 92dvh; overflow-y: auto; overflow-x: hidden;
   display: flex; flex-direction: column;
   animation: slideUp 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
   border-top: 1px solid var(--line);
@@ -815,8 +816,12 @@ body {
 }
 .dhero__vs-time { font-size: 13px; color: var(--ink-3); font-family: var(--font-mono); margin-top: 4px; }
 .dhero__odds { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-.dhero__odds .odds-btn { padding: 16px 12px; border-radius: 12px; }
+.dhero__odds .odds-btn {
+  padding: 16px 12px; border-radius: 12px;
+  background: var(--surface-3); border-color: var(--line-strong);
+}
 .dhero__odds .odds-btn__val { font-size: 18px; }
+.dhero__odds .odds-btn__label { color: var(--ink-2); }
 
 /* ── Desktop grid layouts ──────────────────────────────────── */
 .desk-grid { display: grid; gap: 20px; margin-top: 22px; }
@@ -937,6 +942,23 @@ body {
 .desk-bet__pick .odds { display: block; font-size: 11px; color: var(--ink-3); font-family: var(--font-mono); margin-top: 2px; }
 .desk-bet__num { font-family: var(--font-mono); font-weight: 700; text-align: right; }
 .desk-bet__status { justify-self: end; }
+
+/* ── Countdown splash ──────────────────────────────────────── */
+.countdown-splash {
+  animation: cdFadeIn 0.55s ease both;
+}
+@keyframes cdFadeIn {
+  from { opacity: 0; transform: scale(1.012); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.cd-enter-btn {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.cd-enter-btn:hover {
+  transform: scale(1.03) !important;
+  box-shadow: 0 0 0 1px rgba(0,255,133,0.6), 0 16px 48px rgba(0,255,133,0.35) !important;
+}
+.cd-enter-btn:active { transform: scale(0.98) !important; }
 
 /* ── Search ─────────────────────────────────────────────────── */
 .app-header__actions { display: flex; align-items: center; gap: 8px; }
