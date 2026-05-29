@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { getMatch, getTeam } from '@/lib/data';
 import { CURRENCY_SYMBOL } from '@/lib/currency';
 import { HeroMatch, SectionHead } from '@/components';
+import CupWinnerCTA from '@/components/CupWinnerCTA';
 
 function relativeTime(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -15,7 +16,7 @@ function relativeTime(iso) {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [] }) {
+export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet = null, onOpenCupWinner }) {
   const live = matches.filter(m => m.status === 'live');
   const upcoming = matches.filter(m => m.status === 'upcoming').slice(0, 3);
   const featured = live[0] || upcoming[0];
@@ -44,6 +45,8 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
   return (
     <div>
       {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending')} onCancelBet={onCancelBet} />}
+
+      <CupWinnerCTA myCupWinnerBet={myCupWinnerBet} onOpen={onOpenCupWinner} />
 
 
       {/* Live matches */}

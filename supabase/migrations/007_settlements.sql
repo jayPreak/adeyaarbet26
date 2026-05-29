@@ -14,14 +14,18 @@ CREATE TABLE IF NOT EXISTS public.settlements (
 
 ALTER TABLE public.settlements ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Settlements visible to participants" ON public.settlements;
 CREATE POLICY "Settlements visible to participants"
   ON public.settlements FOR SELECT
   USING (auth.uid() = from_user OR auth.uid() = to_user);
 
+DROP POLICY IF EXISTS "Users can record settlements they're part of" ON public.settlements;
 CREATE POLICY "Users can record settlements they're part of"
   ON public.settlements FOR INSERT
   WITH CHECK (auth.uid() = from_user);
 
 -- Anon policies for local dev
+DROP POLICY IF EXISTS "anon_settlements_select" ON public.settlements;
 CREATE POLICY "anon_settlements_select" ON public.settlements FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_settlements_insert" ON public.settlements;
 CREATE POLICY "anon_settlements_insert" ON public.settlements FOR INSERT TO anon WITH CHECK (true);

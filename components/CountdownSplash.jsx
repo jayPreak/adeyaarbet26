@@ -248,7 +248,7 @@ function SplashDesktop({ onEnter }) {
             fontSize: 72, letterSpacing: '-0.035em', lineHeight: 1.0,
             textAlign: 'center', color: 'var(--ink)', margin: 0,
           }}>
-            The Yaaron Cup<br />
+            The World Cup<br />
             <span style={{ color: 'var(--gold)' }}>kicks off in</span>
           </h1>
         </div>
@@ -268,7 +268,7 @@ function SplashDesktop({ onEnter }) {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-3)',
       }}>
-        <span>adeyaar.app / yaaron-cup-2026</span>
+        <span>adeyaar.app / world-cup-2026</span>
         <span>Group pool · entry ₹500 · winner takes all</span>
       </div>
     </div>
@@ -314,7 +314,7 @@ function SplashMobile({ onEnter }) {
             fontSize: 38, letterSpacing: '-0.03em', lineHeight: 1.05,
             textAlign: 'center', color: 'var(--ink)', margin: 0,
           }}>
-            Yaaron Cup<br />
+            World Cup<br />
             <span style={{ color: 'var(--gold)' }}>kicks off in</span>
           </h1>
         </div>
