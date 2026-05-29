@@ -10,6 +10,7 @@ import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 
 import { Flag, LiveDot } from '@/components';
 import MiniCountdown from '@/components/MiniCountdown';
+import CupWinnerCTA from '@/components/CupWinnerCTA';
 
 function formatDeskActivity(a) {
   const match = a.payload?.match_id ? getMatch(a.payload.match_id) : null;
@@ -63,7 +64,7 @@ function DesktopShell({ tab, onNav, balance, children, title, sub, hideSearch, u
           <div className="desk-brand__mark">A</div>
           <div>
             <div className="desk-brand__name">AdeYaar <em>26</em></div>
-            <div className="desk-brand__sub">Group · Yaaron</div>
+            <div className="desk-brand__sub">Group · Friends</div>
           </div>
         </div>
 
@@ -83,7 +84,7 @@ function DesktopShell({ tab, onNav, balance, children, title, sub, hideSearch, u
         </nav>
 
         <div className="desk-balance">
-          <div className="desk-balance__label">My position · Yaaron Cup</div>
+          <div className="desk-balance__label">My position · World Cup</div>
           <div className="desk-balance__amt" style={{ color: balance >= 0 ? 'var(--win)' : 'var(--loss)' }}>
             {fmtNet(balance)}
           </div>
@@ -275,7 +276,7 @@ function DeskPoolTable({ poolData, home, away }) {
 }
 
 // ── Desktop Home ──────────────────────────────────────────────
-function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap = {}, onCancelBet }) {
+function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap = {}, onCancelBet, myCupWinnerBet, onOpenCupWinner }) {
   const live = matches.filter(m => m.status === 'live');
   const upcoming = matches.filter(m => m.status === 'upcoming').slice(0, 6);
   const featured = live[0] || upcoming[0];
@@ -398,6 +399,8 @@ function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap 
           <DeskPoolTable poolData={poolMap[featured.id]} home={home} away={away} />
         )}
       </section>
+
+      <CupWinnerCTA myCupWinnerBet={myCupWinnerBet} onOpen={onOpenCupWinner} />
 
       {/* Stat tiles */}
       <div className="desk-stats" style={{ marginTop: 22 }}>
@@ -870,12 +873,12 @@ function DBetsScreen({ user, onCancelBet, bets = [] }) {
 }
 
 // ── Desktop App (root) ────────────────────────────────────────
-export default function DesktopApp({ tab, setTab, balance, openBet, matches, user, onLogout, bets = [], onCancelBet, poolMap = {} }) {
+export default function DesktopApp({ tab, setTab, balance, openBet, matches, user, onLogout, bets = [], onCancelBet, poolMap = {}, myCupWinnerBet, onOpenCupWinner }) {
   const titles = {
     home:    { title: 'Dashboard',    sub: 'FIFA World Cup 2026 · Group stage underway' },
     matches: { title: 'Fixtures',     sub: 'All matches · group stage + knockout' },
     bracket: { title: 'Tournament',   sub: '48 teams · 12 groups · single elimination' },
-    leaders: { title: 'Leaderboard',  sub: 'Yaaron group · friend betting pool' },
+    leaders: { title: 'Leaderboard',  sub: 'Friends · friend betting pool' },
     bets:    { title: 'My Bets',      sub: 'Your stakes across the tournament' },
   };
   const t = titles[tab] || titles.home;
@@ -886,7 +889,7 @@ export default function DesktopApp({ tab, setTab, balance, openBet, matches, use
       title={t.title} sub={t.sub}
       hideSearch={tab === 'bracket'} user={user} onLogout={onLogout}
     >
-      {tab === 'home'    && <DHomeScreen matches={matches} balance={balance} onBet={openBet} onNav={setTab} user={user} bets={bets} poolMap={poolMap} onCancelBet={onCancelBet} />}
+      {tab === 'home'    && <DHomeScreen matches={matches} balance={balance} onBet={openBet} onNav={setTab} user={user} bets={bets} poolMap={poolMap} onCancelBet={onCancelBet} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={onOpenCupWinner} />}
       {tab === 'matches' && <DMatchesScreen matches={matches} onBet={openBet} bets={bets} poolMap={poolMap} />}
       {tab === 'bracket' && <DBracketScreen matches={matches} />}
       {tab === 'leaders' && <DLeaderboardScreen user={user} />}

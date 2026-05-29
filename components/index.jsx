@@ -1,6 +1,6 @@
 'use client';
 
-import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST } from '@/lib/data';
+import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, isMatchBettingOpen } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
 import { useState, useEffect } from 'react';
 import MiniCountdown from './MiniCountdown';
@@ -239,6 +239,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
   const away = getTeam(match.away);
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
+  const bettingOpen = !isLive && !isFinished && isMatchBettingOpen(match);
 
   const stageLabel = match.group ? `Group ${match.group}` : 'Knockout';
   const city = match.venue?.split(',').pop()?.trim();
@@ -287,7 +288,9 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
             <button
               key={o.key}
               className={'odds-btn' + (hasBet && myPick === o.key ? ' odds-btn--active' : '')}
-              onClick={(e) => { e.stopPropagation(); onBet?.(match, o.key); }}
+              disabled={!bettingOpen}
+              onClick={(e) => { e.stopPropagation(); if (bettingOpen) onBet?.(match, o.key); }}
+              style={!bettingOpen ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
             >
               <span className="odds-btn__label">{o.label}</span>
             </button>
@@ -428,6 +431,8 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
   const home = getTeam(match.home);
   const away = getTeam(match.away);
   const isLive = match.status === 'live';
+  const isFinished = match.status === 'finished';
+  const bettingOpen = !isLive && !isFinished && isMatchBettingOpen(match);
   const myTotal = myBets.reduce((s, b) => s + b.amount, 0);
   const hasBet = myTotal > 0;
   const myPick = myBets[0]?.pick;
@@ -468,11 +473,11 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
       </div>
 
       <div className="hero__cta-row">
-        <button className="btn primary lg" onClick={() => onBet(match, 'home')}>
-          Bet {home.code}
+        <button className="btn primary lg" disabled={!bettingOpen} onClick={() => bettingOpen && onBet(match, 'home')} style={!bettingOpen ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}>
+          {bettingOpen ? `Bet ${home.code}` : 'Betting closed'}
         </button>
-        <button className="btn lg" onClick={() => onBet(match, 'away')}>
-          Bet {away.code}
+        <button className="btn lg" disabled={!bettingOpen} onClick={() => bettingOpen && onBet(match, 'away')} style={!bettingOpen ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}>
+          {bettingOpen ? `Bet ${away.code}` : 'Betting closed'}
         </button>
       </div>
 

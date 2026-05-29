@@ -11,6 +11,10 @@ import FixturesScreen from '@/components/screens/FixturesScreen';
 import LeaderboardScreen from '@/components/screens/LeaderboardScreen';
 import BetsScreen from '@/components/screens/BetsScreen';
 import DesktopApp from '@/components/desktop/DesktopApp';
+import CupWinnerBetModal from '@/components/CupWinnerBetModal';
+import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
+
+const CUP_WINNER_POPUP_SEEN_KEY = 'adeyaar_cup_winner_popup_seen';
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -78,6 +82,9 @@ export default function AdeYaarApp() {
   const [isDesktop, setIsDesktop] = useState(false);
   const [poolMap, setPoolMap] = useState({});
   const [allUsers, setAllUsers] = useState([]);
+  const [cupWinnerOpen, setCupWinnerOpen] = useState(false);
+  const [myCupWinnerBet, setMyCupWinnerBet] = useState(null);
+  const [cupWinnerLoaded, setCupWinnerLoaded] = useState(false);
 
   const balance = computeBalance(bets);
   const wallet  = computeWallet(bets);
@@ -99,6 +106,44 @@ export default function AdeYaarApp() {
   }, [user]);
 
   useEffect(() => { refreshData(); }, [refreshData]);
+
+  const refreshCupWinnerBet = useCallback(() => {
+    if (!user) return;
+    fetch(`/api/cup-winner-bet?user_id=${user.id}`)
+      .then(r => r.json())
+      .then(data => {
+        setMyCupWinnerBet(data?.myBet || null);
+        setCupWinnerLoaded(true);
+      })
+      .catch(() => { setCupWinnerLoaded(true); });
+  }, [user]);
+
+  useEffect(() => { refreshCupWinnerBet(); }, [refreshCupWinnerBet]);
+
+  // First-login auto-open: only if user has no bet, before deadline, and never dismissed.
+  useEffect(() => {
+    if (!user || !cupWinnerLoaded) return;
+    if (myCupWinnerBet) return;
+    if (Date.now() >= CUP_WINNER_DEADLINE_TS) return;
+    if (typeof window === 'undefined') return;
+    if (window.localStorage.getItem(CUP_WINNER_POPUP_SEEN_KEY) === '1') return;
+    setCupWinnerOpen(true);
+  }, [user, cupWinnerLoaded, myCupWinnerBet]);
+
+  const closeCupWinner = useCallback(() => {
+    setCupWinnerOpen(false);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(CUP_WINNER_POPUP_SEEN_KEY, '1');
+    }
+  }, []);
+
+  const openCupWinner = useCallback(() => setCupWinnerOpen(true), []);
+
+  const handleCupWinnerPlaced = useCallback(() => {
+    refreshCupWinnerBet();
+    refreshData();
+    setToast('Cup-winner bet placed');
+  }, [refreshCupWinnerBet, refreshData]);
 
   useEffect(() => {
     fetch('/api/fifa/matches')
@@ -218,6 +263,7 @@ export default function AdeYaarApp() {
           balance={balance} openBet={openBet}
           matches={matches} user={user} onLogout={handleLogout}
           bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers}
+          myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={openCupWinner}
         />
         {betSheet && (
           <div data-theme={theme}>
@@ -233,6 +279,14 @@ export default function AdeYaarApp() {
           </div>
         )}
         {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+        <CupWinnerBetModal
+          open={cupWinnerOpen}
+          onClose={closeCupWinner}
+          user={user}
+          balance={wallet}
+          myCupWinnerBet={myCupWinnerBet}
+          onPlaced={handleCupWinnerPlaced}
+        />
       </>
     );
   }
@@ -246,7 +300,7 @@ export default function AdeYaarApp() {
 
           <div className="scroll">
             <ErrorBoundary>
-              {tab === 'home'     && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} />}
+              {tab === 'home'     && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={openCupWinner} />}
               {tab === 'fixtures' && <FixturesScreen matches={matches} onBet={openBet} bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers} />}
               {tab === 'leaders'  && <LeaderboardScreen user={user} />}
               {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} wallet={wallet} />}
@@ -272,6 +326,15 @@ export default function AdeYaarApp() {
           />
         </div>
       )}
+
+      <CupWinnerBetModal
+        open={cupWinnerOpen}
+        onClose={closeCupWinner}
+        user={user}
+        balance={wallet}
+        myCupWinnerBet={myCupWinnerBet}
+        onPlaced={handleCupWinnerPlaced}
+      />
     </div>
   );
 }
