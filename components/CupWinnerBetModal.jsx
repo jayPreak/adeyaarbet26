@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { GROUPS, getTeam } from '@/lib/data';
-import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
+import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
 import { Flag, Icon } from './index';
+import CupWinnerPicksView from './CupWinnerPicksView';
 
 function useCountdown(targetTs) {
   const [now, setNow] = useState(Date.now());
@@ -38,16 +39,54 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
   const [amount, setAmount] = useState(myCupWinnerBet?.amount || 500);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [view, setView] = useState('grid'); // 'grid' | 'picks'
+  const [picks, setPicks] = useState([]);
+  const [pool, setPool] = useState(null);
+  const [picksLoading, setPicksLoading] = useState(false);
+  const [justPlaced, setJustPlaced] = useState(false);
+
+  async function loadPicks() {
+    setPicksLoading(true);
+    try {
+      const url = user?.id
+        ? `/api/cup-winner-bet?user_id=${user.id}`
+        : '/api/cup-winner-bet';
+      const res = await fetch(url);
+      const data = await res.json();
+      if (res.ok) {
+        setPicks(data.picks || []);
+        setPool(data.pool || null);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setPicksLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (open) {
       setSelectedTeam(myCupWinnerBet?.pick || null);
       setAmount(myCupWinnerBet?.amount || 500);
       setError(null);
+      setView(myCupWinnerBet ? 'picks' : 'grid');
+      setJustPlaced(false);
+      loadPicks();
+    }
+    // Only reset on open-toggle, not on every prop change — preserves justPlaced state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // When the user's own bet updates from outside (e.g., after place/refresh), sync inputs
+  useEffect(() => {
+    if (!open) return;
+    if (myCupWinnerBet) {
+      setSelectedTeam(myCupWinnerBet.pick);
+      setAmount(myCupWinnerBet.amount);
     }
   }, [open, myCupWinnerBet?.pick, myCupWinnerBet?.amount]);
 
-  const maxAmount = Math.max(0, (balance || 0) + (myCupWinnerBet?.amount || 0));
+  const maxAmount = MAX_BET;
   const hasBet = !!myCupWinnerBet;
   const isChange =
     hasBet && (selectedTeam !== myCupWinnerBet.pick || amount !== myCupWinnerBet.amount);
@@ -67,7 +106,9 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Failed to place bet'); return; }
       onPlaced?.(data);
-      onClose?.();
+      setJustPlaced(true);
+      setView('picks');
+      loadPicks();
     } catch (e) {
       setError(e.message || 'Network error');
     } finally {
@@ -82,7 +123,7 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
     : submitting
     ? 'Placing…'
     : amount > maxAmount
-    ? 'Insufficient balance'
+    ? `Max bet ${CURRENCY_SYMBOL}${MAX_BET.toLocaleString('en-IN')}`
     : !selectedTeam
     ? 'Pick a team'
     : hasBet
@@ -108,7 +149,9 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
             <span style={{ fontSize: 22 }}>🏆</span>
             <div style={{ minWidth: 0 }}>
               <div className="display" style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)', lineHeight: 1.1 }}>
-                Pick the World Cup winner
+                {view === 'picks'
+                  ? (justPlaced ? '🎉 Bet placed!' : "Everyone's picks")
+                  : 'Pick the World Cup winner'}
               </div>
               <div style={{ fontSize: 11, color: closed ? 'var(--loss)' : 'var(--ink-3)', marginTop: 3 }}>
                 {closed ? 'Locked in — betting closed' : `Closes in ${formatCountdown(cd)} · 1h before kickoff`}
@@ -130,8 +173,36 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
           </button>
         </div>
 
+        {/* View switcher — shown when user has a bet (or just placed one) */}
+        {(hasBet || picks.length > 0) && (
+          <div className="cup-modal__viewswitch">
+            <button
+              type="button"
+              className={view === 'grid' ? 'active' : ''}
+              onClick={() => setView('grid')}
+              disabled={closed && !hasBet}
+            >
+              {hasBet ? 'Change pick' : 'Pick team'}
+            </button>
+            <button
+              type="button"
+              className={view === 'picks' ? 'active' : ''}
+              onClick={() => { setView('picks'); loadPicks(); }}
+            >
+              See everyone's picks
+            </button>
+          </div>
+        )}
+
         {/* Scrollable body */}
         <div className="cup-modal__body" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', marginTop: 8, paddingBottom: 4 }}>
+          {view === 'picks' ? (
+            <CupWinnerPicksView
+              picks={picks}
+              pool={pool}
+              currentUserId={user?.id}
+            />
+          ) : (<>
           {hasBet && (
             <div className="cup-modal__current">
               <Flag code={myCupWinnerBet.pick} size="sm" />
@@ -177,16 +248,20 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
               </div>
             </div>
           ))}
+          </>)}
         </div>
 
         {/* Footer */}
         <div className="cup-modal__footer">
+          {view === 'picks' ? (
+            <button onClick={onClose} className="cup-modal__submit">Done</button>
+          ) : (<>
           {!closed && (
             <>
               <div className="row between" style={{ marginBottom: 6 }}>
                 <span className="eyebrow" style={{ margin: 0 }}>Stake</span>
                 <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                  Available: {fmtMoney(maxAmount)}
+                  Max: {fmtMoney(MAX_BET)}
                 </span>
               </div>
               <div style={{
@@ -238,6 +313,7 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
           >
             {submitLabel}
           </button>
+          </>)}
         </div>
       </div>
 
@@ -249,6 +325,23 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
         }
         .cup-modal__body {
           padding-right: 2px;
+        }
+        .cup-modal__viewswitch {
+          display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+          padding: 3px; margin-top: 8px;
+          background: #14171D;
+          border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+        }
+        .cup-modal__viewswitch button {
+          padding: 8px 10px; border: none; border-radius: 8px;
+          background: transparent; color: #8089A0;
+          font-weight: 600; font-size: 12px; cursor: pointer;
+        }
+        .cup-modal__viewswitch button.active {
+          background: rgba(0,255,133,0.14); color: #00FF85;
+        }
+        .cup-modal__viewswitch button:disabled {
+          opacity: 0.4; cursor: not-allowed;
         }
         .cup-modal__current {
           display: flex; align-items: center; gap: 10px;

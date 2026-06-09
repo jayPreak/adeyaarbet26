@@ -41,8 +41,8 @@ export async function POST(request) {
 
     if (error) {
       const msg = error.message || '';
-      if (msg.includes('Insufficient balance')) {
-        return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
+      if (msg.includes('Bet exceeds maximum')) {
+        return NextResponse.json({ error: msg }, { status: 400 });
       }
       if (msg.includes('Already bet on this side')) {
         return NextResponse.json({ error: 'You already have a bet on this side. Cancel first to change amount.' }, { status: 409 });

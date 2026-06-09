@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fmtCompact, getMatch, getTeam } from '@/lib/data';
-import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
+import { fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 
 function timeAgo(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -40,9 +40,10 @@ function formatActivity(a) {
 
 export default function LeaderboardScreen({ user }) {
   const [rankings, setRankings] = useState([]);
-  const [settlement, setSettlement] = useState([]);
+  const [settlementResolved, setSettlementResolved] = useState([]);
+  const [settlementWithPending, setSettlementWithPending] = useState([]);
+  const [settlementBasis, setSettlementBasis] = useState('resolved'); // 'resolved' | 'withPending'
   const [activity, setActivity] = useState([]);
-  const [mode, setMode] = useState('pnl'); // 'pnl' or 'wallet'
 
   useEffect(() => {
     fetch('/api/leaderboard')
@@ -51,7 +52,10 @@ export default function LeaderboardScreen({ user }) {
       .catch(() => {});
     fetch('/api/settlement')
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data.transactions)) setSettlement(data.transactions); })
+      .then(data => {
+        if (Array.isArray(data.resolved?.transactions)) setSettlementResolved(data.resolved.transactions);
+        if (Array.isArray(data.withPending?.transactions)) setSettlementWithPending(data.withPending.transactions);
+      })
       .catch(() => {});
     fetch('/api/activity?limit=20')
       .then(r => r.json())
@@ -59,9 +63,7 @@ export default function LeaderboardScreen({ user }) {
       .catch(() => {});
   }, []);
 
-  const sorted = [...rankings].sort((a, b) =>
-    mode === 'wallet' ? (b.wallet || 0) - (a.wallet || 0) : b.balance - a.balance
-  );
+  const sorted = [...rankings].sort((a, b) => b.balance - a.balance);
   const top3 = sorted.slice(0, 3);
   const podium = top3.length >= 3 ? [
     { ...top3[1], rank: 2 },
@@ -69,29 +71,11 @@ export default function LeaderboardScreen({ user }) {
     { ...top3[2], rank: 3 },
   ] : [];
 
-  const displayVal = (f) => mode === 'wallet' ? fmtMoney(f.wallet || 0) : fmtNet(f.balance);
-  const displayColor = (f) => {
-    if (mode === 'wallet') return 'var(--ink)';
-    return f.balance >= 0 ? 'var(--win)' : 'var(--loss)';
-  };
+  const displayVal = (f) => fmtNet(f.balance);
+  const displayColor = (f) => (f.balance >= 0 ? 'var(--win)' : 'var(--loss)');
 
   return (
     <div>
-      <div className="material-tabs">
-        <button
-          className={'material-tab' + (mode === 'pnl' ? ' active' : '')}
-          onClick={() => setMode('pnl')}
-        >
-          P&L
-        </button>
-        <button
-          className={'material-tab' + (mode === 'wallet' ? ' active' : '')}
-          onClick={() => setMode('wallet')}
-        >
-          Wallet
-        </button>
-      </div>
-
       {/* Podium */}
       {podium.length > 0 && (
         <div className="podium">
@@ -140,46 +124,71 @@ export default function LeaderboardScreen({ user }) {
       <div className="section-head" style={{ marginTop: 8 }}>
         <div className="section-head__title display">Settlement plan</div>
       </div>
-      <div className="card" style={{ margin: '0 16px 24px', padding: '4px 0' }}>
-        {settlement.length === 0 ? (
-          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
-            All square — no payments needed yet
-          </div>
-        ) : (
-          settlement.map((tx, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '12px 16px',
-              borderBottom: i < settlement.length - 1 ? '1px solid var(--line)' : 'none',
-            }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: '50%',
-                background: 'var(--loss)', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, fontWeight: 700, flexShrink: 0,
-              }}>
-                {tx.from.name[0]}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>
-                  <span style={{ color: 'var(--loss)' }}>{tx.from.name}</span>
-                  {' pays '}
-                  <span style={{ color: 'var(--win)' }}>{tx.to.name}</span>
-                </div>
-              </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 15, color: 'var(--gold)', flexShrink: 0 }}>
-                {CURRENCY_SYMBOL}{tx.amount.toLocaleString('en-IN')}
-              </div>
-            </div>
-          ))
-        )}
+
+      <div className="material-tabs" style={{ margin: '0 16px 8px' }}>
+        <button
+          className={'material-tab' + (settlementBasis === 'resolved' ? ' active' : '')}
+          onClick={() => setSettlementBasis('resolved')}
+        >
+          Resolved only
+        </button>
+        <button
+          className={'material-tab' + (settlementBasis === 'withPending' ? ' active' : '')}
+          onClick={() => setSettlementBasis('withPending')}
+        >
+          Including pending
+        </button>
       </div>
+
+      {(() => {
+        const txs = settlementBasis === 'resolved' ? settlementResolved : settlementWithPending;
+        return (
+          <div className="card" style={{ margin: '0 16px 8px', padding: '4px 0' }}>
+            {txs.length === 0 ? (
+              <div style={{ padding: '16px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
+                {settlementBasis === 'resolved'
+                  ? 'All square — no payments needed yet'
+                  : 'No matched debts yet — once anyone has a payout, pending stakes will pair with creditors'}
+              </div>
+            ) : (
+              txs.map((tx, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '12px 16px',
+                  borderBottom: i < txs.length - 1 ? '1px solid var(--line)' : 'none',
+                }}>
+                  <div style={{
+                    width: 30, height: 30, borderRadius: '50%',
+                    background: 'var(--loss)', color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, fontWeight: 700, flexShrink: 0,
+                  }}>
+                    {tx.from.name[0]}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>
+                      <span style={{ color: 'var(--loss)' }}>{tx.from.name}</span>
+                      {' pays '}
+                      <span style={{ color: 'var(--win)' }}>{tx.to.name}</span>
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 15, color: 'var(--gold)', flexShrink: 0 }}>
+                    {CURRENCY_SYMBOL}{tx.amount.toLocaleString('en-IN')}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        );
+      })()}
 
       <div style={{
         textAlign: 'center', fontSize: 11, color: 'var(--ink-3)',
         paddingBottom: 8, padding: '0 32px 16px',
       }}>
-        Minimum transactions · settled at end of World Cup
+        {settlementBasis === 'resolved'
+          ? 'If WC ended now (pending bets refunded) · finalised at end of tournament'
+          : 'Treats pending stakes as already spent — early in the tournament most debts have no creditor yet'}
       </div>
 
       {/* Activity feed */}

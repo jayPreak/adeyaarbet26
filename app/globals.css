@@ -944,11 +944,12 @@ body {
 
 /* Fixture row */
 .desk-fix {
-  display: flex; align-items: center;
+  display: flex; flex-direction: column;
   background: var(--surface); border: 1px solid var(--line);
-  border-radius: 12px; padding: 14px 16px; gap: 14px;
+  border-radius: 12px; padding: 14px 16px; gap: 12px;
   transition: border-color 0.15s;
 }
+.desk-fix__row { display: flex; align-items: center; gap: 14px; }
 .desk-fix:hover { border-color: var(--line-strong); }
 .desk-fix__time {
   width: 56px; font-family: var(--font-mono); font-size: 11px;
