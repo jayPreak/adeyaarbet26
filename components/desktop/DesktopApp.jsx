@@ -164,6 +164,7 @@ function DeskFix({ match, onBet, myBets = [], poolData }) {
 
   return (
     <div className="desk-fix">
+      <div className="desk-fix__row">
       <div className="desk-fix__time">
         <b>{IS_LIVE ? 'LIVE' : IS_FINISHED ? 'FT' : fmtTimeIST(match.time)}</b>
         <span>{fmtDay(match.date).slice(0,3)} · {fmtDate(match.date)}</span>
@@ -207,6 +208,7 @@ function DeskFix({ match, onBet, myBets = [], poolData }) {
           ))}
         </div>
       )}
+      </div>
       {!IS_FINISHED && poolData && poolData.bets && poolData.bets.length > 0 && (
         <DeskPoolTable poolData={poolData} home={home} away={away} />
       )}
@@ -321,7 +323,7 @@ function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap 
       <section className="dhero">
         <div className="dhero__top">
           <div className="eyebrow" style={{ color: IS_LIVE ? 'var(--live)' : 'var(--gold)' }}>
-            {IS_LIVE ? '★ Live · Group Watching' : 'Featured · Round of 32'}
+            {IS_LIVE ? '★ Live · Group Watching' : 'Featured · Group Stage'}
           </div>
           {IS_LIVE
             ? <LiveDot minute={featured.minute} />
@@ -678,10 +680,22 @@ function DBracketMatch({ home, away, tbd }) {
 // ── Desktop Leaderboard ───────────────────────────────────────
 function DLeaderboardScreen({ user }) {
   const [sorted, setSorted] = useState([]);
+  const [settlementResolved, setSettlementResolved] = useState([]);
+  const [settlementWithPending, setSettlementWithPending] = useState([]);
+  const [settlementBasis, setSettlementBasis] = useState('resolved');
 
   useEffect(() => {
     fetch('/api/leaderboard').then(r => r.json()).then(d => { if (Array.isArray(d)) setSorted(d); }).catch(() => {});
+    fetch('/api/settlement')
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d.resolved?.transactions)) setSettlementResolved(d.resolved.transactions);
+        if (Array.isArray(d.withPending?.transactions)) setSettlementWithPending(d.withPending.transactions);
+      })
+      .catch(() => {});
   }, []);
+
+  const settlementTxs = settlementBasis === 'resolved' ? settlementResolved : settlementWithPending;
 
   const top3 = sorted.slice(0, 3);
 
@@ -740,6 +754,83 @@ function DLeaderboardScreen({ user }) {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Settlement plan */}
+      <div style={{
+        marginTop: 24, background: 'var(--surface)',
+        border: '1px solid var(--line)', borderRadius: 14, padding: '22px 24px',
+      }}>
+        <div className="row between center" style={{ marginBottom: 14 }}>
+          <div className="eyebrow" style={{ margin: 0 }}>Settlement plan</div>
+          <div style={{
+            display: 'inline-flex', gap: 4, padding: 3, borderRadius: 10,
+            background: 'var(--surface-2)', border: '1px solid var(--line)',
+          }}>
+            <button
+              onClick={() => setSettlementBasis('resolved')}
+              style={{
+                padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                fontSize: 12, fontWeight: 600,
+                background: settlementBasis === 'resolved' ? 'var(--gold-soft)' : 'transparent',
+                color: settlementBasis === 'resolved' ? 'var(--gold)' : 'var(--ink-3)',
+              }}
+            >Resolved only</button>
+            <button
+              onClick={() => setSettlementBasis('withPending')}
+              style={{
+                padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                fontSize: 12, fontWeight: 600,
+                background: settlementBasis === 'withPending' ? 'var(--gold-soft)' : 'transparent',
+                color: settlementBasis === 'withPending' ? 'var(--gold)' : 'var(--ink-3)',
+              }}
+            >Including pending</button>
+          </div>
+        </div>
+
+        {settlementTxs.length === 0 ? (
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
+            {settlementBasis === 'resolved'
+              ? 'All square — no payments needed yet'
+              : 'No matched debts yet — once anyone has a payout, pending stakes will pair with creditors'}
+          </div>
+        ) : (
+          <div>
+            {settlementTxs.map((tx, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 0',
+                borderBottom: i < settlementTxs.length - 1 ? '1px solid var(--line)' : 'none',
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: 'var(--loss)', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 700, flexShrink: 0,
+                }}>
+                  {tx.from.name[0]}
+                </div>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600 }}>
+                  <span style={{ color: 'var(--loss)' }}>{tx.from.name}</span>
+                  <span style={{ color: 'var(--ink-3)' }}> pays </span>
+                  <span style={{ color: 'var(--win)' }}>{tx.to.name}</span>
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 16, color: 'var(--gold)', flexShrink: 0 }}>
+                  {CURRENCY_SYMBOL}{tx.amount.toLocaleString('en-IN')}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{
+          marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)',
+          fontSize: 11.5, color: 'var(--ink-3)', textAlign: 'center',
+        }}>
+          {settlementBasis === 'resolved'
+            ? 'If WC ended now (pending bets refunded) · finalised at end of tournament'
+            : 'Treats pending stakes as already spent — early in the tournament most debts have no creditor yet'}
         </div>
       </div>
     </>

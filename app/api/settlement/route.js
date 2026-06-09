@@ -25,22 +25,43 @@ export async function GET() {
 
   if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 });
 
-  // Settlement only counts RESOLVED bets (won/lost), excludes pending, cancelled, and topups
-  const balanceMap = {};
+  // Two views:
+  //   resolved      → only won/lost bets count ("if WC ended now, refund pending")
+  //   withPending   → pending stakes also count ("current ledger exposure")
+  const resolvedMap = {};
+  const ledgerMap = {};
   for (const b of bets || []) {
-    if (b.status !== 'won' && b.status !== 'lost') continue;
-    if (!balanceMap[b.user_id]) balanceMap[b.user_id] = { spent: 0, won: 0 };
-    balanceMap[b.user_id].spent += b.amount;
-    if (b.status === 'won') balanceMap[b.user_id].won += (b.payout || 0);
+    if (b.status === 'cancelled') continue;
+    ledgerMap[b.user_id] = ledgerMap[b.user_id] || { spent: 0, won: 0 };
+    ledgerMap[b.user_id].spent += b.amount;
+    if (b.status === 'won') ledgerMap[b.user_id].won += (b.payout || 0);
+
+    if (b.status === 'won' || b.status === 'lost') {
+      resolvedMap[b.user_id] = resolvedMap[b.user_id] || { spent: 0, won: 0 };
+      resolvedMap[b.user_id].spent += b.amount;
+      if (b.status === 'won') resolvedMap[b.user_id].won += (b.payout || 0);
+    }
   }
 
-  const profilesWithBalance = (profiles || []).map(p => ({
+  const withBalance = (map) => (profiles || []).map(p => ({
     ...p,
-    balance: (balanceMap[p.id]?.won || 0) - (balanceMap[p.id]?.spent || 0),
+    balance: (map[p.id]?.won || 0) - (map[p.id]?.spent || 0),
   }));
 
+  const resolvedProfiles = withBalance(resolvedMap);
+  const ledgerProfiles = withBalance(ledgerMap);
+
   return NextResponse.json({
-    transactions: computeSettlement(profilesWithBalance),
-    positions:    computeNetPositions(profilesWithBalance),
+    // Back-compat: top-level fields = resolved-only
+    transactions: computeSettlement(resolvedProfiles),
+    positions:    computeNetPositions(resolvedProfiles),
+    resolved: {
+      transactions: computeSettlement(resolvedProfiles),
+      positions:    computeNetPositions(resolvedProfiles),
+    },
+    withPending: {
+      transactions: computeSettlement(ledgerProfiles),
+      positions:    computeNetPositions(ledgerProfiles),
+    },
   });
 }

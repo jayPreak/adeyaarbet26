@@ -1,7 +1,7 @@
 'use client';
 
 import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, isMatchBettingOpen } from '@/lib/data';
-import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
+import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { useState, useEffect } from 'react';
 import MiniCountdown from './MiniCountdown';
 
@@ -442,7 +442,7 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
     <div className="hero">
       <div className="row between center">
         <div className="hero__stage">
-          {isLive ? '★ Live now' : 'Round of 32 · Featured'}
+          {isLive ? '★ Live now' : 'Group Stage · Featured'}
         </div>
         {isLive && <LiveDot minute={match.minute} />}
       </div>
@@ -515,7 +515,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
   const existingTotal = existingBets.reduce((s, b) => s + b.amount, 0);
   const isSwitching = existingPick && existingPick !== side;
 
-  const overBalance = amount > balance;
+  const overMax = amount > MAX_BET;
 
   // Compute potential payout from pool info
   const pool = poolInfo || {};
@@ -625,7 +625,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
 
         <input
           type="range" className="slider"
-          min={50} max={5000} step={50}
+          min={50} max={MAX_BET} step={50}
           value={amount}
           onChange={e => setAmount(Number(e.target.value))}
           style={{ marginBottom: 14 }}
@@ -688,7 +688,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
         <button
           className="btn primary block lg"
           style={{ flexShrink: 0, marginTop: 12 }}
-          disabled={overBalance || submitting || (existingPick === side)}
+          disabled={overMax || submitting || (existingPick === side)}
           onClick={async () => {
             setSubmitting(true);
             try { await onConfirm({ matchId: match.id, pick: side, amount }); }
@@ -696,7 +696,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
             finally { setSubmitting(false); }
           }}
         >
-          {submitting ? 'Placing...' : (existingPick === side) ? 'Already placed — cancel to change' : overBalance ? 'Insufficient balance' : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
+          {submitting ? 'Placing...' : (existingPick === side) ? 'Already placed — cancel to change' : overMax ? `Max bet ${CURRENCY_SYMBOL}${MAX_BET.toLocaleString('en-IN')}` : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
         </button>
       </div>
     </div>

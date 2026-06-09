@@ -3,16 +3,17 @@ import supabase from '@/lib/supabase';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
 
 export async function GET(request) {
-  if (!supabase) return NextResponse.json({ myBet: null, pool: { byTeam: {}, total: 0, bettorCount: 0 }, deadlineTs: CUP_WINNER_DEADLINE_TS });
+  if (!supabase) return NextResponse.json({ myBet: null, pool: { byTeam: {}, total: 0, bettorCount: 0 }, picks: [], deadlineTs: CUP_WINNER_DEADLINE_TS });
 
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get('user_id');
 
   const poolQuery = supabase
     .from('bets')
-    .select('user_id, pick, amount, status')
+    .select('user_id, pick, amount, status, created_at, profiles(display_name, avatar_url)')
     .eq('kind', 'cup_winner')
-    .eq('status', 'pending');
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
 
   const myBetQuery = userId
     ? supabase
@@ -32,15 +33,25 @@ export async function GET(request) {
   const byTeam = {};
   let total = 0;
   const bettors = new Set();
+  const picks = [];
   for (const b of poolRes.data || []) {
     byTeam[b.pick] = (byTeam[b.pick] || 0) + b.amount;
     total += b.amount;
     bettors.add(b.user_id);
+    picks.push({
+      user_id: b.user_id,
+      display_name: b.profiles?.display_name || 'Unknown',
+      avatar_url: b.profiles?.avatar_url || null,
+      pick: b.pick,
+      amount: b.amount,
+      created_at: b.created_at,
+    });
   }
 
   return NextResponse.json({
     myBet: myBetRes.data || null,
     pool: { byTeam, total, bettorCount: bettors.size },
+    picks,
     deadlineTs: CUP_WINNER_DEADLINE_TS,
   });
 }
@@ -64,7 +75,7 @@ export async function POST(request) {
 
     if (error) {
       const msg = error.message || '';
-      if (msg.includes('Insufficient balance')) return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
+      if (msg.includes('Bet exceeds maximum')) return NextResponse.json({ error: msg }, { status: 400 });
       if (msg.includes('Cup winner betting closed')) return NextResponse.json({ error: 'Cup winner betting closed' }, { status: 400 });
       if (msg.includes('Invalid team code')) return NextResponse.json({ error: msg }, { status: 400 });
       if (msg.includes('Amount must be positive')) return NextResponse.json({ error: msg }, { status: 400 });
