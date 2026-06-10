@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
+import { computeGenerated } from '@/lib/ledger';
 import { BetCard } from '@/components';
 
 function AccountSection({ user, onProfileUpdate }) {
@@ -200,6 +201,9 @@ function SettlementCard({ user, bets = [] }) {
   const resolvedBets = bets.filter(b => b.match_id !== '_topup' && (b.status === 'won' || b.status === 'lost'));
   const totalStaked = resolvedBets.reduce((s, b) => s + b.amount, 0);
   const totalWon = resolvedBets.filter(b => b.status === 'won').reduce((s, b) => s + (b.payout || 0), 0);
+  // Generated (top-up) funds are excluded from settlement — shown for clarity.
+  const totalGenerated = computeGenerated(bets);
+  const hasDetail = resolvedBets.length > 0 || totalGenerated > 0;
 
   const isOwing = myPosition < 0;
   const isEven = myPosition === 0;
@@ -213,7 +217,7 @@ function SettlementCard({ user, bets = [] }) {
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
           Real money settlement
         </div>
-        {resolvedBets.length > 0 && (
+        {hasDetail && (
           <button
             onClick={() => setShowBreakdown(!showBreakdown)}
             style={{ background: 'none', border: 'none', color: 'var(--ink-3)', fontSize: 11, cursor: 'pointer', textDecoration: 'underline' }}
@@ -233,8 +237,13 @@ function SettlementCard({ user, bets = [] }) {
       <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
         Based on resolved bets only · settled at end of tournament
       </div>
+      {totalGenerated > 0 && (
+        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>
+          {CURRENCY_SYMBOL}{totalGenerated.toLocaleString('en-IN')} generated · excluded from settlement
+        </div>
+      )}
 
-      {showBreakdown && resolvedBets.length > 0 && (
+      {showBreakdown && hasDetail && (
         <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 10 }}>
           <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 8, fontWeight: 600 }}>Breakdown</div>
           {resolvedBets.map(b => (
@@ -255,6 +264,14 @@ function SettlementCard({ user, bets = [] }) {
             <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>Total won back</span>
             <span className="mono" style={{ fontWeight: 700, color: 'var(--win)' }}>+{CURRENCY_SYMBOL}{totalWon.toLocaleString('en-IN')}</span>
           </div>
+          {totalGenerated > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
+              <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Generated (excluded)</span>
+              <span className="mono" style={{ fontWeight: 700, color: 'var(--ink-3)', textDecoration: 'line-through' }}>
+                +{CURRENCY_SYMBOL}{totalGenerated.toLocaleString('en-IN')}
+              </span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <span style={{ color: 'var(--ink)', fontWeight: 700 }}>Net</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: isOwing ? 'var(--loss)' : 'var(--win)' }}>
