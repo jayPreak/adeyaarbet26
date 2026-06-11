@@ -94,3 +94,30 @@ helper was both buggy and unwired.
   boundary; both ISO-string and numeric `kickoffTs` forms normalize correctly.
 - Full authenticated browser run was not possible in the build sandbox (no Supabase anon
   key / seeded auth → app redirects to `/login`).
+
+---
+
+## 2026-06-12 — Fix Vercel cron schedule for Hobby plan (Sonnet 4.6)
+
+### Problem
+Vercel deployment failed after commit 86ca1c4. The failure redirected to Vercel cron
+pricing docs, indicating the cron schedule in `vercel.json` was rejected. The hourly
+schedule `"0 * * * *"` requires Vercel Pro; Hobby plan only allows a minimum interval
+of once per day.
+
+### Root cause
+`vercel.json` was introduced in the previous entry with `"schedule": "0 * * * *"`
+(hourly). This is a Pro plan feature — deploying it on a Hobby plan causes Vercel to
+reject the deployment configuration.
+
+### Changes
+- **`vercel.json`** — changed cron schedule from `"0 * * * *"` (hourly) to
+  `"0 0 * * *"` (daily at midnight UTC). The page-load trigger in `AdeYaarApp.jsx`
+  remains the primary auto-settle mechanism; the cron is a fallback for idle periods.
+
+### Not changed
+- Local build was already clean (`npm run build` → 25/25 pages, no errors).
+- No code logic changes needed.
+
+### Verification
+- `npm run build` → succeeds cleanly (only non-blocking viewport metadata warnings).
