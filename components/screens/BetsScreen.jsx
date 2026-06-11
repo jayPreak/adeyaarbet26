@@ -1,8 +1,161 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
+import { getMatch, getTeam } from '@/lib/data';
 import { BetCard } from '@/components';
+
+function NetWorthGraph({ bets }) {
+  const [tooltip, setTooltip] = useState(null);
+  const svgRef = useRef(null);
+
+  const { points, minY, maxY } = useMemo(() => {
+    const resolved = bets
+      .filter(b => b.match_id !== '_topup' && (b.status === 'won' || b.status === 'lost'))
+      .sort((a, b) => new Date(a.resolved_at || a.created_at) - new Date(b.resolved_at || b.created_at));
+
+    if (resolved.length === 0) return { points: [], minY: 0, maxY: 0 };
+
+    let running = 0;
+    const pts = [{ x: 0, y: 0, bet: null }];
+
+    resolved.forEach((b, i) => {
+      if (b.status === 'won') {
+        running += (b.payout || 0) - b.amount;
+      } else {
+        running -= b.amount;
+      }
+      const roi = b.status === 'won'
+        ? Math.round(((b.payout - b.amount) / b.amount) * 100)
+        : -100;
+
+      let matchLabel = b.match_id;
+      if (b.match_id === 'CUP_WINNER') {
+        matchLabel = 'Cup Winner';
+      } else {
+        const m = getMatch(b.match_id);
+        if (m) matchLabel = `${getTeam(m.home).code} v ${getTeam(m.away).code}`;
+      }
+
+      pts.push({
+        x: i + 1,
+        y: running,
+        bet: {
+          matchLabel,
+          amount: b.amount,
+          payout: b.payout || 0,
+          status: b.status,
+          roi,
+        },
+      });
+    });
+
+    const ys = pts.map(p => p.y);
+    return { points: pts, minY: Math.min(...ys), maxY: Math.max(...ys) };
+  }, [bets]);
+
+  if (points.length < 2) return null;
+
+  const W = 320, H = 120, PX = 16, PY = 20;
+  const chartW = W - PX * 2, chartH = H - PY * 2;
+  const range = maxY - minY || 1;
+
+  const toSvg = (pt) => ({
+    sx: PX + (pt.x / (points.length - 1)) * chartW,
+    sy: PY + (1 - (pt.y - minY) / range) * chartH,
+  });
+
+  const pathD = points.map((pt, i) => {
+    const { sx, sy } = toSvg(pt);
+    return `${i === 0 ? 'M' : 'L'}${sx},${sy}`;
+  }).join(' ');
+
+  const zeroY = PY + (1 - (0 - minY) / range) * chartH;
+
+  const handleTap = useCallback((e) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const tapX = e.clientX - rect.left;
+    const scaleX = W / rect.width;
+    const x = tapX * scaleX;
+
+    let closest = null, closestDist = Infinity;
+    points.forEach((pt) => {
+      if (!pt.bet) return;
+      const { sx } = toSvg(pt);
+      const dist = Math.abs(sx - x);
+      if (dist < closestDist) { closestDist = dist; closest = pt; }
+    });
+
+    if (closest && closestDist < 25) {
+      setTooltip(closest);
+    } else {
+      setTooltip(null);
+    }
+  }, [points]);
+
+  const lastPt = points[points.length - 1];
+  const isUp = lastPt.y >= 0;
+
+  return (
+    <div style={{ margin: '0 16px 12px', padding: '12px 0', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', position: 'relative' }}>
+      <div style={{ padding: '0 14px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Net Worth</div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: isUp ? 'var(--win)' : 'var(--loss)' }}>
+          {lastPt.y >= 0 ? '+' : ''}{fmtMoney(lastPt.y)}
+        </div>
+      </div>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ width: '100%', height: 'auto', display: 'block', cursor: 'pointer' }}
+        onClick={handleTap}
+      >
+        {/* Zero line */}
+        <line x1={PX} y1={zeroY} x2={W - PX} y2={zeroY} stroke="rgba(255,255,255,0.1)" strokeDasharray="3,3" />
+
+        {/* Path */}
+        <path d={pathD} fill="none" stroke={isUp ? '#4ade80' : '#f87171'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+
+        {/* Keypoints */}
+        {points.filter(pt => pt.bet).map((pt, i) => {
+          const { sx, sy } = toSvg(pt);
+          const isActive = tooltip === pt;
+          return (
+            <circle
+              key={i}
+              cx={sx} cy={sy} r={isActive ? 5 : 3}
+              fill={pt.bet.status === 'won' ? '#4ade80' : '#f87171'}
+              stroke={isActive ? '#fff' : 'none'}
+              strokeWidth={isActive ? 1.5 : 0}
+            />
+          );
+        })}
+      </svg>
+
+      {/* Tooltip */}
+      {tooltip && tooltip.bet && (
+        <div style={{
+          position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+          marginBottom: 4, padding: '8px 12px', borderRadius: 8,
+          background: '#1a1d24', border: '1px solid rgba(255,255,255,0.15)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.4)', whiteSpace: 'nowrap', zIndex: 10,
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>
+            {tooltip.bet.matchLabel}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--ink-2)' }}>
+            {tooltip.bet.status === 'won' ? (
+              <span style={{ color: 'var(--win)' }}>Won {fmtMoney(tooltip.bet.payout)} (+{tooltip.bet.roi}%)</span>
+            ) : (
+              <span style={{ color: 'var(--loss)' }}>Lost {fmtMoney(tooltip.bet.amount)} ({tooltip.bet.roi}%)</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AccountSection({ user, onProfileUpdate }) {
   const [editing, setEditing] = useState(false);
@@ -244,7 +397,7 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
     <div>
       <AccountSection user={user} onProfileUpdate={onProfileUpdate} />
       <SettlementCard user={user} bets={bets} />
-
+      <NetWorthGraph bets={bets} />
 
       <div className="section-head" style={{ marginTop: 0 }}>
         <div className="section-head__title display">My Bets</div>
