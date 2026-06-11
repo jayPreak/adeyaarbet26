@@ -54,9 +54,25 @@ function NetWorthGraph({ bets }) {
     return { points: pts, minY: Math.min(...ys), maxY: Math.max(...ys) };
   }, [bets]);
 
-  if (points.length < 2) return null;
-
   const W = 320, H = 120, PX = 16, PY = 20;
+
+  if (points.length < 2) {
+    const zeroY = PY + (H - PY * 2) / 2;
+    return (
+      <div style={{ margin: '0 16px 12px', padding: '12px 0', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: '0 14px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Net Worth</div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--ink-3)' }}>{CURRENCY_SYMBOL}0</div>
+        </div>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+          <line x1={PX} y1={zeroY} x2={W - PX} y2={zeroY} stroke="rgba(255,255,255,0.1)" strokeDasharray="3,3" />
+        </svg>
+        <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-3)', padding: '0 14px 4px' }}>
+          Graph updates as bets settle
+        </div>
+      </div>
+    );
+  }
   const chartW = W - PX * 2, chartH = H - PY * 2;
   const range = maxY - minY || 1;
 

@@ -87,20 +87,76 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
       .finally(() => setLoadingMore(false));
   };
 
+  const [filterUser, setFilterUser] = useState(null);
+
   if (showAllActivity) {
+    const uniqueUsers = [];
+    const seen = new Set();
+    for (const a of fullActivity) {
+      if (!seen.has(a.username)) {
+        seen.add(a.username);
+        uniqueUsers.push({ username: a.username, avatar_url: a.avatar_url });
+      }
+    }
+
+    const displayed = filterUser
+      ? fullActivity.filter(a => a.username === filterUser)
+      : fullActivity;
+
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
           <button
-            onClick={() => setShowAllActivity(false)}
+            onClick={() => { setShowAllActivity(false); setFilterUser(null); }}
             style={{ background: 'none', border: 'none', color: 'var(--ink-2)', fontSize: 20, cursor: 'pointer', padding: 0 }}
           >
             ←
           </button>
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>Activity Feed</span>
         </div>
+
+        {/* User filter chips */}
+        {uniqueUsers.length > 1 && (
+          <div style={{ display: 'flex', gap: 6, padding: '4px 16px 12px', overflowX: 'auto' }}>
+            <button
+              onClick={() => setFilterUser(null)}
+              style={{
+                padding: '6px 12px', borderRadius: 16, border: 'none', cursor: 'pointer',
+                fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
+                background: !filterUser ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                color: !filterUser ? 'var(--ink)' : 'var(--ink-3)',
+              }}
+            >
+              All
+            </button>
+            {uniqueUsers.map(u => (
+              <button
+                key={u.username}
+                onClick={() => setFilterUser(filterUser === u.username ? null : u.username)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '5px 10px', borderRadius: 16, border: 'none', cursor: 'pointer',
+                  fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
+                  background: filterUser === u.username ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                  color: filterUser === u.username ? 'var(--ink)' : 'var(--ink-3)',
+                }}
+              >
+                <div style={{
+                  width: 16, height: 16, borderRadius: '50%',
+                  background: u.avatar_url ? `url(${u.avatar_url}) center/cover` : 'rgba(255,255,255,0.15)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 8, color: 'var(--ink-3)',
+                }}>
+                  {!u.avatar_url && (u.username?.[0] || '?')}
+                </div>
+                {u.username}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="ticker" style={{ paddingBottom: 16 }}>
-          {fullActivity.map(a => (
+          {displayed.map(a => (
             <div key={a.id} className="ticker-item">
               <div className="ticker-avatar" style={a.avatar_url ? { backgroundImage: `url(${a.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
                 {!a.avatar_url && a.username[0]}
@@ -114,7 +170,12 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
               </span>
             </div>
           ))}
-          {hasMore && (
+          {displayed.length === 0 && (
+            <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
+              No activity from {filterUser}
+            </div>
+          )}
+          {!filterUser && hasMore && (
             <button
               onClick={loadMore}
               disabled={loadingMore}

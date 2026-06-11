@@ -103,6 +103,19 @@ export default function AdeYaarApp() {
 
   useEffect(() => { refreshData(); }, [refreshData]);
 
+  // Auto-resolve finished matches on load — fire and forget, refresh if anything settled
+  useEffect(() => {
+    fetch('/api/auto-resolve')
+      .then(r => r.json())
+      .then(data => {
+        if (data.resolved?.length > 0) {
+          refreshData();
+          refreshPools();
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
   useEffect(() => {
     fetch('/api/fifa/matches')
       .then(r => r.json())
