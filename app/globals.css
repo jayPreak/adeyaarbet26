@@ -476,9 +476,9 @@ body {
   .sheet .muted { color: rgba(255,255,255,0.5); }
   .sheet .eyebrow { color: rgba(255,255,255,0.6); }
   .sheet .mono { color: inherit; }
-  .sheet .odds-btn { color: #F2F3F5; }
-  .sheet .odds-btn__label { color: rgba(255,255,255,0.7); }
-  .sheet .odds-btn.fav .odds-btn__label { color: #F2F3F5; }
+  .sheet .odds-btn { color: #F2F3F5; border-color: rgba(255,255,255,0.15); }
+  .sheet .odds-btn__label { color: rgba(255,255,255,0.7) !important; }
+  .sheet .odds-btn.fav .odds-btn__label { color: #F2F3F5 !important; }
   @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 }
 .sheet-handle {
