@@ -16,7 +16,7 @@ function relativeTime(iso) {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet = null, onOpenCupWinner }) {
+export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet = null, onOpenCupWinner, cupWinnerDeadlineTs }) {
   const live = matches.filter(m => m.status === 'live');
   const upcoming = matches.filter(m => m.status === 'upcoming').slice(0, 3);
   const featured = live[0] || upcoming[0];
@@ -46,7 +46,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
     <div>
       {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending')} onCancelBet={onCancelBet} />}
 
-      <CupWinnerCTA myCupWinnerBet={myCupWinnerBet} onOpen={onOpenCupWinner} />
+      <CupWinnerCTA myCupWinnerBet={myCupWinnerBet} onOpen={onOpenCupWinner} deadlineTs={cupWinnerDeadlineTs} />
 
 
       {/* Live matches */}

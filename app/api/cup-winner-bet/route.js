@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
 
+async function getCupWinnerDeadlineTs() {
+  const { data } = await supabase.from('match_schedule').select('kickoff_ts');
+  if (!data || !data.length) return null;
+  const min = Math.min(...data.map(r => new Date(r.kickoff_ts).getTime()));
+  return min - 30 * 1000;
+}
+
 export async function GET(request) {
   if (!supabase) return NextResponse.json({ myBet: null, pool: { byTeam: {}, total: 0, bettorCount: 0 }, picks: [], deadlineTs: CUP_WINNER_DEADLINE_TS });
 
@@ -52,7 +59,7 @@ export async function GET(request) {
     myBet: myBetRes.data || null,
     pool: { byTeam, total, bettorCount: bettors.size },
     picks,
-    deadlineTs: CUP_WINNER_DEADLINE_TS,
+    deadlineTs: (await getCupWinnerDeadlineTs()) ?? CUP_WINNER_DEADLINE_TS,
   });
 }
 
