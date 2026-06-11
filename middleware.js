@@ -7,6 +7,9 @@ export async function middleware(request) {
 
   if (!url || !key) return NextResponse.next();
 
+  const hasAuthCookie = request.cookies.getAll().some(c => c.name.includes('auth-token'));
+  if (!hasAuthCookie) return NextResponse.next();
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(url, key, {
@@ -21,7 +24,12 @@ export async function middleware(request) {
     },
   });
 
-  await supabase.auth.getUser();
+  try {
+    await Promise.race([
+      supabase.auth.getUser(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+    ]);
+  } catch {}
 
   return response;
 }

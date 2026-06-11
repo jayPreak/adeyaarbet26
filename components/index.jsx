@@ -1,9 +1,8 @@
 'use client';
 
-import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, isMatchBettingOpen } from '@/lib/data';
-import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
+import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST } from '@/lib/data';
+import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { useState, useEffect } from 'react';
-import MiniCountdown from './MiniCountdown';
 
 // ── Icons ────────────────────────────────────────────────────
 export const Icon = {
@@ -28,6 +27,11 @@ export const Icon = {
       <path d="M7 4h10v6a5 5 0 01-10 0V4z"/>
       <path d="M7 7H4v3a3 3 0 003 3M17 7h3v3a3 3 0 01-3 3"/>
       <path d="M9 21h6M12 18v3"/>
+    </svg>
+  ),
+  star: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
     </svg>
   ),
   receipt: (
@@ -84,9 +88,11 @@ export function NewsTicker({ matches = [], bets = [], user }) {
   const items = [];
 
   const live = matches.filter(m => m.status === 'live');
-  const upcoming = matches
-    .filter(m => m.status === 'upcoming' && m.kickoffTs != null)
-    .sort((a, b) => a.kickoffTs - b.kickoffTs);
+  const upcoming = matches.filter(m => m.status === 'upcoming').sort((a, b) => {
+    const da = new Date(`${a.date}T${a.time || '00:00'}`);
+    const db = new Date(`${b.date}T${b.time || '00:00'}`);
+    return da - db;
+  });
   const next = upcoming[0];
 
   if (live.length > 0) {
@@ -101,7 +107,7 @@ export function NewsTicker({ matches = [], bets = [], user }) {
   if (next) {
     const h = getTeam(next.home);
     const a = getTeam(next.away);
-    const matchTime = new Date(next.kickoffTs);
+    const matchTime = new Date(`${next.date}T${next.time || '00:00'}:00+05:30`);
     const diff = matchTime - now;
     if (diff > 0) {
       const days = Math.floor(diff / 86400000);
@@ -169,37 +175,35 @@ export function NewsTicker({ matches = [], bets = [], user }) {
 // ── App Header ───────────────────────────────────────────────
 export function AppHeader({ balance, onTap, user, betsLoaded }) {
   return (
-    <>
-      <div className="app-header">
-        <div className="app-header__brand">
-          <div className="brand-mark">A</div>
-          <div className="brand-name">AdeYaar <em>26</em></div>
-        </div>
-        <div className="app-header__right">
-          {user && <span className="app-header__user">{user.display_name || user.username}</span>}
-          <button className="balance-pill" onClick={onTap}>
-            <div className="balance-pill__icon" style={user?.avatar_url ? { backgroundImage: `url(${user.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center', fontSize: 0 } : undefined}>
-              {!user?.avatar_url && (user?.display_name?.[0] || '₹')}
-            </div>
-            {betsLoaded === false
-              ? <span className="balance-pill__amt skeleton-text" style={{ width: 48 }}>&nbsp;</span>
-              : <span className="balance-pill__amt">{fmtMoney(balance)}</span>
-            }
-          </button>
-        </div>
+    <div className="app-header">
+      <div className="app-header__brand">
+        <div className="brand-mark">A</div>
+        <div className="brand-name">AdeYaar <em>26</em></div>
       </div>
-      <MiniCountdown variant="mobile" />
-    </>
+      <div className="app-header__right">
+        {user && <span className="app-header__user">{user.display_name || user.username}</span>}
+        <button className="balance-pill" onClick={onTap}>
+          <div className="balance-pill__icon" style={user?.avatar_url ? { backgroundImage: `url(${user.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center', fontSize: 0 } : undefined}>
+            {!user?.avatar_url && (user?.display_name?.[0] || '₹')}
+          </div>
+          {betsLoaded === false
+            ? <span className="balance-pill__amt skeleton-text" style={{ width: 48 }}>&nbsp;</span>
+            : <span className="balance-pill__amt">{fmtNet(balance)}</span>
+          }
+        </button>
+      </div>
+    </div>
   );
 }
 
 // ── Tab bar ──────────────────────────────────────────────────
 export function TabBar({ active, onChange }) {
   const tabs = [
-    { id: 'home',     label: 'Home',     icon: Icon.home },
-    { id: 'fixtures', label: 'Matches', icon: Icon.ball },
-    { id: 'leaders',  label: 'Leaders',  icon: Icon.trophy },
-    { id: 'bets',     label: 'Account',  icon: Icon.receipt },
+    { id: 'home',     label: 'Home',       icon: Icon.home },
+    { id: 'fixtures', label: 'Match Bets', icon: Icon.ball },
+    { id: 'specials', label: 'Special Bets', icon: Icon.star },
+    { id: 'leaders',  label: 'Leaderboards', icon: Icon.trophy },
+    { id: 'bets',     label: 'Account',    icon: Icon.receipt },
   ];
   return (
     <div className="tabbar">
@@ -237,7 +241,6 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
   const away = getTeam(match.away);
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
-  const bettingOpen = !isLive && !isFinished && isMatchBettingOpen(match);
 
   const stageLabel = match.group ? `Group ${match.group}` : 'Knockout';
   const city = match.venue?.split(',').pop()?.trim();
@@ -286,9 +289,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
             <button
               key={o.key}
               className={'odds-btn' + (hasBet && myPick === o.key ? ' odds-btn--active' : '')}
-              disabled={!bettingOpen}
-              onClick={(e) => { e.stopPropagation(); if (bettingOpen) onBet?.(match, o.key); }}
-              style={!bettingOpen ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+              onClick={(e) => { e.stopPropagation(); onBet?.(match, o.key); }}
             >
               <span className="odds-btn__label">{o.label}</span>
             </button>
@@ -425,24 +426,50 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
 }
 
 // ── Hero match ───────────────────────────────────────────────
+function useCountdown(targetTs) {
+  const [left, setLeft] = useState('');
+  useEffect(() => {
+    if (!targetTs) return;
+    const tick = () => {
+      const diff = targetTs - Date.now();
+      if (diff <= 0) { setLeft('Started'); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setLeft(h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [targetTs]);
+  return left;
+}
+
 export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], onCancelBet }) {
   const home = getTeam(match.home);
   const away = getTeam(match.away);
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
-  const bettingOpen = !isLive && !isFinished && isMatchBettingOpen(match);
   const myTotal = myBets.reduce((s, b) => s + b.amount, 0);
   const hasBet = myTotal > 0;
   const myPick = myBets[0]?.pick;
   const pickLabel = myPick === 'home' ? home.code : myPick === 'away' ? away.code : myPick === 'draw' ? 'Draw' : '';
 
+  const kickoffTs = match.kickoffTs ? new Date(match.kickoffTs).getTime() : null;
+  const countdown = useCountdown(kickoffTs);
+
   return (
     <div className="hero">
       <div className="row between center">
         <div className="hero__stage">
-          {isLive ? '★ Live now' : 'Group Stage · Featured'}
+          {isLive ? '★ LIVE' : isFinished ? 'FINISHED' : 'Round of 32 · Featured'}
         </div>
         {isLive && <LiveDot minute={match.minute} />}
+        {!isLive && !isFinished && countdown && (
+          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--gold)', fontWeight: 600 }}>
+            ⏱ {countdown}
+          </span>
+        )}
       </div>
 
       <div className="hero__matchup">
@@ -471,11 +498,11 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
       </div>
 
       <div className="hero__cta-row">
-        <button className="btn primary lg" disabled={!bettingOpen} onClick={() => bettingOpen && onBet(match, 'home')} style={!bettingOpen ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}>
-          {bettingOpen ? `Bet ${home.code}` : 'Betting closed'}
+        <button className="btn primary lg" onClick={() => onBet(match, 'home')}>
+          Bet {home.code}
         </button>
-        <button className="btn lg" disabled={!bettingOpen} onClick={() => bettingOpen && onBet(match, 'away')} style={!bettingOpen ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}>
-          {bettingOpen ? `Bet ${away.code}` : 'Betting closed'}
+        <button className="btn lg" onClick={() => onBet(match, 'away')}>
+          Bet {away.code}
         </button>
       </div>
 
@@ -499,7 +526,7 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
 }
 
 // ── Place bet sheet ──────────────────────────────────────────
-export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolInfo, existingBets = [] }) {
+export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, existingBets = [] }) {
   const presets = [100, 250, 500, 1000];
   const [amount, setAmount] = useState(250);
   const [side, setSide] = useState(pick || 'home');
@@ -513,7 +540,6 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
   const existingTotal = existingBets.reduce((s, b) => s + b.amount, 0);
   const isSwitching = existingPick && existingPick !== side;
 
-  const overMax = amount > MAX_BET;
 
   // Compute potential payout from pool info
   const pool = poolInfo || {};
@@ -681,12 +707,12 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
           </div>
         </div>
 
-        </div>
+        </div>{/* end scrollable content */}
 
         <button
           className="btn primary block lg"
           style={{ flexShrink: 0, marginTop: 12 }}
-          disabled={overMax || submitting || (existingPick === side)}
+          disabled={submitting || (existingPick === side)}
           onClick={async () => {
             setSubmitting(true);
             try { await onConfirm({ matchId: match.id, pick: side, amount }); }
@@ -694,7 +720,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, balance, poolIn
             finally { setSubmitting(false); }
           }}
         >
-          {submitting ? 'Placing...' : (existingPick === side) ? 'Already placed — cancel to change' : overMax ? `Max bet ${CURRENCY_SYMBOL}${MAX_BET.toLocaleString('en-IN')}` : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
+          {submitting ? 'Placing...' : (existingPick === side) ? 'Already placed — cancel to change' : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
         </button>
       </div>
     </div>
@@ -718,8 +744,61 @@ export function Toast({ message, onDone }) {
 
 // ── Bet card (My Bets screen) ────────────────────────────────
 export function BetCard({ bet, onCancelBet }) {
-  const match = getMatch(bet.match_id || bet.matchId);
-  if (!match) return null;
+  const matchId = bet.match_id || bet.matchId;
+  const isSpecial = bet.kind && bet.kind !== 'match';
+  const match = !isSpecial ? getMatch(matchId) : null;
+
+  if (!isSpecial && !match) return null;
+
+  if (isSpecial) {
+    const pickTeam = getTeam(bet.pick);
+    const canCancel = bet.status === 'pending' && onCancelBet;
+    return (
+      <div className="bet-card">
+        <div className="bet-card__head">
+          <span style={{ color: 'var(--gold)' }}>⭐ Special · {bet.kind === 'cup_winner' ? 'Cup Winner' : bet.kind}</span>
+          <span className={'bet-card__status ' + bet.status}>{bet.status}</span>
+        </div>
+
+        <div className="row center" style={{ gap: 8, margin: '8px 0' }}>
+          {pickTeam && <Flag code={bet.pick} size="sm" />}
+          <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)' }}>
+            {pickTeam?.name || bet.pick}
+          </span>
+        </div>
+
+        <div className="bet-card__amounts">
+          <div>
+            <span>Stake</span>
+            <span>{fmtMoney(bet.amount)}</span>
+          </div>
+          <div>
+            <span>{bet.status === 'won' ? 'Payout' : bet.status === 'lost' ? 'Lost' : 'Status'}</span>
+            <span className={bet.status === 'won' ? 'win' : bet.status === 'lost' ? 'loss' : 'gold'}>
+              {bet.status === 'won' ? fmtMoney(bet.payout) :
+               bet.status === 'lost' ? '−' + fmtMoney(bet.amount) :
+               'Pending'}
+            </span>
+          </div>
+        </div>
+
+        {canCancel && (
+          <button
+            onClick={() => onCancelBet(matchId)}
+            style={{
+              width: '100%', marginTop: 10, padding: '9px 0',
+              background: 'rgba(231, 76, 60, 0.08)', border: '1px solid rgba(231, 76, 60, 0.25)',
+              borderRadius: 8, color: 'var(--loss)', fontSize: 12, fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel bet · Refund {fmtMoney(bet.amount)}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   const home = getTeam(match.home);
   const away = getTeam(match.away);
   const pickedTeam = bet.pick === 'home' ? home : bet.pick === 'away' ? away : null;

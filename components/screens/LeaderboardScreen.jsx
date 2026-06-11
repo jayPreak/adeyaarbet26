@@ -1,228 +1,177 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fmtCompact, getMatch, getTeam } from '@/lib/data';
-import { fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
+import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 
-function timeAgo(iso) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+const TABS = [
+  { id: 'total', label: 'Total Wins' },
+  { id: 'wins', label: 'Biggest Wins' },
+  { id: 'bettor', label: 'Biggest Bettor' },
+];
+
+function SubTabs({ active, onChange }) {
+  return (
+    <div style={{ display: 'flex', gap: 0, margin: '12px 16px 16px', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+      {TABS.map(t => (
+        <button
+          key={t.id}
+          onClick={() => onChange(t.id)}
+          style={{
+            flex: 1, padding: '10px 4px', border: 'none', cursor: 'pointer',
+            fontSize: 11, fontWeight: 600,
+            background: active === t.id ? 'rgba(255,255,255,0.1)' : 'transparent',
+            color: active === t.id ? 'var(--ink)' : 'var(--ink-3)',
+            transition: 'all 0.15s',
+          }}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
-function formatActivity(a) {
-  const isCupWinner = a.payload?.kind === 'cup_winner';
-  const match = (!isCupWinner && a.payload?.match_id) ? getMatch(a.payload.match_id) : null;
-  const matchLabel = isCupWinner
-    ? 'to win the Cup'
-    : match
-      ? `${getTeam(match.home).name} vs ${getTeam(match.away).name}`
-      : a.payload?.match_id || '';
+function LeaderRow({ rank, user, entry, isMe, valueMain, valueSub, valueColor }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 14px', marginBottom: 6, borderRadius: 12,
+      background: isMe ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+      border: isMe ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(255,255,255,0.04)',
+    }}>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: rank <= 3 ? 'var(--gold)' : 'var(--ink-3)', width: 18, fontWeight: rank <= 3 ? 700 : 400 }}>{rank}</span>
+      <div className="lb-avatar" style={entry.avatar_url ? { backgroundImage: `url(${entry.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+        {!entry.avatar_url && (entry.display_name || entry.username || '?')[0]}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
+          {entry.display_name || entry.username}
+          {isMe && <span style={{ marginLeft: 6, fontSize: 9, padding: '2px 6px', background: 'var(--gold)', color: '#0a0a0a', borderRadius: 4, fontWeight: 700 }}>YOU</span>}
+        </div>
+        {valueSub && <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{valueSub}</div>}
+      </div>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: valueColor || 'var(--ink)' }}>
+        {valueMain}
+      </div>
+    </div>
+  );
+}
 
-  if (a.type === 'bet_placed' && a.payload) {
-    const pickTeam = isCupWinner
-      ? getTeam(a.payload.team).name
-      : match
-        ? (a.payload.pick === 'home' ? getTeam(match.home).name : a.payload.pick === 'away' ? getTeam(match.away).name : 'Draw')
-        : a.payload.pick;
-    return `${a.profiles?.display_name || 'Someone'} bet ${CURRENCY_SYMBOL}${a.payload.amount} on ${pickTeam} · ${matchLabel}`;
-  }
-  if (a.type === 'bet_cancelled' && a.payload) {
-    if (a.payload.reason === 'side_switch') {
-      return `${a.profiles?.display_name || 'Someone'} switched sides · ${matchLabel}`;
-    }
-    if (a.payload.reason === 'cup_winner_switch') {
-      return `${a.profiles?.display_name || 'Someone'} switched to ${getTeam(a.payload.new_team).name} · ${matchLabel}`;
-    }
-    return `${a.profiles?.display_name || 'Someone'} cancelled bet · ${matchLabel}`;
-  }
-  if (a.type === 'bet_won' && a.payload) {
-    return `${a.profiles?.display_name || 'Someone'} won ${CURRENCY_SYMBOL}${a.payload.payout} · ${matchLabel}`;
-  }
-  return `${a.profiles?.display_name || 'Someone'} · ${a.type}`;
+function TotalWinsTab({ rankings, user }) {
+  const sorted = [...rankings].sort((a, b) => b.balance - a.balance);
+  const hasAnyWins = sorted.some(r => r.balance > 0);
+
+  return (
+    <div style={{ margin: '0 16px' }}>
+      {!hasAnyWins && (
+        <div style={{ padding: '20px 16px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>No matches settled yet — everyone starts at 0</div>
+        </div>
+      )}
+      {sorted.map((f, i) => (
+        <LeaderRow
+          key={f.id}
+          rank={i + 1}
+          user={user}
+          entry={f}
+          isMe={user && f.id === user.id}
+          valueMain={fmtNet(f.balance)}
+          valueSub={null}
+          valueColor={f.balance > 0 ? 'var(--win)' : f.balance < 0 ? 'var(--loss)' : 'var(--ink-3)'}
+        />
+      ))}
+    </div>
+  );
+}
+
+function BiggestWinsTab({ biggestWins }) {
+  return (
+    <div style={{ margin: '0 16px' }}>
+      {biggestWins.length === 0 ? (
+        <div style={{ padding: '40px 16px', textAlign: 'center' }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>🏆</div>
+          <div style={{ fontSize: 14, color: 'var(--ink-2)', fontWeight: 600 }}>No wins yet</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>Individual winning bets show up here once matches settle</div>
+        </div>
+      ) : (
+        biggestWins.slice(0, 15).map((w, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '12px 14px', marginBottom: 6, borderRadius: 12,
+            background: i < 3 ? 'rgba(255,215,0,0.04)' : 'rgba(255,255,255,0.02)',
+            border: i < 3 ? '1px solid rgba(255,215,0,0.12)' : '1px solid rgba(255,255,255,0.04)',
+          }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: i < 3 ? 'var(--gold)' : 'var(--ink-3)', width: 18, fontWeight: i < 3 ? 700 : 400 }}>{i + 1}</span>
+            <div className="lb-avatar" style={w.avatarUrl ? { backgroundImage: `url(${w.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+              {!w.avatarUrl && (w.displayName || '?')[0]}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{w.displayName}</div>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1 }}>
+                {fmtMoney(w.stake)} → {fmtMoney(w.payout)}
+              </div>
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--win)' }}>
+              +{fmtMoney(w.profit)}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function BiggestBettorTab({ rankings, user }) {
+  const sorted = [...rankings].sort((a, b) => (b.totalStaked || 0) - (a.totalStaked || 0));
+  const groupTotal = rankings.reduce((s, r) => s + (r.totalStaked || 0), 0);
+
+  return (
+    <div style={{ margin: '0 16px' }}>
+      <div style={{ padding: '8px 0 16px', textAlign: 'center' }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: 'var(--ink)' }}>{CURRENCY_SYMBOL}{groupTotal.toLocaleString('en-IN')}</div>
+        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>total in play across {rankings.length} players</div>
+      </div>
+      {sorted.map((f, i) => (
+        <LeaderRow
+          key={f.id}
+          rank={i + 1}
+          user={user}
+          entry={f}
+          isMe={user && f.id === user.id}
+          valueMain={fmtMoney(f.totalStaked || 0)}
+          valueSub={`${f.betCount || 0} bet${f.betCount !== 1 ? 's' : ''}`}
+          valueColor="var(--ink)"
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function LeaderboardScreen({ user }) {
+  const [subTab, setSubTab] = useState('total');
   const [rankings, setRankings] = useState([]);
-  const [settlementResolved, setSettlementResolved] = useState([]);
-  const [settlementWithPending, setSettlementWithPending] = useState([]);
-  const [settlementBasis, setSettlementBasis] = useState('resolved'); // 'resolved' | 'withPending'
-  const [activity, setActivity] = useState([]);
+  const [biggestWins, setBiggestWins] = useState([]);
 
   useEffect(() => {
     fetch('/api/leaderboard')
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setRankings(data); })
-      .catch(() => {});
-    fetch('/api/settlement')
-      .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data.resolved?.transactions)) setSettlementResolved(data.resolved.transactions);
-        if (Array.isArray(data.withPending?.transactions)) setSettlementWithPending(data.withPending.transactions);
+        if (Array.isArray(data)) {
+          setRankings(data);
+        } else if (data?.rankings) {
+          setRankings(data.rankings);
+          setBiggestWins(data.biggestWins || []);
+        }
       })
-      .catch(() => {});
-    fetch('/api/activity?limit=20')
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setActivity(data); })
       .catch(() => {});
   }, []);
 
-  const sorted = [...rankings].sort((a, b) => b.balance - a.balance);
-  const top3 = sorted.slice(0, 3);
-  const podium = top3.length >= 3 ? [
-    { ...top3[1], rank: 2 },
-    { ...top3[0], rank: 1 },
-    { ...top3[2], rank: 3 },
-  ] : [];
-
-  const displayVal = (f) => fmtNet(f.balance);
-  const displayColor = (f) => (f.balance >= 0 ? 'var(--win)' : 'var(--loss)');
-
   return (
     <div>
-      {/* Podium */}
-      {podium.length > 0 && (
-        <div className="podium">
-          {podium.map(f => (
-            <div key={f.id} className={'podium-block rank' + f.rank}>
-              <div className="podium-avatar" style={f.avatar_url ? { backgroundImage: `url(${f.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
-                {!f.avatar_url && (f.display_name || f.username)[0]}
-              </div>
-              <div className="podium-name">{f.display_name || f.username}</div>
-              <div className="podium-amt" style={{ color: displayColor(f) }}>{displayVal(f)}</div>
-              <div className="podium-bar">{f.rank}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Full list */}
-      <div className="card" style={{ padding: 0, margin: '0 16px 24px' }}>
-        {sorted.map((f, i) => {
-          const isMe = user && f.id === user.id;
-          return (
-            <div key={f.id} className={'lb-row ' + (isMe ? 'me' : '')}>
-              <span className="lb-rank">{i + 1}</span>
-              <div className="lb-avatar" style={f.avatar_url ? { backgroundImage: `url(${f.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
-                {!f.avatar_url && (f.display_name || f.username)[0]}
-              </div>
-              <div className="lb-name">
-                {f.display_name || f.username}
-                {isMe && (
-                  <span style={{
-                    marginLeft: 6, fontSize: 9, padding: '2px 6px',
-                    background: 'var(--gold)', color: '#0a0a0a',
-                    borderRadius: 4, fontWeight: 700, letterSpacing: '0.05em',
-                  }}>YOU</span>
-                )}
-              </div>
-              <span className="lb-amt" style={{ color: displayColor(f) }}>
-                {displayVal(f)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Settlement plan */}
-      <div className="section-head" style={{ marginTop: 8 }}>
-        <div className="section-head__title display">Settlement plan</div>
-      </div>
-
-      <div className="material-tabs" style={{ margin: '0 16px 8px' }}>
-        <button
-          className={'material-tab' + (settlementBasis === 'resolved' ? ' active' : '')}
-          onClick={() => setSettlementBasis('resolved')}
-        >
-          Resolved only
-        </button>
-        <button
-          className={'material-tab' + (settlementBasis === 'withPending' ? ' active' : '')}
-          onClick={() => setSettlementBasis('withPending')}
-        >
-          Including pending
-        </button>
-      </div>
-
-      {(() => {
-        const txs = settlementBasis === 'resolved' ? settlementResolved : settlementWithPending;
-        return (
-          <div className="card" style={{ margin: '0 16px 8px', padding: '4px 0' }}>
-            {txs.length === 0 ? (
-              <div style={{ padding: '16px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
-                {settlementBasis === 'resolved'
-                  ? 'All square — no payments needed yet'
-                  : 'No matched debts yet — once anyone has a payout, pending stakes will pair with creditors'}
-              </div>
-            ) : (
-              txs.map((tx, i) => (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '12px 16px',
-                  borderBottom: i < txs.length - 1 ? '1px solid var(--line)' : 'none',
-                }}>
-                  <div style={{
-                    width: 30, height: 30, borderRadius: '50%',
-                    background: 'var(--loss)', color: '#fff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 13, fontWeight: 700, flexShrink: 0,
-                  }}>
-                    {tx.from.name[0]}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>
-                      <span style={{ color: 'var(--loss)' }}>{tx.from.name}</span>
-                      {' pays '}
-                      <span style={{ color: 'var(--win)' }}>{tx.to.name}</span>
-                    </div>
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 15, color: 'var(--gold)', flexShrink: 0 }}>
-                    {CURRENCY_SYMBOL}{tx.amount.toLocaleString('en-IN')}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        );
-      })()}
-
-      <div style={{
-        textAlign: 'center', fontSize: 11, color: 'var(--ink-3)',
-        paddingBottom: 8, padding: '0 32px 16px',
-      }}>
-        {settlementBasis === 'resolved'
-          ? 'If WC ended now (pending bets refunded) · finalised at end of tournament'
-          : 'Treats pending stakes as already spent — early in the tournament most debts have no creditor yet'}
-      </div>
-
-      {/* Activity feed */}
-      {activity.length > 0 && (
-        <div style={{ margin: '16px 16px 24px' }}>
-          <div className="section-head" style={{ marginBottom: 8 }}>
-            <div className="section-head__title" style={{ fontSize: 16 }}>Recent Activity</div>
-          </div>
-          <div className="card" style={{ padding: 0 }}>
-            {activity.map((item, i) => (
-              <div key={item.id || i} style={{
-                padding: '10px 14px',
-                borderBottom: i < activity.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <span style={{ fontSize: 12, color: 'var(--ink-1)' }}>
-                  {formatActivity(item)}
-                </span>
-                <span style={{ fontSize: 10, color: 'var(--ink-3)', whiteSpace: 'nowrap', marginLeft: 8 }}>
-                  {item.created_at ? timeAgo(item.created_at) : ''}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <SubTabs active={subTab} onChange={setSubTab} />
+      {subTab === 'total' && <TotalWinsTab rankings={rankings} user={user} />}
+      {subTab === 'wins' && <BiggestWinsTab biggestWins={biggestWins} />}
+      {subTab === 'bettor' && <BiggestBettorTab rankings={rankings} user={user} />}
     </div>
   );
 }

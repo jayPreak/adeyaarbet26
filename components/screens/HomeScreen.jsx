@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { getMatch, getTeam } from '@/lib/data';
 import { CURRENCY_SYMBOL } from '@/lib/currency';
 import { HeroMatch, SectionHead } from '@/components';
-import CupWinnerCTA from '@/components/CupWinnerCTA';
 
 function relativeTime(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -16,7 +15,7 @@ function relativeTime(iso) {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet = null, onOpenCupWinner, cupWinnerDeadlineTs }) {
+export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs }) {
   const live = matches.filter(m => m.status === 'live');
   const upcoming = matches.filter(m => m.status === 'upcoming').slice(0, 3);
   const featured = live[0] || upcoming[0];
@@ -45,9 +44,6 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
   return (
     <div>
       {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending')} onCancelBet={onCancelBet} />}
-
-      <CupWinnerCTA myCupWinnerBet={myCupWinnerBet} onOpen={onOpenCupWinner} deadlineTs={cupWinnerDeadlineTs} />
-
 
       {/* Live matches */}
       {live.length > 0 && (
@@ -111,28 +107,26 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
 }
 
 function formatActivityText(a) {
-  const isCupWinner = a.payload?.kind === 'cup_winner';
+  const isCupWinner = a.payload?.match_id === 'CUP_WINNER';
   const match = (!isCupWinner && a.payload?.match_id) ? getMatch(a.payload.match_id) : null;
   const matchLabel = isCupWinner
-    ? 'to win the Cup'
+    ? 'Cup Winner'
     : match
       ? `${getTeam(match.home).name} vs ${getTeam(match.away).name}`
       : a.payload?.match_id || '';
 
   if (a.type === 'bet_placed' && a.payload) {
+    const pickCode = isCupWinner ? (a.payload.team || a.payload.pick) : a.payload.pick;
     const pickTeam = isCupWinner
-      ? getTeam(a.payload.team).name
+      ? (getTeam(pickCode)?.name || pickCode)
       : match
-        ? (a.payload.pick === 'home' ? getTeam(match.home).name : a.payload.pick === 'away' ? getTeam(match.away).name : 'Draw')
-        : a.payload.pick;
+        ? (pickCode === 'home' ? getTeam(match.home).name : pickCode === 'away' ? getTeam(match.away).name : 'Draw')
+        : pickCode;
     return `bet ${CURRENCY_SYMBOL}${a.payload.amount} on ${pickTeam} · ${matchLabel}`;
   }
   if (a.type === 'bet_cancelled' && a.payload) {
     if (a.payload.reason === 'side_switch') {
       return `switched sides · ${matchLabel}`;
-    }
-    if (a.payload.reason === 'cup_winner_switch') {
-      return `switched to ${getTeam(a.payload.new_team).name} · ${matchLabel}`;
     }
     return `cancelled bet${a.payload.refunded ? ` · refund ${CURRENCY_SYMBOL}${a.payload.refunded}` : ''} · ${matchLabel}`;
   }

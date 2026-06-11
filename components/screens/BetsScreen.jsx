@@ -128,56 +128,6 @@ function AccountSection({ user, onProfileUpdate }) {
   );
 }
 
-function TopupSection({ user, onTopup }) {
-  const [amount, setAmount] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState(null);
-
-  const handleTopup = async () => {
-    const val = parseInt(amount, 10);
-    if (!val || val <= 0) { setMsg('Enter a valid amount'); return; }
-    setLoading(true);
-    setMsg(null);
-    try {
-      const res = await fetch('/api/topup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, amount: val }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setMsg(`+${CURRENCY_SYMBOL}${val.toLocaleString('en-IN')} added to wallet`);
-      setAmount('');
-      if (onTopup) onTopup();
-    } catch (e) {
-      setMsg(`Error: ${e.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div style={{ padding: '0 16px 12px' }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <input
-          type="number"
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-          placeholder="Amount"
-          style={{ flex: 1, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '10px 14px', color: '#fff', fontSize: 14, fontFamily: 'var(--font-mono)' }}
-        />
-        <button
-          onClick={handleTopup}
-          disabled={loading}
-          style={{ background: 'var(--gold)', color: '#0a0a0a', border: 'none', borderRadius: 8, padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-        >
-          {loading ? '...' : 'Add Funds'}
-        </button>
-      </div>
-      {msg && <div style={{ marginTop: 6, fontSize: 11, color: msg.startsWith('Error') ? '#f87171' : 'var(--win)' }}>{msg}</div>}
-    </div>
-  );
-}
 
 function SettlementCard({ user, bets = [] }) {
   const [myPosition, setMyPosition] = useState(null);
@@ -267,7 +217,7 @@ function SettlementCard({ user, bets = [] }) {
   );
 }
 
-export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, wallet }) {
+export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets }) {
   const [tab, setTab] = useState('pending');
 
   const realBets = useMemo(() => bets.filter(b => b.match_id !== '_topup'), [bets]);
@@ -295,12 +245,6 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
       <AccountSection user={user} onProfileUpdate={onProfileUpdate} />
       <SettlementCard user={user} bets={bets} />
 
-      {/* Wallet balance + topup */}
-      <div style={{ padding: '0 16px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>Wallet</span>
-        <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>{fmtMoney(wallet)}</span>
-      </div>
-      <TopupSection user={user} onTopup={onRefreshBets || onProfileUpdate} />
 
       <div className="section-head" style={{ marginTop: 0 }}>
         <div className="section-head__title display">My Bets</div>

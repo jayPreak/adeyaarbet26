@@ -9,7 +9,7 @@ export async function GET(request) {
     return NextResponse.json([]);
   }
 
-  let query = supabase.from('bets').select('*').order('created_at', { ascending: false });
+  let query = supabase.from('bets').select('*').neq('match_id', '_topup').order('created_at', { ascending: false });
 
   if (userId) query = query.eq('user_id', userId);
   if (matchId) query = query.eq('match_id', matchId);
@@ -43,6 +43,12 @@ export async function POST(request) {
       const msg = error.message || '';
       if (msg.includes('Bet exceeds maximum')) {
         return NextResponse.json({ error: msg }, { status: 400 });
+      }
+      if (msg.includes('Bet exceeds maximum')) {
+        return NextResponse.json({ error: msg }, { status: 400 });
+      }
+      if (msg.includes('Betting closed for this match')) {
+        return NextResponse.json({ error: 'Betting closed — match is about to start' }, { status: 400 });
       }
       if (msg.includes('Already bet on this side')) {
         return NextResponse.json({ error: 'You already have a bet on this side. Cancel first to change amount.' }, { status: 409 });

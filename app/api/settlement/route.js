@@ -9,6 +9,8 @@ export async function GET() {
     return NextResponse.json({
       transactions: computeSettlement(mock),
       positions: computeNetPositions(mock),
+      resolved: { transactions: computeSettlement(mock), positions: computeNetPositions(mock) },
+      withPending: { transactions: computeSettlement(mock), positions: computeNetPositions(mock) },
     });
   }
 
@@ -25,9 +27,6 @@ export async function GET() {
 
   if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 });
 
-  // Two views:
-  //   resolved      → only won/lost bets count ("if WC ended now, refund pending")
-  //   withPending   → pending stakes also count ("current ledger exposure")
   const resolvedMap = {};
   const ledgerMap = {};
   for (const b of bets || []) {
@@ -52,7 +51,6 @@ export async function GET() {
   const ledgerProfiles = withBalance(ledgerMap);
 
   return NextResponse.json({
-    // Back-compat: top-level fields = resolved-only
     transactions: computeSettlement(resolvedProfiles),
     positions:    computeNetPositions(resolvedProfiles),
     resolved: {

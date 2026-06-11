@@ -3,18 +3,14 @@
 import { useState, useEffect, useCallback, Component } from 'react';
 import { MATCHES, getMatch, getTeam } from '@/lib/data';
 import { fmtMoney } from '@/lib/currency';
-import { computeBalance, computeWallet } from '@/lib/ledger';
+import { computeBalance } from '@/lib/ledger';
 import { useUser } from '@/lib/hooks';
 import { AppHeader, TabBar, PlaceBetSheet, Toast, NewsTicker } from '@/components';
 import HomeScreen from '@/components/screens/HomeScreen';
 import FixturesScreen from '@/components/screens/FixturesScreen';
-import LeaderboardScreen from '@/components/screens/LeaderboardScreen';
-import BetsScreen from '@/components/screens/BetsScreen';
-import DesktopApp from '@/components/desktop/DesktopApp';
 import CupWinnerBetModal from '@/components/CupWinnerBetModal';
+import SpecialsScreen from '@/components/screens/SpecialsScreen';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
-
-const CUP_WINNER_POPUP_SEEN_KEY = 'adeyaar_cup_winner_popup_seen';
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -41,6 +37,8 @@ class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
+import LeaderboardScreen from '@/components/screens/LeaderboardScreen';
+import BetsScreen from '@/components/screens/BetsScreen';
 
 function getFifaStatus(fifa) {
   if (fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
@@ -68,19 +66,6 @@ function mergeWithFifa(staticMatch, fifaResults) {
   return { ...staticMatch, venue, fifaId: fifa.IdMatch, status, score, minute };
 }
 
-// Single source of times: stamp kickoffTs + derived UTC date/time from the DB schedule.
-function withSchedule(match, scheduleMap) {
-  const iso = scheduleMap[match.id];
-  if (!iso) return match;
-  const d = new Date(iso);
-  return {
-    ...match,
-    kickoffTs: d.getTime(),
-    date: d.toISOString().slice(0, 10), // YYYY-MM-DD (UTC) — same shape the UI formats
-    time: d.toISOString().slice(11, 16), // HH:MM (UTC)
-  };
-}
-
 export default function AdeYaarApp() {
   const theme = 'midnight';
   const { user, loading, refreshUser } = useUser();
@@ -94,15 +79,11 @@ export default function AdeYaarApp() {
   const [fifaData, setFifaData] = useState(null);
   const [scheduleMap, setScheduleMap] = useState({});
   const [cupWinnerDeadlineTs, setCupWinnerDeadlineTs] = useState(null);
-  const [isDesktop, setIsDesktop] = useState(false);
-  const [poolMap, setPoolMap] = useState({});
-  const [allUsers, setAllUsers] = useState([]);
   const [cupWinnerOpen, setCupWinnerOpen] = useState(false);
   const [myCupWinnerBet, setMyCupWinnerBet] = useState(null);
-  const [cupWinnerLoaded, setCupWinnerLoaded] = useState(false);
+  const [poolMap, setPoolMap] = useState({});
 
   const balance = computeBalance(bets);
-  const wallet  = computeWallet(bets);
 
   useEffect(() => {
     if (loading) return;
@@ -122,44 +103,6 @@ export default function AdeYaarApp() {
 
   useEffect(() => { refreshData(); }, [refreshData]);
 
-  const refreshCupWinnerBet = useCallback(() => {
-    if (!user) return;
-    fetch(`/api/cup-winner-bet?user_id=${user.id}`)
-      .then(r => r.json())
-      .then(data => {
-        setMyCupWinnerBet(data?.myBet || null);
-        setCupWinnerLoaded(true);
-      })
-      .catch(() => { setCupWinnerLoaded(true); });
-  }, [user]);
-
-  useEffect(() => { refreshCupWinnerBet(); }, [refreshCupWinnerBet]);
-
-  // First-login auto-open: only if user has no bet, before deadline, and never dismissed.
-  useEffect(() => {
-    if (!user || !cupWinnerLoaded) return;
-    if (myCupWinnerBet) return;
-    if (Date.now() >= (cupWinnerDeadlineTs ?? CUP_WINNER_DEADLINE_TS)) return;
-    if (typeof window === 'undefined') return;
-    if (window.localStorage.getItem(CUP_WINNER_POPUP_SEEN_KEY) === '1') return;
-    setCupWinnerOpen(true);
-  }, [user, cupWinnerLoaded, myCupWinnerBet, cupWinnerDeadlineTs]);
-
-  const closeCupWinner = useCallback(() => {
-    setCupWinnerOpen(false);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(CUP_WINNER_POPUP_SEEN_KEY, '1');
-    }
-  }, []);
-
-  const openCupWinner = useCallback(() => setCupWinnerOpen(true), []);
-
-  const handleCupWinnerPlaced = useCallback(() => {
-    refreshCupWinnerBet();
-    refreshData();
-    setToast('Cup-winner bet placed');
-  }, [refreshCupWinnerBet, refreshData]);
-
   useEffect(() => {
     fetch('/api/fifa/matches')
       .then(r => r.json())
@@ -174,14 +117,19 @@ export default function AdeYaarApp() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    setIsDesktop(mq.matches);
-    const handler = (e) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+  const refreshCupWinnerBet = useCallback(() => {
+    if (!user) return;
+    fetch(`/api/cup-winner-bet?user_id=${user.id}`)
+      .then(r => r.json())
+      .then(data => setMyCupWinnerBet(data?.myBet || null))
+      .catch(() => {});
+  }, [user]);
 
+  useEffect(() => { refreshCupWinnerBet(); }, [refreshCupWinnerBet]);
+
+  const [allUsers, setAllUsers] = useState([]);
+
+  // Fetch all active pools (single request) + all profiles
   const refreshPools = useCallback(() => {
     if (!user) return;
     fetch('/api/pool')
@@ -199,7 +147,11 @@ export default function AdeYaarApp() {
 
   useEffect(() => { refreshPools(); }, [refreshPools]);
 
-  const matches = MATCHES.map(m => withSchedule(mergeWithFifa(m, fifaData), scheduleMap));
+  const matches = MATCHES.map(m => {
+    const merged = mergeWithFifa(m, fifaData);
+    const kickoffTs = scheduleMap[m.id] || null;
+    return kickoffTs ? { ...merged, kickoffTs } : merged;
+  });
 
   const openBet  = useCallback((match, pick) => setBetSheet({ match, pick }), []);
   const closeBet = useCallback(() => setBetSheet(null), []);
@@ -277,57 +229,20 @@ export default function AdeYaarApp() {
 
   if (loading || !user) return null;
 
-  if (isDesktop) {
-    return (
-      <>
-        <DesktopApp
-          tab={tab} setTab={setTab}
-          balance={balance} openBet={openBet}
-          matches={matches} user={user} onLogout={handleLogout}
-          bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers}
-          myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={openCupWinner}
-          cupWinnerDeadlineTs={cupWinnerDeadlineTs}
-        />
-        {betSheet && (
-          <div data-theme={theme}>
-            <PlaceBetSheet
-              match={betSheet.match}
-              pick={betSheet.pick}
-              balance={wallet}
-              poolInfo={poolMap[betSheet.match.id] || null}
-              existingBets={bets.filter(b => (b.match_id || b.matchId) === betSheet.match.id && b.status === 'pending')}
-              onClose={closeBet}
-              onConfirm={confirmBet}
-            />
-          </div>
-        )}
-        {toast && <Toast message={toast} onDone={() => setToast(null)} />}
-        <CupWinnerBetModal
-          open={cupWinnerOpen}
-          onClose={closeCupWinner}
-          user={user}
-          balance={wallet}
-          myCupWinnerBet={myCupWinnerBet}
-          onPlaced={handleCupWinnerPlaced}
-          deadlineTs={cupWinnerDeadlineTs}
-        />
-      </>
-    );
-  }
-
   return (
     <div className="stage">
       <div className="phone-frame">
         <div className="app" data-theme={theme}>
-          <AppHeader balance={wallet} user={user} onTap={() => setTab('bets')} betsLoaded={betsLoaded} />
+          <AppHeader balance={balance} user={user} onTap={() => setTab('bets')} betsLoaded={betsLoaded} />
           <NewsTicker matches={matches} bets={bets} user={user} />
 
           <div className="scroll">
             <ErrorBoundary>
-              {tab === 'home'     && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={openCupWinner} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />}
+              {tab === 'home'     && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={() => setCupWinnerOpen(true)} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />}
               {tab === 'fixtures' && <FixturesScreen matches={matches} onBet={openBet} bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers} />}
+              {tab === 'specials' && <SpecialsScreen user={user} bets={bets} onOpenSpecialBet={() => setCupWinnerOpen(true)} />}
               {tab === 'leaders'  && <LeaderboardScreen user={user} />}
-              {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} wallet={wallet} />}
+              {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} />}
             </ErrorBoundary>
           </div>
 
@@ -342,7 +257,6 @@ export default function AdeYaarApp() {
           <PlaceBetSheet
             match={betSheet.match}
             pick={betSheet.pick}
-            balance={wallet}
             poolInfo={poolMap[betSheet.match.id] || null}
             existingBets={bets.filter(b => (b.match_id || b.matchId) === betSheet.match.id && b.status === 'pending')}
             onClose={closeBet}
@@ -351,15 +265,16 @@ export default function AdeYaarApp() {
         </div>
       )}
 
-      <CupWinnerBetModal
-        open={cupWinnerOpen}
-        onClose={closeCupWinner}
-        user={user}
-        balance={wallet}
-        myCupWinnerBet={myCupWinnerBet}
-        onPlaced={handleCupWinnerPlaced}
-        deadlineTs={cupWinnerDeadlineTs}
-      />
+      <div data-theme={theme}>
+        <CupWinnerBetModal
+          open={cupWinnerOpen}
+          onClose={() => setCupWinnerOpen(false)}
+          user={user}
+          myCupWinnerBet={myCupWinnerBet}
+          onPlaced={() => { refreshCupWinnerBet(); refreshData(); }}
+          deadlineTs={cupWinnerDeadlineTs}
+        />
+      </div>
     </div>
   );
 }
