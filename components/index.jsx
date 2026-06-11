@@ -1,8 +1,30 @@
 'use client';
 
-import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST } from '@/lib/data';
+import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, getMatchKickoffTs, MATCH_BET_CUTOFF_MS } from '@/lib/data';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { useState, useEffect } from 'react';
+
+// ── Betting window ───────────────────────────────────────────
+// Betting closes MATCH_BET_CUTOFF_MS (30s) before kickoff — mirrors the
+// place_bet DB RPC. Returns false when the schedule isn't loaded yet (fail-safe
+// closed) and re-evaluates exactly at the cutoff moment so the UI flips live.
+export function useBettingOpen(matchOrTs) {
+  const ts = (matchOrTs && typeof matchOrTs === 'object')
+    ? getMatchKickoffTs(matchOrTs)
+    : (matchOrTs == null ? null : getMatchKickoffTs({ kickoffTs: matchOrTs }));
+  const cutoff = ts == null ? null : ts - MATCH_BET_CUTOFF_MS;
+  const [open, setOpen] = useState(() => cutoff != null && Date.now() < cutoff);
+  useEffect(() => {
+    if (cutoff == null) { setOpen(false); return; }
+    const update = () => setOpen(Date.now() < cutoff);
+    update();
+    const msUntilClose = cutoff - Date.now();
+    if (msUntilClose <= 0) return; // already closed — no timer needed
+    const id = setTimeout(update, msUntilClose + 250);
+    return () => clearTimeout(id);
+  }, [cutoff]);
+  return open;
+}
 
 // ── Icons ────────────────────────────────────────────────────
 export const Icon = {
@@ -241,6 +263,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
   const away = getTeam(match.away);
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
+  const bettingOpen = useBettingOpen(match);
 
   const stageLabel = match.group ? `Group ${match.group}` : 'Knockout';
   const city = match.venue?.split(',').pop()?.trim();
@@ -279,7 +302,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
         </div>
       </div>
 
-      {!isFinished && (
+      {!isFinished && bettingOpen && (
         <div className="match-card__odds">
           {[
             { key: 'home', label: home.code },
@@ -297,6 +320,16 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
         </div>
       )}
 
+      {!isFinished && !bettingOpen && (
+        <div style={{
+          margin: '4px 0', padding: '8px 0', textAlign: 'center',
+          fontSize: 11, fontWeight: 600, color: 'var(--ink-3)',
+          textTransform: 'uppercase', letterSpacing: '0.5px',
+        }}>
+          Betting closed
+        </div>
+      )}
+
       {!isFinished && poolData && poolData.bets && poolData.bets.length > 0 && (
         <MatchPoolTable poolData={poolData} home={home} away={away} allUsers={allUsers} />
       )}
@@ -306,7 +339,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
           {hasBet ? (
             <>
               <span>Your bet: {fmtMoney(myTotal)} on {pickLabel}</span>
-              {!isLive && onCancelBet && (
+              {bettingOpen && onCancelBet && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onCancelBet(match.id); }}
                   style={{
@@ -453,6 +486,7 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
   const away = getTeam(match.away);
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
+  const bettingOpen = useBettingOpen(match);
   const myTotal = myBets.reduce((s, b) => s + b.amount, 0);
   const hasBet = myTotal > 0;
   const myPick = myBets[0]?.pick;
@@ -500,19 +534,29 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
         </div>
       </div>
 
-      <div className="hero__cta-row">
-        <button className="btn primary lg" onClick={() => onBet(match, 'home')}>
-          Bet {home.code}
-        </button>
-        <button className="btn lg" onClick={() => onBet(match, 'away')}>
-          Bet {away.code}
-        </button>
-      </div>
+      {bettingOpen ? (
+        <div className="hero__cta-row">
+          <button className="btn primary lg" onClick={() => onBet(match, 'home')}>
+            Bet {home.code}
+          </button>
+          <button className="btn lg" onClick={() => onBet(match, 'away')}>
+            Bet {away.code}
+          </button>
+        </div>
+      ) : !isFinished && (
+        <div style={{
+          marginTop: 8, padding: '10px 0', textAlign: 'center',
+          fontSize: 12, fontWeight: 600, color: 'var(--ink-3)',
+          textTransform: 'uppercase', letterSpacing: '0.5px',
+        }}>
+          Betting closed
+        </div>
+      )}
 
       {hasBet && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 8 }}>
           <span style={{ fontSize: 12, color: 'var(--win)' }}>Your bet: {fmtMoney(myTotal)} on {pickLabel}</span>
-          {!isLive && onCancelBet && (
+          {bettingOpen && onCancelBet && (
             <button
               onClick={() => onCancelBet(match.id)}
               style={{ background: 'none', border: 'none', color: '#f87171', fontSize: 11, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
@@ -534,6 +578,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
   const [amount, setAmount] = useState(250);
   const [side, setSide] = useState(pick || 'home');
   const [submitting, setSubmitting] = useState(false);
+  const bettingOpen = useBettingOpen(match);
 
   const home = getTeam(match.home);
   const away = getTeam(match.away);
@@ -715,7 +760,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
         <button
           className="btn primary block lg"
           style={{ flexShrink: 0, marginTop: 12 }}
-          disabled={submitting || (existingPick === side)}
+          disabled={submitting || !bettingOpen || (existingPick === side)}
           onClick={async () => {
             setSubmitting(true);
             try { await onConfirm({ matchId: match.id, pick: side, amount }); }
@@ -723,7 +768,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
             finally { setSubmitting(false); }
           }}
         >
-          {submitting ? 'Placing...' : (existingPick === side) ? 'Already placed — cancel to change' : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
+          {submitting ? 'Placing...' : !bettingOpen ? 'Betting closed' : (existingPick === side) ? 'Already placed — cancel to change' : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
         </button>
       </div>
     </div>
@@ -746,10 +791,12 @@ export function Toast({ message, onDone }) {
 }
 
 // ── Bet card (My Bets screen) ────────────────────────────────
-export function BetCard({ bet, onCancelBet }) {
+export function BetCard({ bet, onCancelBet, kickoffTs }) {
   const matchId = bet.match_id || bet.matchId;
   const isSpecial = bet.kind && bet.kind !== 'match';
   const match = !isSpecial ? getMatch(matchId) : null;
+  // Called unconditionally (Rules of Hooks) before any early return.
+  const bettingOpen = useBettingOpen(kickoffTs);
 
   if (!isSpecial && !match) return null;
 
@@ -806,8 +853,9 @@ export function BetCard({ bet, onCancelBet }) {
   const away = getTeam(match.away);
   const pickedTeam = bet.pick === 'home' ? home : bet.pick === 'away' ? away : null;
   const isLive = match.status === 'live';
-  const isFinished = match.status === 'finished';
-  const canCancel = bet.status === 'pending' && !isLive && !isFinished && onCancelBet;
+  // Betting closes 30s before kickoff (time-based, not status-based) so cancel
+  // disappears even before FIFA marks the match live/finished.
+  const canCancel = bet.status === 'pending' && bettingOpen && onCancelBet;
 
   return (
     <div className="bet-card">

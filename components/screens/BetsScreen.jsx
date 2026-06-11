@@ -386,7 +386,7 @@ function SettlementCard({ user, bets = [] }) {
   );
 }
 
-export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets }) {
+export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, scheduleMap = {} }) {
   const [tab, setTab] = useState('pending');
 
   const realBets = useMemo(() => bets.filter(b => b.match_id !== '_topup'), [bets]);
@@ -459,7 +459,7 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
             {realBets.length === 0 ? 'Place your first bet!' : `No ${tab} bets yet`}
           </div>
         )}
-        {filtered.map(b => <BetCard key={b.id} bet={b} onCancelBet={onCancelBet} />)}
+        {filtered.map(b => <BetCard key={b.id} bet={b} onCancelBet={onCancelBet} kickoffTs={scheduleMap[b.match_id || b.matchId] || null} />)}
       </div>
     </div>
   );

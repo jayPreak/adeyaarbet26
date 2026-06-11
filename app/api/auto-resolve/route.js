@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
-import supabase from '@/lib/supabase';
+import supabaseAnon from '@/lib/supabase';
+import supabaseAdmin from '@/lib/supabase-admin';
 import { FIFA_MATCHES_URL, TEAM_CODE_ALIAS } from '@/lib/schedule-sync';
 import { MATCHES } from '@/lib/data';
+
+// Never cache — always reflect the latest FIFA results & pending-bet state.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+// Prefer the service-role client (bypasses RLS) when configured; fall back to
+// the anon client (resolve_match is SECURITY DEFINER, so anon also works).
+const db = supabaseAdmin || supabaseAnon;
 
 function buildLookup() {
   const lookup = {};
@@ -29,11 +38,11 @@ function determineWinner(fifaMatch) {
 }
 
 export async function GET() {
-  if (!supabase) return NextResponse.json({ resolved: [] });
+  if (!db) return NextResponse.json({ resolved: [] });
 
   let fifaResults;
   try {
-    const res = await fetch(FIFA_MATCHES_URL);
+    const res = await fetch(FIFA_MATCHES_URL, { cache: 'no-store' });
     if (!res.ok) return NextResponse.json({ resolved: [], error: `FIFA ${res.status}` });
     const data = await res.json();
     fifaResults = data.Results || [];
@@ -62,7 +71,7 @@ export async function GET() {
 
   // Check which of these still have pending bets
   const matchIds = finished.map(f => f.matchId);
-  const { data: pendingBets } = await supabase
+  const { data: pendingBets } = await db
     .from('bets')
     .select('match_id')
     .in('match_id', matchIds)
@@ -77,7 +86,7 @@ export async function GET() {
   // Resolve each match
   const resolved = [];
   for (const { matchId, winner } of toResolve) {
-    const { error } = await supabase.rpc('resolve_match', {
+    const { error } = await db.rpc('resolve_match', {
       p_match_id: matchId,
       p_winner: winner,
     });
