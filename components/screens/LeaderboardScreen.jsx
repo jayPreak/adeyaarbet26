@@ -15,20 +15,28 @@ function timeAgo(iso) {
 }
 
 function formatActivity(a) {
-  const match = a.payload?.match_id ? getMatch(a.payload.match_id) : null;
-  const matchLabel = match
-    ? `${getTeam(match.home).name} vs ${getTeam(match.away).name}`
-    : a.payload?.match_id || '';
+  const isCupWinner = a.payload?.kind === 'cup_winner';
+  const match = (!isCupWinner && a.payload?.match_id) ? getMatch(a.payload.match_id) : null;
+  const matchLabel = isCupWinner
+    ? 'to win the Cup'
+    : match
+      ? `${getTeam(match.home).name} vs ${getTeam(match.away).name}`
+      : a.payload?.match_id || '';
 
   if (a.type === 'bet_placed' && a.payload) {
-    const pickTeam = match
-      ? (a.payload.pick === 'home' ? getTeam(match.home).name : a.payload.pick === 'away' ? getTeam(match.away).name : 'Draw')
-      : a.payload.pick;
+    const pickTeam = isCupWinner
+      ? getTeam(a.payload.team).name
+      : match
+        ? (a.payload.pick === 'home' ? getTeam(match.home).name : a.payload.pick === 'away' ? getTeam(match.away).name : 'Draw')
+        : a.payload.pick;
     return `${a.profiles?.display_name || 'Someone'} bet ${CURRENCY_SYMBOL}${a.payload.amount} on ${pickTeam} · ${matchLabel}`;
   }
   if (a.type === 'bet_cancelled' && a.payload) {
     if (a.payload.reason === 'side_switch') {
       return `${a.profiles?.display_name || 'Someone'} switched sides · ${matchLabel}`;
+    }
+    if (a.payload.reason === 'cup_winner_switch') {
+      return `${a.profiles?.display_name || 'Someone'} switched to ${getTeam(a.payload.new_team).name} · ${matchLabel}`;
     }
     return `${a.profiles?.display_name || 'Someone'} cancelled bet · ${matchLabel}`;
   }
