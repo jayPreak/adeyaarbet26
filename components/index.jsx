@@ -1,6 +1,6 @@
 'use client';
 
-import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST } from '@/lib/data';
+import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST } from '@/lib/data';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { useState, useEffect } from 'react';
 
@@ -253,10 +253,10 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
   return (
     <div className="match-card">
       <div className="match-card__head">
-        <span>{stageLabel} · {fmtDate(match.date)}{city ? ` · ${city}` : ''}</span>
+        <span>{stageLabel}{city ? ` · ${city}` : ''}</span>
         {isLive ? <LiveDot minute={match.minute} /> :
          isFinished ? <span style={{ color: 'var(--ink-3)' }}>FT</span> :
-         <span style={{ fontFamily: 'var(--font-mono)' }}>{fmtTimeIST(match.time)}</span>}
+         <span style={{ fontFamily: 'var(--font-mono)' }}>{fmtKickoffIST(match.kickoffTs)}</span>}
       </div>
 
       <div className="match-card__teams">
@@ -269,7 +269,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
           {(isLive || isFinished) && match.score ? (
             <div className="match-card__score">{match.score[0]}–{match.score[1]}</div>
           ) : (
-            <div className="match-card__vs-time">{fmtTimeIST(match.time)}</div>
+            <div className="match-card__vs-time">{fmtKickoffIST(match.kickoffTs)}</div>
           )}
         </div>
 
@@ -489,7 +489,7 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
             <>
               <div className="hero__vs">VS</div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-3)' }}>
-                {fmtTimeIST(match.time)}
+                {fmtKickoffIST(match.kickoffTs)}
               </div>
             </>
           )}
@@ -579,7 +579,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
         {/* Match preview */}
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="row between" style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 10 }}>
-            <span>{match.group ? `Group ${match.group}` : 'Knockout'} · {fmtDay(match.date)} {fmtTimeIST(match.time)}</span>
+            <span>{match.group ? `Group ${match.group}` : 'Knockout'} · {fmtKickoffIST(match.kickoffTs)}</span>
             <span className="mono">{match.id}</span>
           </div>
           <div className="row between center" style={{ gap: 10 }}>

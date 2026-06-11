@@ -57,7 +57,7 @@ export default function MatchesScreen({ matches = [], onBet, bets = [], onCancel
       {dates.map(date => (
         <div key={date} className="date-group">
           <div className="date-group__head">
-            <div className="date-group__day">{date === 'tbd' ? 'TBD' : fmtDay(date)}</div>
+            <div className="date-group__day">{date === 'tbd' ? 'Unknown' : fmtDay(date)}</div>
             <div className="date-group__date">{date === 'tbd' ? '' : fmtDate(date)}</div>
           </div>
           {byDate[date].map(m => {
