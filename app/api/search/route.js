@@ -1,4 +1,5 @@
 import { MATCHES, TEAM, VENUE, FRIENDS } from '@/lib/data';
+import supabase from '@/lib/supabase';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -33,5 +34,18 @@ export async function GET(request) {
     username: f.id,
   }));
 
-  return Response.json({ matches: matchResults, users: userResults });
+  let scheduleMap = {};
+  if (supabase && matchResults.length) {
+    const { data } = await supabase
+      .from('match_schedule')
+      .select('id, kickoff_ts')
+      .in('id', matchResults.map(m => m.id));
+    for (const row of data || []) scheduleMap[row.id] = row.kickoff_ts;
+  }
+  const matchResultsWithDate = matchResults.map(m => ({
+    ...m,
+    date: scheduleMap[m.id] ? new Date(scheduleMap[m.id]).toISOString().slice(0, 10) : null,
+  }));
+
+  return Response.json({ matches: matchResultsWithDate, users: userResults });
 }

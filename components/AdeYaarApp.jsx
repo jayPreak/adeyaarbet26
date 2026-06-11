@@ -68,6 +68,19 @@ function mergeWithFifa(staticMatch, fifaResults) {
   return { ...staticMatch, venue, fifaId: fifa.IdMatch, status, score, minute };
 }
 
+// Single source of times: stamp kickoffTs + derived UTC date/time from the DB schedule.
+function withSchedule(match, scheduleMap) {
+  const iso = scheduleMap[match.id];
+  if (!iso) return match;
+  const d = new Date(iso);
+  return {
+    ...match,
+    kickoffTs: d.getTime(),
+    date: d.toISOString().slice(0, 10), // YYYY-MM-DD (UTC) — same shape the UI formats
+    time: d.toISOString().slice(11, 16), // HH:MM (UTC)
+  };
+}
+
 export default function AdeYaarApp() {
   const theme = 'midnight';
   const { user, loading, refreshUser } = useUser();
@@ -79,6 +92,7 @@ export default function AdeYaarApp() {
   const [cancelling, setCancelling] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [fifaData, setFifaData] = useState(null);
+  const [scheduleMap, setScheduleMap] = useState({});
   const [isDesktop, setIsDesktop] = useState(false);
   const [poolMap, setPoolMap] = useState({});
   const [allUsers, setAllUsers] = useState([]);
@@ -153,6 +167,13 @@ export default function AdeYaarApp() {
   }, []);
 
   useEffect(() => {
+    fetch('/api/schedule')
+      .then(r => r.json())
+      .then(d => setScheduleMap(d.schedule || {}))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)');
     setIsDesktop(mq.matches);
     const handler = (e) => setIsDesktop(e.matches);
@@ -177,7 +198,7 @@ export default function AdeYaarApp() {
 
   useEffect(() => { refreshPools(); }, [refreshPools]);
 
-  const matches = MATCHES.map(m => mergeWithFifa(m, fifaData));
+  const matches = MATCHES.map(m => withSchedule(mergeWithFifa(m, fifaData), scheduleMap));
 
   const openBet  = useCallback((match, pick) => setBetSheet({ match, pick }), []);
   const closeBet = useCallback(() => setBetSheet(null), []);
