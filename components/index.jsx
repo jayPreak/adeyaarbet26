@@ -812,7 +812,7 @@ export function BetCard({ bet, onCancelBet }) {
   return (
     <div className="bet-card">
       <div className="bet-card__head">
-        <span>{fmtDay(match.date)} · {fmtTimeIST(match.time)}</span>
+        <span>{match.group ? `Group ${match.group}` : 'Knockout'}{match.date ? ` · ${fmtDay(match.date)}` : ''}</span>
         <span className={'bet-card__status ' + bet.status}>{bet.status}</span>
       </div>
 
