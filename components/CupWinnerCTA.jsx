@@ -50,7 +50,7 @@ export default function CupWinnerCTA({ myCupWinnerBet, onOpen, deadlineTs }) {
     action = 'Change';
   } else {
     title = `Pick the World Cup winner`;
-    subtitle = `Bet closes in ${formatCountdown(cd)} · 1h before kickoff`;
+    subtitle = `Bet closes in ${formatCountdown(cd)} · 30s before first match`;
     action = 'Bet now';
   }
 
