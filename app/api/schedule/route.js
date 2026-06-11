@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
+import { cupWinnerDeadlineFromKickoffs } from '@/lib/cup-winner';
 
 export const revalidate = 300; // seconds — display only; enforcement is server-side
 
@@ -13,12 +14,9 @@ export async function GET() {
     return NextResponse.json({ schedule: {}, cupWinnerDeadlineTs: null }, { status: 500 });
   }
   const schedule = {};
-  let minTs = Infinity;
   for (const row of data) {
     schedule[row.id] = row.kickoff_ts;
-    const ms = new Date(row.kickoff_ts).getTime();
-    if (ms < minTs) minTs = ms;
   }
-  const cupWinnerDeadlineTs = Number.isFinite(minTs) ? minTs - 30 * 1000 : null;
+  const cupWinnerDeadlineTs = cupWinnerDeadlineFromKickoffs(data);
   return NextResponse.json({ schedule, cupWinnerDeadlineTs });
 }
