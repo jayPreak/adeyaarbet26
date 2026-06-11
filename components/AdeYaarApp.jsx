@@ -240,7 +240,7 @@ export default function AdeYaarApp() {
             <ErrorBoundary>
               {tab === 'home'     && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={() => setCupWinnerOpen(true)} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />}
               {tab === 'fixtures' && <FixturesScreen matches={matches} onBet={openBet} bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers} />}
-              {tab === 'specials' && <SpecialsScreen user={user} bets={bets} onOpenSpecialBet={() => setCupWinnerOpen(true)} />}
+              {tab === 'specials' && <SpecialsScreen user={user} bets={bets} onOpenSpecialBet={() => setCupWinnerOpen(true)} allUsers={allUsers} />}
               {tab === 'leaders'  && <LeaderboardScreen user={user} />}
               {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} />}
             </ErrorBoundary>

@@ -195,7 +195,7 @@ function TeamAccordion({ special, sorted, total, picks, myPick }) {
   );
 }
 
-function PoolDetail({ special, poolData, picks, myBet, user, onPlace, onCancel, deadlineTs }) {
+function PoolDetail({ special, poolData, picks, myBet, user, allUsers, onPlace, onCancel, deadlineTs }) {
   const closed = deadlineTs && Date.now() >= deadlineTs;
   const byTeam = poolData?.byTeam || {};
   const total = poolData?.total || 0;
@@ -270,11 +270,45 @@ function PoolDetail({ special, poolData, picks, myBet, user, onPlace, onCancel, 
       )}
 
       <TeamAccordion special={special} sorted={sorted} total={total} picks={picks} myPick={myBet?.pick} />
+
+      {/* Haven't bet yet */}
+      {allUsers.length > 0 && (() => {
+        const bettorIds = new Set(picks.map(p => p.user_id));
+        const notBet = allUsers.filter(u => !bettorIds.has(u.id));
+        if (notBet.length === 0) return null;
+        return (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>
+              HAVEN'T BET YET ({notBet.length})
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {notBet.map(u => (
+                <div key={u.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 10px', borderRadius: 8,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: '50%',
+                    background: u.avatar_url ? `url(${u.avatar_url}) center/cover` : 'rgba(255,255,255,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 8, color: 'var(--ink-3)',
+                  }}>
+                    {!u.avatar_url && (u.display_name?.[0] || '?')}
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{u.display_name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
-function ExpandedSpecial({ special, pool, picks, myBet, user, deadlineTs, onBack, onPlace, onCancel }) {
+function ExpandedSpecial({ special, pool, picks, myBet, user, allUsers, deadlineTs, onBack, onPlace, onCancel }) {
   const countdown = useDeadlineCountdown(deadlineTs);
   return (
     <div>
@@ -304,6 +338,7 @@ function ExpandedSpecial({ special, pool, picks, myBet, user, deadlineTs, onBack
         picks={picks}
         myBet={myBet}
         user={user}
+        allUsers={allUsers}
         onPlace={onPlace}
         onCancel={onCancel}
         deadlineTs={deadlineTs}
@@ -312,7 +347,7 @@ function ExpandedSpecial({ special, pool, picks, myBet, user, deadlineTs, onBack
   );
 }
 
-export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [] }) {
+export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allUsers = [] }) {
   const [poolsData, setPoolsData] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [picksData, setPicksData] = useState({});
@@ -367,6 +402,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [] }) {
               picks={picks}
               myBet={myBet}
               user={user}
+              allUsers={allUsers}
               deadlineTs={deadlines[special.id]}
               onBack={() => setExpanded(null)}
               onPlace={() => onOpenSpecialBet(special.id)}
