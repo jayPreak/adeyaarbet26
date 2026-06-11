@@ -361,7 +361,10 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
               <tr key={i}>
                 <td style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.9)', fontSize: 12 }}>{(b.display_name || b.username || '?').split(' ')[0]}</td>
                 <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>{CURRENCY_SYMBOL}{b.amount}</td>
-                <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: '#4ade80', fontSize: 11 }}>{CURRENCY_SYMBOL}{b.possible_win}</td>
+                <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: '#4ade80', fontSize: 11 }}>
+                  {CURRENCY_SYMBOL}{b.possible_win}
+                  {b.possible_win > b.amount && <span style={{ fontSize: 9, opacity: 0.7 }}> +{Math.round(((b.possible_win - b.amount) / b.amount) * 100)}%</span>}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -677,7 +680,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
               fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 28,
               color: 'var(--win)',
             }}>
-              {fmtMoney(potentialPayout)}
+              {fmtMoney(potentialPayout)} <span style={{ fontSize: 14, opacity: 0.8 }}>(+{Math.round(((potentialPayout - amount) / amount) * 100)}%)</span>
             </div>
             {potentialPayout > amount && (
               <div style={{ fontSize: 11, color: 'var(--win)', opacity: 0.8 }}>

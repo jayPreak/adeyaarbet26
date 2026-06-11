@@ -159,10 +159,11 @@ function TeamAccordion({ special, sorted, total, picks, myPick }) {
                 <div style={{ display: 'flex', padding: '4px 0', marginBottom: 4, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                   <span style={{ flex: 1, fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>USER</span>
                   <span style={{ width: 70, fontSize: 10, color: 'var(--ink-3)', fontWeight: 600, textAlign: 'right' }}>STAKE</span>
-                  <span style={{ width: 80, fontSize: 10, color: 'var(--ink-3)', fontWeight: 600, textAlign: 'right' }}>WINS IF</span>
+                  <span style={{ width: 100, fontSize: 10, color: 'var(--ink-3)', fontWeight: 600, textAlign: 'right' }}>WINS IF</span>
                 </div>
                 {teamPicks.map((p, i) => {
                   const possibleWin = amount > 0 ? Math.floor((p.amount / amount) * total) : 0;
+                  const roi = p.amount > 0 ? Math.round(((possibleWin - p.amount) / p.amount) * 100) : 0;
                   return (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '6px 0' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
@@ -179,8 +180,8 @@ function TeamAccordion({ special, sorted, total, picks, myPick }) {
                       <span style={{ width: 70, fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)', textAlign: 'right' }}>
                         {fmtMoney(p.amount)}
                       </span>
-                      <span style={{ width: 80, fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--win)', textAlign: 'right' }}>
-                        {fmtMoney(possibleWin)}
+                      <span style={{ width: 100, fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--win)', textAlign: 'right' }}>
+                        {fmtMoney(possibleWin)} <span style={{ fontSize: 10, opacity: 0.7 }}>(+{roi}%)</span>
                       </span>
                     </div>
                   );
@@ -245,7 +246,7 @@ function PoolDetail({ special, poolData, picks, myBet, user, onPlace, onCancel, 
             }}>
               <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>If {special.formatPick(myBet.pick)} wins</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--win)', fontFamily: 'var(--font-mono)' }}>
-                {fmtMoney(myPayout)}
+                {fmtMoney(myPayout)} <span style={{ fontSize: 13, opacity: 0.8 }}>(+{Math.round(((myPayout - myBet.amount) / myBet.amount) * 100)}%)</span>
               </div>
               <div style={{ fontSize: 11, color: 'var(--win)', opacity: 0.8 }}>
                 +{fmtMoney(myPayout - myBet.amount)} profit
@@ -316,6 +317,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [] }) {
   const [expanded, setExpanded] = useState(null);
   const [picksData, setPicksData] = useState({});
   const [deadlines, setDeadlines] = useState({});
+  const [myBetsData, setMyBetsData] = useState({});
 
   useEffect(() => {
     for (const s of SPECIALS) {
@@ -324,13 +326,12 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [] }) {
         .then(data => {
           setPoolsData(prev => ({ ...prev, [s.id]: data.pool }));
           setPicksData(prev => ({ ...prev, [s.id]: data.picks || [] }));
+          setMyBetsData(prev => ({ ...prev, [s.id]: data.myBet || null }));
           if (data.deadlineTs) setDeadlines(prev => ({ ...prev, [s.id]: data.deadlineTs }));
         })
         .catch(() => {});
     }
-  }, [user]);
-
-  const mySpecialBets = bets.filter(b => b.kind && b.kind !== 'match' && b.status === 'pending');
+  }, [user, bets]);
 
   return (
     <div>
@@ -341,7 +342,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [] }) {
       {SPECIALS.map(special => {
         const pool = poolsData[special.id];
         const picks = picksData[special.id] || [];
-        const myBet = mySpecialBets.find(b => b.kind === special.id);
+        const myBet = myBetsData[special.id] || null;
         const isExpanded = expanded === special.id;
 
         const topPicks = pool?.byTeam
