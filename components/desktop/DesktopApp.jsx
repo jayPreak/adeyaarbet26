@@ -278,7 +278,7 @@ function DeskPoolTable({ poolData, home, away }) {
 }
 
 // ── Desktop Home ──────────────────────────────────────────────
-function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap = {}, onCancelBet, myCupWinnerBet, onOpenCupWinner }) {
+function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap = {}, onCancelBet, myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs }) {
   const live = matches.filter(m => m.status === 'live');
   const upcoming = matches.filter(m => m.status === 'upcoming').slice(0, 6);
   const featured = live[0] || upcoming[0];
@@ -402,7 +402,7 @@ function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap 
         )}
       </section>
 
-      <CupWinnerCTA myCupWinnerBet={myCupWinnerBet} onOpen={onOpenCupWinner} />
+      <CupWinnerCTA myCupWinnerBet={myCupWinnerBet} onOpen={onOpenCupWinner} deadlineTs={cupWinnerDeadlineTs} />
 
       {/* Stat tiles */}
       <div className="desk-stats" style={{ marginTop: 22 }}>
@@ -964,7 +964,7 @@ function DBetsScreen({ user, onCancelBet, bets = [] }) {
 }
 
 // ── Desktop App (root) ────────────────────────────────────────
-export default function DesktopApp({ tab, setTab, balance, openBet, matches, user, onLogout, bets = [], onCancelBet, poolMap = {}, myCupWinnerBet, onOpenCupWinner }) {
+export default function DesktopApp({ tab, setTab, balance, openBet, matches, user, onLogout, bets = [], onCancelBet, poolMap = {}, myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs }) {
   const titles = {
     home:    { title: 'Dashboard',    sub: 'FIFA World Cup 2026 · Group stage underway' },
     matches: { title: 'Fixtures',     sub: 'All matches · group stage + knockout' },
@@ -980,7 +980,7 @@ export default function DesktopApp({ tab, setTab, balance, openBet, matches, use
       title={t.title} sub={t.sub}
       hideSearch={tab === 'bracket'} user={user} onLogout={onLogout}
     >
-      {tab === 'home'    && <DHomeScreen matches={matches} balance={balance} onBet={openBet} onNav={setTab} user={user} bets={bets} poolMap={poolMap} onCancelBet={onCancelBet} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={onOpenCupWinner} />}
+      {tab === 'home'    && <DHomeScreen matches={matches} balance={balance} onBet={openBet} onNav={setTab} user={user} bets={bets} poolMap={poolMap} onCancelBet={onCancelBet} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={onOpenCupWinner} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />}
       {tab === 'matches' && <DMatchesScreen matches={matches} onBet={openBet} bets={bets} poolMap={poolMap} />}
       {tab === 'bracket' && <DBracketScreen matches={matches} />}
       {tab === 'leaders' && <DLeaderboardScreen user={user} />}

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
-import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
+import { CUP_WINNER_DEADLINE_TS, cupWinnerDeadlineFromKickoffs } from '@/lib/cup-winner';
 
 export async function GET(request) {
   if (!supabase) return NextResponse.json({ myBet: null, pool: { byTeam: {}, total: 0, bettorCount: 0 }, picks: [], deadlineTs: CUP_WINNER_DEADLINE_TS });
@@ -25,7 +25,9 @@ export async function GET(request) {
         .maybeSingle()
     : Promise.resolve({ data: null, error: null });
 
-  const [poolRes, myBetRes] = await Promise.all([poolQuery, myBetQuery]);
+  const scheduleQuery = supabase.from('match_schedule').select('kickoff_ts');
+
+  const [poolRes, myBetRes, schedRes] = await Promise.all([poolQuery, myBetQuery, scheduleQuery]);
 
   if (poolRes.error) return NextResponse.json({ error: poolRes.error.message }, { status: 500 });
   if (myBetRes.error) return NextResponse.json({ error: myBetRes.error.message }, { status: 500 });
@@ -52,7 +54,7 @@ export async function GET(request) {
     myBet: myBetRes.data || null,
     pool: { byTeam, total, bettorCount: bettors.size },
     picks,
-    deadlineTs: CUP_WINNER_DEADLINE_TS,
+    deadlineTs: cupWinnerDeadlineFromKickoffs(schedRes.data) ?? CUP_WINNER_DEADLINE_TS,
   });
 }
 

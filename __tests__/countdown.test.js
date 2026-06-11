@@ -12,7 +12,7 @@ describe('KICKOFF_TS', () => {
     expect(KICKOFF_TS).toBeGreaterThanOrEqual(new Date('2026-06-11').getTime());
   });
 
-  test('is before June 13, 2026 (20:00 CDMX = 02:00 UTC June 12)', () => {
+  test('is before June 13, 2026 (opener 19:00 UTC June 11)', () => {
     expect(KICKOFF_TS).toBeLessThan(new Date('2026-06-13').getTime());
   });
 });

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getTeam } from '@/lib/data';
 import { fmtMoney } from '@/lib/currency';
-import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
+import { KICKOFF_TS } from '@/lib/countdown';
 import { Flag } from './index';
 
 function useCountdown(targetTs) {
@@ -30,8 +30,8 @@ function formatCountdown({ diff, days, hours, mins, secs }) {
   return `${mins}m ${secs}s`;
 }
 
-export default function CupWinnerCTA({ myCupWinnerBet, onOpen }) {
-  const cd = useCountdown(CUP_WINNER_DEADLINE_TS);
+export default function CupWinnerCTA({ myCupWinnerBet, onOpen, deadlineTs }) {
+  const cd = useCountdown(deadlineTs ?? (KICKOFF_TS - 30 * 1000));
   const closed = cd.done;
   const hasBet = !!myCupWinnerBet;
 
@@ -50,7 +50,7 @@ export default function CupWinnerCTA({ myCupWinnerBet, onOpen }) {
     action = 'Change';
   } else {
     title = `Pick the World Cup winner`;
-    subtitle = `Bet closes in ${formatCountdown(cd)} · 1h before kickoff`;
+    subtitle = `Bet closes in ${formatCountdown(cd)} · 30s before first match`;
     action = 'Bet now';
   }
 

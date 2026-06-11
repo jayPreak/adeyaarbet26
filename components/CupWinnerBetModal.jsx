@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { GROUPS, getTeam } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
-import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
+import { KICKOFF_TS } from '@/lib/countdown';
 import { Flag, Icon } from './index';
 import CupWinnerPicksView from './CupWinnerPicksView';
 
@@ -31,8 +31,8 @@ function formatCountdown({ diff, days, hours, mins, secs }) {
   return `${mins}m ${secs}s`;
 }
 
-export default function CupWinnerBetModal({ open, onClose, user, balance, myCupWinnerBet, onPlaced }) {
-  const cd = useCountdown(CUP_WINNER_DEADLINE_TS);
+export default function CupWinnerBetModal({ open, onClose, user, balance, myCupWinnerBet, onPlaced, deadlineTs }) {
+  const cd = useCountdown(deadlineTs ?? (KICKOFF_TS - 30 * 1000));
   const closed = cd.done;
 
   const [selectedTeam, setSelectedTeam] = useState(myCupWinnerBet?.pick || null);
@@ -154,7 +154,7 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
                   : 'Pick the World Cup winner'}
               </div>
               <div style={{ fontSize: 11, color: closed ? 'var(--loss)' : 'var(--ink-3)', marginTop: 3 }}>
-                {closed ? 'Locked in — betting closed' : `Closes in ${formatCountdown(cd)} · 1h before kickoff`}
+                {closed ? 'Locked in — betting closed' : `Closes in ${formatCountdown(cd)} · 30s before first match`}
               </div>
             </div>
           </div>
