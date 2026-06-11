@@ -17,14 +17,22 @@ export default function MatchesScreen({ matches = [], onBet, bets = [], onCancel
 
   const TODAY = new Date().toISOString().split('T')[0];
 
+  const getMatchDate = (m) => {
+    if (m.kickoffTs) return m.kickoffTs.split('T')[0];
+    return null;
+  };
+
   let filtered = matches;
   if (filter === 'live')  filtered = matches.filter(m => m.status === 'live');
-  if (filter === 'today') filtered = matches.filter(m => m.date === TODAY);
+  if (filter === 'today') filtered = matches.filter(m => getMatchDate(m) === TODAY);
   if (filter === 'r32')   filtered = matches.filter(m => !m.group);
   if (filter === 'group') filtered = matches.filter(m => !!m.group);
 
   const byDate = {};
-  filtered.forEach(m => { (byDate[m.date] = byDate[m.date] || []).push(m); });
+  filtered.forEach(m => {
+    const key = getMatchDate(m) || 'tbd';
+    (byDate[key] = byDate[key] || []).push(m);
+  });
   const dates = Object.keys(byDate).sort();
 
   return (
@@ -49,8 +57,8 @@ export default function MatchesScreen({ matches = [], onBet, bets = [], onCancel
       {dates.map(date => (
         <div key={date} className="date-group">
           <div className="date-group__head">
-            <div className="date-group__day">{fmtDay(date)}</div>
-            <div className="date-group__date">{fmtDate(date)}</div>
+            <div className="date-group__day">{date === 'tbd' ? 'TBD' : fmtDay(date)}</div>
+            <div className="date-group__date">{date === 'tbd' ? '' : fmtDate(date)}</div>
           </div>
           {byDate[date].map(m => {
             const myBets = bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending');

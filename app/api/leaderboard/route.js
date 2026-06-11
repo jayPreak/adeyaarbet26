@@ -44,25 +44,27 @@ export async function GET() {
     poolsByMatch[b.match_id].bySide[side] = (poolsByMatch[b.match_id].bySide[side] || 0) + b.amount;
   }
 
-  const result = profiles.map(p => {
-    const userBets = betsByUser[p.id] || [];
-    const balance = computeBalance(userBets);
-    const activeBets = userBets.filter(b => b.status === 'pending');
-    const totalStaked = activeBets.reduce((sum, b) => sum + b.amount, 0);
-    const betCount = activeBets.length;
-    const matchesBet = new Set(activeBets.map(b => b.match_id)).size;
+  const result = profiles
+    .filter(p => betsByUser[p.id]?.some(b => b.status !== 'cancelled'))
+    .map(p => {
+      const userBets = betsByUser[p.id];
+      const balance = computeBalance(userBets);
+      const activeBets = userBets.filter(b => b.status === 'pending');
+      const totalStaked = activeBets.reduce((sum, b) => sum + b.amount, 0);
+      const betCount = activeBets.length;
+      const matchesBet = new Set(activeBets.map(b => b.match_id)).size;
 
-    // Best-case: if every bet wins, what's the max payout
-    let maxReturn = 0;
-    for (const b of activeBets) {
-      const pool = poolsByMatch[b.match_id];
-      if (pool && pool.bySide[b.pick]) {
-        maxReturn += Math.floor((b.amount / pool.bySide[b.pick]) * pool.total);
+      // Best-case: if every bet wins, what's the max payout
+      let maxReturn = 0;
+      for (const b of activeBets) {
+        const pool = poolsByMatch[b.match_id];
+        if (pool && pool.bySide[b.pick]) {
+          maxReturn += Math.floor((b.amount / pool.bySide[b.pick]) * pool.total);
+        }
       }
-    }
 
-    return { ...p, balance, totalStaked, betCount, matchesBet, maxReturn };
-  });
+      return { ...p, balance, totalStaked, betCount, matchesBet, maxReturn };
+    });
 
   result.sort((a, b) => b.totalStaked - a.totalStaked);
 

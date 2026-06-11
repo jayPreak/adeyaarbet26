@@ -451,6 +451,7 @@ body {
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .sheet {
   width: 100%; background: var(--surface, #111317);
+  color: var(--ink, #F2F3F5);
   border-radius: 28px 28px 0 0; padding: 14px 20px 0;
   max-height: 92dvh; overflow: hidden;
   display: flex; flex-direction: column;
@@ -460,6 +461,9 @@ body {
 .sheet ::-webkit-scrollbar { width: 4px; }
 .sheet ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
 .sheet ::-webkit-scrollbar-track { background: transparent; }
+.sheet .odds-btn { color: var(--ink); }
+.sheet .odds-btn__label { color: var(--ink-2) !important; }
+.sheet .odds-btn.fav .odds-btn__label { color: var(--ink) !important; }
 @keyframes slideUp { from { transform: translateY(40px); } to { transform: translateY(0); } }
 @media (min-width: 1024px) {
   .sheet-backdrop { align-items: center; }
@@ -504,6 +508,7 @@ body {
   background: var(--surface-2); border: 1px solid var(--line);
   padding: 10px 0; border-radius: 10px;
   font-family: var(--font-mono); font-weight: 600; font-size: 13px;
+  color: var(--ink, #F2F3F5);
 }
 .amount-presets button.active {
   background: var(--gold-soft); border-color: var(--gold); color: var(--gold);
