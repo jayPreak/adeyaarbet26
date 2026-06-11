@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getMatch, getTeam } from '@/lib/data';
 import { CURRENCY_SYMBOL } from '@/lib/currency';
-import { HeroMatch, SectionHead } from '@/components';
+import { HeroMatch, SectionHead, MatchCard } from '@/components';
 
 function relativeTime(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -20,9 +20,11 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
   const upcoming = matches.filter(m => m.status === 'upcoming').slice(0, 3);
   const featured = live[0] || upcoming[0];
 
-
-
   const [activity, setActivity] = useState([]);
+  const [showAllActivity, setShowAllActivity] = useState(false);
+  const [fullActivity, setFullActivity] = useState([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     fetch('/api/activity?limit=10')
@@ -40,6 +42,96 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
       })
       .catch(() => {});
   }, [bets]);
+
+  const openAllActivity = () => {
+    setShowAllActivity(true);
+    setHasMore(true);
+    fetch('/api/activity?limit=30')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const mapped = data.map(a => ({
+            id: a.id,
+            username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
+            avatar_url: a.profiles?.avatar_url || null,
+            text: formatActivityText(a),
+            createdAt: a.created_at,
+          }));
+          setFullActivity(mapped);
+          if (data.length < 30) setHasMore(false);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const loadMore = () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const offset = fullActivity.length;
+    fetch(`/api/activity?limit=30&offset=${offset}`)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const mapped = data.map(a => ({
+            id: a.id,
+            username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
+            avatar_url: a.profiles?.avatar_url || null,
+            text: formatActivityText(a),
+            createdAt: a.created_at,
+          }));
+          setFullActivity(prev => [...prev, ...mapped]);
+          if (data.length < 30) setHasMore(false);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
+
+  if (showAllActivity) {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px' }}>
+          <button
+            onClick={() => setShowAllActivity(false)}
+            style={{ background: 'none', border: 'none', color: 'var(--ink-2)', fontSize: 20, cursor: 'pointer', padding: 0 }}
+          >
+            ←
+          </button>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>Activity Feed</span>
+        </div>
+        <div className="ticker" style={{ paddingBottom: 16 }}>
+          {fullActivity.map(a => (
+            <div key={a.id} className="ticker-item">
+              <div className="ticker-avatar" style={a.avatar_url ? { backgroundImage: `url(${a.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+                {!a.avatar_url && a.username[0]}
+              </div>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontWeight: 600 }}>{a.username}</span>{' '}
+                <span style={{ color: 'var(--ink-2)' }}>{a.text}</span>
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>
+                {relativeTime(a.createdAt)}
+              </span>
+            </div>
+          ))}
+          {hasMore && (
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              style={{
+                display: 'block', width: 'calc(100% - 32px)', margin: '8px 16px',
+                padding: '12px', borderRadius: 10,
+                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                color: 'var(--ink-2)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              {loadingMore ? 'Loading...' : 'Load more'}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -80,7 +172,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
       </div>
 
       {/* Friend activity */}
-      <SectionHead title="Friend activity" more="See all" onMore={() => onNav('leaders')} />
+      <SectionHead title="Friend activity" more="See all" onMore={openAllActivity} />
       <div className="ticker" style={{ paddingBottom: 8 }}>
         {activity.length === 0 && (
           <div style={{ padding: '16px', color: 'var(--ink-3)', textAlign: 'center', fontSize: 13 }}>
