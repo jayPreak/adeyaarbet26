@@ -10,6 +10,8 @@ import HomeScreen from '@/components/screens/HomeScreen';
 import FixturesScreen from '@/components/screens/FixturesScreen';
 import CupWinnerBetModal from '@/components/CupWinnerBetModal';
 import GoalScorerBetModal from '@/components/GoalScorerBetModal';
+import ContinentBetModal from '@/components/ContinentBetModal';
+import HalftimeBetModal from '@/components/HalftimeBetModal';
 import SpecialsScreen from '@/components/screens/SpecialsScreen';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
 
@@ -84,6 +86,9 @@ export default function AdeYaarApp() {
   const [myCupWinnerBet, setMyCupWinnerBet] = useState(null);
   const [goalScorerOpen, setGoalScorerOpen] = useState(false);
   const [goalScorerMatchId, setGoalScorerMatchId] = useState(null);
+  const [continentOpen, setContinentOpen] = useState(false);
+  const [halftimeOpen, setHalftimeOpen] = useState(false);
+  const [halftimePerformer, setHalftimePerformer] = useState(null);
   const [poolMap, setPoolMap] = useState({});
 
   const balance = computeBalance(bets);
@@ -267,6 +272,11 @@ export default function AdeYaarApp() {
                     if (id === 'goalscorer' && ctx?.matchId) {
                       setGoalScorerMatchId(ctx.matchId);
                       setGoalScorerOpen(true);
+                    } else if (id === 'continent') {
+                      setContinentOpen(true);
+                    } else if (id === 'halftime') {
+                      setHalftimePerformer(ctx?.performer || null);
+                      setHalftimeOpen(true);
                     } else {
                       setCupWinnerOpen(true);
                     }
@@ -315,6 +325,25 @@ export default function AdeYaarApp() {
           matchId={goalScorerMatchId}
           user={user}
           onPlaced={() => { refreshData(); refreshPools(); }}
+        />
+      </div>
+
+      <div data-theme={theme}>
+        <ContinentBetModal
+          open={continentOpen}
+          onClose={() => setContinentOpen(false)}
+          user={user}
+          onPlaced={() => { refreshData(); }}
+        />
+      </div>
+
+      <div data-theme={theme}>
+        <HalftimeBetModal
+          open={halftimeOpen}
+          onClose={() => { setHalftimeOpen(false); setHalftimePerformer(null); }}
+          user={user}
+          onPlaced={() => { refreshData(); }}
+          initialPerformer={halftimePerformer}
         />
       </div>
     </div>

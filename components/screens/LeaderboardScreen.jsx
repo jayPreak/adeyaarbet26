@@ -184,7 +184,34 @@ function BiggestLossesTab({ biggestLosses }) {
   );
 }
 
+function BetDropdown({ topBets }) {
+  if (!topBets?.length) return null;
+  return (
+    <div style={{ padding: '6px 12px 10px 48px' }}>
+      {topBets.map((b, i) => {
+        const profitColor = b.status === 'won' ? 'var(--win)' : b.status === 'lost' ? 'var(--loss)' : 'var(--ink-3)';
+        const profitLabel = b.status === 'won' ? `+${fmtMoney(b.payout - b.amount)}`
+          : b.status === 'lost' ? `-${fmtMoney(b.amount)}`
+          : 'pending';
+        return (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '7px 0',
+            borderBottom: i < topBets.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+          }}>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', minWidth: 60 }}>{b.matchLabel}</span>
+            <span style={{ flex: 1, fontSize: 11, color: 'var(--ink-2)' }}>{b.pickLabel}</span>
+            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)', minWidth: 50, textAlign: 'right' }}>{fmtMoney(b.amount)}</span>
+            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 600, color: profitColor, minWidth: 60, textAlign: 'right' }}>{profitLabel}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function BiggestBettorTab({ rankings, user }) {
+  const [expandedId, setExpandedId] = useState(null);
   const sorted = [...rankings].sort((a, b) => (b.totalStaked || 0) - (a.totalStaked || 0));
   const groupTotal = rankings.reduce((s, r) => s + (r.totalStaked || 0), 0);
 
@@ -194,18 +221,52 @@ function BiggestBettorTab({ rankings, user }) {
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: 'var(--ink)' }}>{CURRENCY_SYMBOL}{groupTotal.toLocaleString('en-IN')}</div>
         <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>total in play across {rankings.length} players</div>
       </div>
-      {sorted.map((f, i) => (
-        <LeaderRow
-          key={f.id}
-          rank={i + 1}
-          user={user}
-          entry={f}
-          isMe={user && f.id === user.id}
-          valueMain={fmtMoney(f.totalStaked || 0)}
-          valueSub={`${f.betCount || 0} bet${f.betCount !== 1 ? 's' : ''}`}
-          valueColor="var(--ink)"
-        />
-      ))}
+      {sorted.map((f, i) => {
+        const isExpanded = expandedId === f.id;
+        const isMe = user && f.id === user.id;
+        return (
+          <div key={f.id} style={{ marginBottom: 6 }}>
+            <div
+              onClick={() => setExpandedId(isExpanded ? null : f.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 14px', borderRadius: isExpanded ? '12px 12px 0 0' : 12,
+                background: isMe ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+                border: isMe ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(255,255,255,0.04)',
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: i < 3 ? 'var(--gold)' : 'var(--ink-3)', width: 18, fontWeight: i < 3 ? 700 : 400 }}>
+                {i < 3 ? MEDALS[i] : i + 1}
+              </span>
+              <div className="lb-avatar" style={f.avatar_url ? { backgroundImage: `url(${f.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}>
+                {!f.avatar_url && (f.display_name || f.username || '?')[0]}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>
+                  {f.display_name || f.username}
+                  {isMe && <span style={{ marginLeft: 6, fontSize: 9, padding: '2px 6px', background: 'var(--gold)', color: '#0a0a0a', borderRadius: 4, fontWeight: 700 }}>YOU</span>}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{f.betCount || 0} bet{f.betCount !== 1 ? 's' : ''}</div>
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
+                {fmtMoney(f.totalStaked || 0)}
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 4 }}>{isExpanded ? '▲' : '▼'}</span>
+            </div>
+            {isExpanded && (
+              <div style={{
+                borderRadius: '0 0 12px 12px',
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(255,255,255,0.04)',
+                borderTop: 'none',
+              }}>
+                <BetDropdown topBets={f.topBets} />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

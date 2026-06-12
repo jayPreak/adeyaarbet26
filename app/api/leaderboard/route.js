@@ -76,7 +76,43 @@ export async function GET() {
         else winStreak = 0;
       }
 
-      return { ...p, balance, realisedBalance, totalStaked, betCount, matchesBet, maxReturn, winRate, winStreak: maxStreak };
+      // Top individual bets (biggest by amount, include outcome)
+      const allNonCancelled = userBets
+        .filter(b => b.status !== 'cancelled')
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 8);
+      const topBets = allNonCancelled.map(b => {
+        let matchLabel = b.match_id;
+        let pickLabel = b.pick;
+        const m = getMatch(b.match_id);
+        if (m) {
+          const h = getTeam(m.home);
+          const a = getTeam(m.away);
+          matchLabel = `${h?.code || '?'} vs ${a?.code || '?'}`;
+          if (b.pick === 'home') pickLabel = h?.name || b.pick;
+          else if (b.pick === 'away') pickLabel = a?.name || b.pick;
+          else pickLabel = 'Draw';
+        } else if (b.match_id === 'CUP_WINNER') {
+          matchLabel = 'Cup Winner';
+          const pt = getTeam(b.pick);
+          if (pt) pickLabel = pt.name;
+        } else if (b.match_id === 'CONTINENT') {
+          matchLabel = 'Continent';
+        } else if (b.match_id?.startsWith('HT_')) {
+          matchLabel = 'Halftime';
+          pickLabel = b.pick?.toUpperCase();
+        }
+        return {
+          matchLabel,
+          pickLabel,
+          amount: b.amount,
+          status: b.status,
+          payout: b.payout || 0,
+          profit: b.status === 'won' ? (b.payout || 0) - b.amount : b.status === 'lost' ? -b.amount : 0,
+        };
+      });
+
+      return { ...p, balance, realisedBalance, totalStaked, betCount, matchesBet, maxReturn, winRate, winStreak: maxStreak, topBets };
     });
 
   result.sort((a, b) => b.totalStaked - a.totalStaked);
