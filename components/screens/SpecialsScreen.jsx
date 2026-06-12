@@ -986,7 +986,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               special={special}
               poolData={contCardPool}
               onOpen={() => setExpanded(special.id)}
-              deadlineTs={special.deadlineTs ? new Date(special.deadlineTs).getTime() : null}
+              deadlineTs={deadlines[special.id]}
               myBet={contMyBet}
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
             />
@@ -1112,7 +1112,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
             special={special}
             poolData={cardPool}
             onOpen={() => setExpanded(special.id)}
-            deadlineTs={special.deadlineTs ? new Date(special.deadlineTs).getTime() : deadlines[special.id]}
+            deadlineTs={deadlines[special.id]}
             myBet={myBet}
             resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
           />
