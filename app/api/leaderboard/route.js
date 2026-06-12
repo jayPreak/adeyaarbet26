@@ -51,9 +51,10 @@ export async function GET() {
       const balance = computeBalance(userBets);
       const realisedBalance = computeRealisedBalance(userBets);
       const activeBets = userBets.filter(b => b.status === 'pending');
-      const totalStaked = activeBets.reduce((sum, b) => sum + b.amount, 0);
-      const betCount = activeBets.length;
-      const matchesBet = new Set(activeBets.map(b => b.match_id)).size;
+      const allPlaced = userBets.filter(b => b.status !== 'cancelled');
+      const totalStaked = allPlaced.reduce((sum, b) => sum + b.amount, 0);
+      const betCount = allPlaced.length;
+      const matchesBet = new Set(allPlaced.map(b => b.match_id)).size;
 
       // Best-case: if every bet wins, what's the max payout
       let maxReturn = 0;
