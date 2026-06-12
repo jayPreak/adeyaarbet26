@@ -298,11 +298,117 @@ describe('Amount validation', () => {
   });
 });
 
+describe('H2H bet — single-pick Messi vs Ronaldo', () => {
+  let db;
+  beforeEach(() => { db = []; });
+
+  test('user picks messi, changes to ronaldo — old cancelled', () => {
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'MESSI_V_RONALDO', kind: 'h2h', pick: 'messi', amount: 1000, multiPick: false });
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'MESSI_V_RONALDO', kind: 'h2h', pick: 'ronaldo', amount: 1000, multiPick: false });
+    const pending = db.filter(b => b.status === 'pending');
+    expect(pending).toHaveLength(1);
+    expect(pending[0].pick).toBe('ronaldo');
+  });
+
+  test('settlement: messi wins — messi bettors split pool', () => {
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'MESSI_V_RONALDO', kind: 'h2h', pick: 'messi', amount: 500, multiPick: false });
+    simulatePlaceSpecialBet(db, { userId: 'u2', matchId: 'MESSI_V_RONALDO', kind: 'h2h', pick: 'messi', amount: 500, multiPick: false });
+    simulatePlaceSpecialBet(db, { userId: 'u3', matchId: 'MESSI_V_RONALDO', kind: 'h2h', pick: 'ronaldo', amount: 2000, multiPick: false });
+    // Total = 3000. Messi pool = 1000.
+    settlePool(db, 'MESSI_V_RONALDO', 'h2h', 'messi');
+    expect(db.find(b => b.user_id === 'u1').payout).toBe(1500); // 500/1000 * 3000
+    expect(db.find(b => b.user_id === 'u2').payout).toBe(1500);
+    expect(db.find(b => b.user_id === 'u3').status).toBe('lost');
+  });
+
+  test('50-50 settlement (both dont play) — resolve with special "draw" logic', () => {
+    // In 50-50 case, admin would call settle with a special mechanism (refund all).
+    // But with our parimutuel, if we settle with a pick nobody chose, everyone loses.
+    // The 50-50 case = refund = cancel all pending bets. Not covered by settlePool.
+    // Testing that nobody bet on the winning pick → all lose (the RPC would handle refund differently)
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'MESSI_V_RONALDO', kind: 'h2h', pick: 'messi', amount: 500, multiPick: false });
+    simulatePlaceSpecialBet(db, { userId: 'u2', matchId: 'MESSI_V_RONALDO', kind: 'h2h', pick: 'ronaldo', amount: 500, multiPick: false });
+    // If we settle with 'draw' (neither player), both lose
+    settlePool(db, 'MESSI_V_RONALDO', 'h2h', 'draw');
+    expect(db.every(b => b.status === 'lost')).toBe(true);
+  });
+});
+
+describe('Golden Boot — multi-pick scenarios', () => {
+  let db;
+  beforeEach(() => { db = []; });
+
+  test('user bets on two different players — both coexist', () => {
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'kylian_mbappe', amount: 500, multiPick: true });
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'harry_kane', amount: 300, multiPick: true });
+    expect(db.filter(b => b.status === 'pending')).toHaveLength(2);
+  });
+
+  test('user changes amount on same player — old cancelled, new placed', () => {
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'lionel_messi', amount: 500, multiPick: true });
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'lionel_messi', amount: 1000, multiPick: true });
+    const pending = db.filter(b => b.status === 'pending');
+    expect(pending).toHaveLength(1);
+    expect(pending[0].amount).toBe(1000);
+  });
+
+  test('duplicate same player+amount rejected', () => {
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'harry_kane', amount: 500, multiPick: true });
+    expect(() => {
+      simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'harry_kane', amount: 500, multiPick: true });
+    }).toThrow('Already bet on this option for this amount');
+  });
+
+  test('settlement: kane wins — kane bettors split entire pool', () => {
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'harry_kane', amount: 1000, multiPick: true });
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'kylian_mbappe', amount: 500, multiPick: true });
+    simulatePlaceSpecialBet(db, { userId: 'u2', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'harry_kane', amount: 2000, multiPick: true });
+    simulatePlaceSpecialBet(db, { userId: 'u3', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'lionel_messi', amount: 1500, multiPick: true });
+    // Total pool = 5000. Kane pool = 3000.
+    settlePool(db, 'GOLDEN_BOOT', 'golden_boot', 'harry_kane');
+    const u1Kane = db.find(b => b.user_id === 'u1' && b.pick === 'harry_kane');
+    const u2Kane = db.find(b => b.user_id === 'u2' && b.pick === 'harry_kane');
+    const u1Mbappe = db.find(b => b.user_id === 'u1' && b.pick === 'kylian_mbappe');
+    const u3Messi = db.find(b => b.user_id === 'u3');
+    // u1: 1000/3000 * 5000 = 1666
+    // u2: 2000/3000 * 5000 = 3333
+    expect(u1Kane.payout).toBe(1666);
+    expect(u2Kane.payout).toBe(3333);
+    expect(u1Mbappe.status).toBe('lost');
+    expect(u3Messi.status).toBe('lost');
+    expect(u1Kane.payout + u2Kane.payout).toBeLessThanOrEqual(5000);
+  });
+
+  test('hedger: user bets on 3 players, 1 wins — only that bet pays', () => {
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'kylian_mbappe', amount: 500, multiPick: true });
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'harry_kane', amount: 500, multiPick: true });
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'erling_haaland', amount: 500, multiPick: true });
+    // Total = 1500, all from u1. If mbappe wins: mbappe pool = 500, payout = 500/500*1500 = 1500
+    settlePool(db, 'GOLDEN_BOOT', 'golden_boot', 'kylian_mbappe');
+    const winner = db.find(b => b.pick === 'kylian_mbappe');
+    const loser1 = db.find(b => b.pick === 'harry_kane');
+    const loser2 = db.find(b => b.pick === 'erling_haaland');
+    expect(winner.payout).toBe(1500);
+    expect(loser1.status).toBe('lost');
+    expect(loser2.status).toBe('lost');
+  });
+
+  test('cancel one pick does not affect other picks', () => {
+    const b1 = simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'kylian_mbappe', amount: 500, multiPick: true });
+    simulatePlaceSpecialBet(db, { userId: 'u1', matchId: 'GOLDEN_BOOT', kind: 'golden_boot', pick: 'harry_kane', amount: 500, multiPick: true });
+    simulateCancelSpecialBet(db, { userId: 'u1', betId: b1.id });
+    const pending = db.filter(b => b.status === 'pending');
+    expect(pending).toHaveLength(1);
+    expect(pending[0].pick).toBe('harry_kane');
+  });
+});
+
 describe('Activity feed formatting', () => {
-  // Test the formatSpecialMatchLabel logic directly
   function formatSpecialMatchLabel(matchId) {
     if (matchId === 'CUP_WINNER') return 'Cup Winner';
     if (matchId === 'CONTINENT') return 'Winning Continent';
+    if (matchId === 'MESSI_V_RONALDO') return 'Messi vs Ronaldo';
+    if (matchId === 'GOLDEN_BOOT') return 'Golden Boot';
     if (matchId?.startsWith('HT_')) {
       const slug = matchId.slice(3).toLowerCase().replace(/_/g, ' ');
       return slug.replace(/\b\w/g, c => c.toUpperCase());
@@ -328,6 +434,14 @@ describe('Activity feed formatting', () => {
 
   test('formats HT_BAD_BUNNY to "Bad Bunny"', () => {
     expect(formatSpecialMatchLabel('HT_BAD_BUNNY')).toBe('Bad Bunny');
+  });
+
+  test('formats MESSI_V_RONALDO correctly', () => {
+    expect(formatSpecialMatchLabel('MESSI_V_RONALDO')).toBe('Messi vs Ronaldo');
+  });
+
+  test('formats GOLDEN_BOOT correctly', () => {
+    expect(formatSpecialMatchLabel('GOLDEN_BOOT')).toBe('Golden Boot');
   });
 
   test('returns null for regular match IDs', () => {

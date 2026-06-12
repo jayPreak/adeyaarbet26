@@ -265,6 +265,8 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
 function formatSpecialMatchLabel(matchId) {
   if (matchId === 'CUP_WINNER') return 'Cup Winner';
   if (matchId === 'CONTINENT') return 'Winning Continent';
+  if (matchId === 'MESSI_V_RONALDO') return 'Messi vs Ronaldo';
+  if (matchId === 'GOLDEN_BOOT') return 'Golden Boot';
   if (matchId?.startsWith('HT_')) {
     const slug = matchId.slice(3).toLowerCase().replace(/_/g, ' ');
     return slug.replace(/\b\w/g, c => c.toUpperCase());

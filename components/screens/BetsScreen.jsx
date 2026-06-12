@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
 import { getMatch, getTeam } from '@/lib/data';
+import { getSpecial } from '@/lib/specials';
 import { BetCard } from '@/components';
 
 function NetWorthGraph({ bets }) {
@@ -30,8 +31,10 @@ function NetWorthGraph({ bets }) {
         : -100;
 
       let matchLabel = b.match_id;
-      if (b.match_id === 'CUP_WINNER') {
-        matchLabel = 'Cup Winner';
+      const isSpecialBet = b.kind && b.kind !== 'match';
+      if (isSpecialBet) {
+        const def = getSpecial(b.kind);
+        matchLabel = def?.title || b.kind;
       } else {
         const m = getMatch(b.match_id);
         if (m) matchLabel = `${getTeam(m.home).code} v ${getTeam(m.away).code}`;
@@ -472,16 +475,35 @@ function SettlementCard({ user, bets = [] }) {
       {showBreakdown && resolvedBets.length > 0 && (
         <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 10 }}>
           <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 8, fontWeight: 600 }}>Breakdown</div>
-          {resolvedBets.map(b => (
-            <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
-              <span style={{ color: 'var(--ink-2)' }}>
-                {b.match_id} · {b.pick} · staked {CURRENCY_SYMBOL}{b.amount.toLocaleString('en-IN')}
-              </span>
-              <span style={{ color: b.status === 'won' ? 'var(--win)' : 'var(--loss)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                {b.status === 'won' ? `+${CURRENCY_SYMBOL}${(b.payout || 0).toLocaleString('en-IN')}` : `-${CURRENCY_SYMBOL}${b.amount.toLocaleString('en-IN')}`}
-              </span>
-            </div>
-          ))}
+          {resolvedBets.map(b => {
+            const isSpecial = b.kind && b.kind !== 'match';
+            let label;
+            if (isSpecial) {
+              const def = getSpecial(b.kind);
+              const pickLabel = def?.formatPick?.(b.pick) || b.pick;
+              label = `${def?.title || b.kind} · ${pickLabel}`;
+            } else {
+              const m = getMatch(b.match_id);
+              if (m) {
+                const h = getTeam(m.home);
+                const a = getTeam(m.away);
+                const pickLabel = b.pick === 'home' ? h?.name : b.pick === 'away' ? a?.name : 'Draw';
+                label = `${h?.code} vs ${a?.code} · ${pickLabel}`;
+              } else {
+                label = `${b.match_id} · ${b.pick}`;
+              }
+            }
+            return (
+              <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6, gap: 8 }}>
+                <span style={{ color: 'var(--ink-2)', flex: 1, minWidth: 0 }}>
+                  {label} · {CURRENCY_SYMBOL}{b.amount.toLocaleString('en-IN')}
+                </span>
+                <span style={{ color: b.status === 'won' ? 'var(--win)' : 'var(--loss)', fontFamily: 'var(--font-mono)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  {b.status === 'won' ? `+${CURRENCY_SYMBOL}${(b.payout || 0).toLocaleString('en-IN')}` : `-${CURRENCY_SYMBOL}${b.amount.toLocaleString('en-IN')}`}
+                </span>
+              </div>
+            );
+          })}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 8, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
             <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>Total staked</span>
             <span className="mono" style={{ fontWeight: 700 }}>-{CURRENCY_SYMBOL}{totalStaked.toLocaleString('en-IN')}</span>

@@ -38,3 +38,5 @@ supabase/.temp/
 .claude/worktrees/
 
 chat.txt
+.plan-new-specials.md
+SYSTEM_AUDIT.md

@@ -493,6 +493,266 @@ function ContinentDetail({ special, poolData, picks, myBet, user, allUsers, onBa
   );
 }
 
+// H2H expanded view
+function H2HDetail({ special, poolData, picks, myBet, user, allUsers, onBack, onPlace, onCancel }) {
+  const countdown = useDeadlineCountdown(new Date(special.deadlineTs).getTime());
+  const total = poolData?.total || 0;
+  const byTeam = poolData?.byTeam || {};
+
+  const myPayout = myBet && byTeam[myBet.pick]
+    ? Math.floor((myBet.amount / byTeam[myBet.pick]) * total)
+    : 0;
+  const closed = countdown === 'closed';
+
+  return (
+    <div>
+      <div style={{ margin: '0 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--ink-2)', fontSize: 14, cursor: 'pointer', padding: '6px 10px', borderRadius: 8, fontWeight: 600 }}>← Back</button>
+        <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>⚔️ {special.title}</span>
+        {countdown && (
+          <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, background: closed ? 'rgba(248,113,113,0.12)' : 'rgba(74,222,128,0.1)', color: closed ? 'var(--loss)' : 'var(--win)' }}>
+            {closed ? 'Closed' : `⏱ ${countdown}`}
+          </span>
+        )}
+      </div>
+
+      <div style={{ padding: '0 16px' }}>
+        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 16 }}>{special.description}</div>
+
+        {/* Resolution rules */}
+        {special.resolutionRules && (
+          <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 6 }}>RESOLUTION RULES</div>
+            {special.resolutionRules.map((rule, i) => (
+              <div key={i} style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 3 }}>• {rule}</div>
+            ))}
+          </div>
+        )}
+
+        {myBet && (
+          <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 12, background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.15)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>YOUR BET</div>
+              {!closed && (
+                <button onClick={onCancel} style={{ background: 'none', border: '1px solid rgba(248,113,113,0.3)', borderRadius: 8, padding: '4px 10px', color: 'var(--loss)', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>{special.formatPick(myBet.pick)}</span>
+              <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>{fmtMoney(myBet.amount)} staked</span>
+            </div>
+            {myPayout > 0 && (
+              <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.12)' }}>
+                <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>If {special.formatPick(myBet.pick)} wins</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--win)', fontFamily: 'var(--font-mono)' }}>
+                  {fmtMoney(myPayout)} <span style={{ fontSize: 13, opacity: 0.8 }}>(+{Math.round(((myPayout - myBet.amount) / myBet.amount) * 100)}%)</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!closed && (
+          <button onClick={onPlace} style={{ width: '100%', padding: '14px', marginBottom: 16, borderRadius: 12, background: 'var(--gold)', color: '#0a0a0a', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            {myBet ? 'Change pick' : 'Place bet'}
+          </button>
+        )}
+
+        {/* Pool visualization - two cards */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+          {special.options.map(opt => {
+            const amt = byTeam[opt.value] || 0;
+            const pct = total > 0 ? Math.round((amt / total) * 100) : 0;
+            const isMyPick = myBet?.pick === opt.value;
+            return (
+              <div key={opt.value} style={{
+                flex: 1, padding: '14px', borderRadius: 12, textAlign: 'center',
+                background: isMyPick ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.04)',
+                border: isMyPick ? '1px solid rgba(74,222,128,0.2)' : '1px solid rgba(255,255,255,0.08)',
+              }}>
+                <div style={{ fontSize: 24, marginBottom: 4 }}>{opt.country === 'ARG' ? '🇦🇷' : '🇵🇹'}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>{opt.label.split(' ')[1]}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{fmtMoney(amt)}</div>
+                <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{pct}% of pool</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Everyone's picks */}
+        {picks.length > 0 && (
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>EVERYONE'S PICKS</div>
+            {picks.map((p, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={{ width: 22, height: 22, borderRadius: '50%', background: p.avatarUrl ? `url(${p.avatarUrl}) center/cover` : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: 'var(--ink-3)' }}>
+                  {!p.avatarUrl && (p.displayName?.[0] || '?')}
+                </div>
+                <span style={{ flex: 1, fontSize: 12, color: 'var(--ink-2)' }}>{p.displayName}</span>
+                <span style={{ fontSize: 12, color: 'var(--ink)' }}>{special.formatPick(p.pick)}</span>
+                <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--ink-3)' }}>{fmtMoney(p.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Haven't bet yet */}
+        {allUsers.length > 0 && (() => {
+          const bettorIds = new Set(picks.map(p => p.user_id));
+          const notBet = allUsers.filter(u => !bettorIds.has(u.id));
+          if (notBet.length === 0) return null;
+          return (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>HAVEN'T BET YET ({notBet.length})</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {notBet.map(u => (
+                  <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: u.avatar_url ? `url(${u.avatar_url}) center/cover` : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: 'var(--ink-3)' }}>
+                      {!u.avatar_url && (u.display_name?.[0] || '?')}
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{u.display_name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    </div>
+  );
+}
+
+// Golden Boot expanded view
+function GoldenBootDetail({ special, poolData, picks, myBets, user, allUsers, onBack, onPlace, onCancel }) {
+  const countdown = useDeadlineCountdown(new Date(special.deadlineTs).getTime());
+  const total = poolData?.total || 0;
+  const byTeam = poolData?.byTeam || {};
+  const closed = countdown === 'closed';
+
+  const sorted = Object.entries(byTeam)
+    .map(([pick, amount]) => ({ pick, amount }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const myTotalStake = (myBets || []).reduce((s, b) => s + b.amount, 0);
+
+  return (
+    <div>
+      <div style={{ margin: '0 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--ink-2)', fontSize: 14, cursor: 'pointer', padding: '6px 10px', borderRadius: 8, fontWeight: 600 }}>← Back</button>
+        <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>👟 {special.title}</span>
+        {countdown && (
+          <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, background: closed ? 'rgba(248,113,113,0.12)' : 'rgba(74,222,128,0.1)', color: closed ? 'var(--loss)' : 'var(--win)' }}>
+            {closed ? 'Closed' : `⏱ ${countdown}`}
+          </span>
+        )}
+      </div>
+
+      <div style={{ padding: '0 16px' }}>
+        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 4 }}>{special.description}</div>
+        <div style={{ fontSize: 11, color: 'var(--gold)', marginBottom: 16 }}>Multi-pick allowed — bet on multiple players</div>
+
+        {/* Pool stats */}
+        <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>POOL</div>
+            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{fmtMoney(total)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>YOUR STAKES</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>{myBets?.length || 0} picks · {fmtMoney(myTotalStake)}</div>
+          </div>
+        </div>
+
+        {/* My bets */}
+        {myBets && myBets.length > 0 && (
+          <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 12, background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.12)' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>YOUR PICKS</div>
+            {myBets.map((b, i) => {
+              const playerPool = byTeam[b.pick] || 0;
+              const potentialWin = playerPool > 0 ? Math.floor((b.amount / playerPool) * total) : 0;
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: i < myBets.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{special.formatPick(b.pick)}</span>
+                  <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>{fmtMoney(b.amount)}</span>
+                  {potentialWin > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>→ {fmtMoney(potentialWin)}</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {!closed && (
+          <button onClick={onPlace} style={{ width: '100%', padding: '14px', marginBottom: 16, borderRadius: 12, background: 'var(--gold)', color: '#0a0a0a', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            {myBets?.length > 0 ? 'Add another pick' : 'Place bet'}
+          </button>
+        )}
+
+        {/* Pool by player */}
+        {sorted.length > 0 && (
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>POOL BY PLAYER</div>
+            {sorted.map(({ pick, amount }) => {
+              const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
+              const isMyPick = myBets?.some(b => b.pick === pick);
+              return (
+                <div key={pick} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', marginBottom: 6, borderRadius: 10,
+                  background: isMyPick ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.04)',
+                  border: isMyPick ? '1px solid rgba(74,222,128,0.15)' : '1px solid rgba(255,255,255,0.08)',
+                }}>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{special.formatPick(pick)}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--gold)' }}>{fmtMoney(amount)}</span>
+                  <span style={{ fontSize: 11, color: 'var(--ink-3)', minWidth: 32, textAlign: 'right' }}>{pct}%</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Everyone's picks */}
+        {picks.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>EVERYONE'S PICKS</div>
+            {picks.map((p, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={{ width: 22, height: 22, borderRadius: '50%', background: p.avatarUrl ? `url(${p.avatarUrl}) center/cover` : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: 'var(--ink-3)' }}>
+                  {!p.avatarUrl && (p.displayName?.[0] || '?')}
+                </div>
+                <span style={{ flex: 1, fontSize: 12, color: 'var(--ink-2)' }}>{p.displayName}</span>
+                <span style={{ fontSize: 12, color: 'var(--ink)' }}>{special.formatPick(p.pick)}</span>
+                <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--ink-3)' }}>{fmtMoney(p.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Haven't bet yet */}
+        {allUsers.length > 0 && (() => {
+          const bettorIds = new Set(picks.map(p => p.user_id));
+          const notBet = allUsers.filter(u => !bettorIds.has(u.id));
+          if (notBet.length === 0) return null;
+          return (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>HAVEN'T BET YET ({notBet.length})</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {notBet.map(u => (
+                  <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: u.avatar_url ? `url(${u.avatar_url}) center/cover` : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: 'var(--ink-3)' }}>
+                      {!u.avatar_url && (u.display_name?.[0] || '?')}
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{u.display_name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    </div>
+  );
+}
+
 // Goalscorer expanded view: list of upcoming group-stage matches
 function GoalScorerMatchList({ matches, bets, onBet, onBack, gsSummary }) {
   const myGsBets = useMemo(() => {
@@ -611,6 +871,28 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       .catch(() => {});
 
 
+    // H2H data
+    fetch(`/api/special-bet?match_id=MESSI_V_RONALDO&kind=h2h${user?.id ? `&user_id=${user.id}` : ''}`)
+      .then(r => r.json())
+      .then(data => {
+        setPoolsData(prev => ({ ...prev, h2h: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, byTeam: data.pool?.byOption || {} } }));
+        setPicksData(prev => ({ ...prev, h2h: data.picks || [] }));
+        setMyBetsData(prev => ({ ...prev, h2h: data.myBets?.[0] || null }));
+      })
+      .catch(() => {});
+
+    // Golden Boot data
+    fetch(`/api/special-bet?match_id=GOLDEN_BOOT&kind=golden_boot${user?.id ? `&user_id=${user.id}` : ''}`)
+      .then(r => r.json())
+      .then(data => {
+        const byOpt = data.pool?.byOption || {};
+        const topPicks = Object.entries(byOpt).map(([pick, amount]) => ({ pick, amount })).sort((a, b) => b.amount - a.amount).slice(0, 5);
+        setPoolsData(prev => ({ ...prev, golden_boot: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, topPicks, byTeam: byOpt } }));
+        setPicksData(prev => ({ ...prev, golden_boot: data.picks || [] }));
+        setMyBetsData(prev => ({ ...prev, golden_boot: data.myBets || [] }));
+      })
+      .catch(() => {});
+
     // Goalscorer summary
     const gsUrl = user?.id
       ? `/api/goalscorer-bet?summary=true&user_id=${user.id}`
@@ -704,9 +986,85 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               special={special}
               poolData={contCardPool}
               onOpen={() => setExpanded(special.id)}
-              deadlineTs={null}
+              deadlineTs={special.deadlineTs ? new Date(special.deadlineTs).getTime() : null}
               myBet={contMyBet}
-              resolvesTs={special.id === 'continent' ? new Date('2026-07-19T19:00:00Z').getTime() : null}
+              resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
+            />
+          );
+        }
+
+        // H2H: expandable detail view
+        if (special.id === 'h2h') {
+          const h2hPool = poolsData.h2h;
+          const h2hMyBet = myBetsData.h2h || null;
+          const h2hPicks = picksData.h2h || [];
+          const topPicks = h2hPool?.byTeam
+            ? Object.entries(h2hPool.byTeam).map(([pick, amount]) => ({ pick, amount })).sort((a, b) => b.amount - a.amount)
+            : [];
+
+          if (isExpanded) {
+            return (
+              <H2HDetail
+                key={special.id}
+                special={special}
+                poolData={h2hPool}
+                picks={h2hPicks}
+                myBet={h2hMyBet}
+                user={user}
+                allUsers={allUsers}
+                onBack={() => setExpanded(null)}
+                onPlace={() => onOpenSpecialBet('h2h')}
+                onCancel={() => onOpenSpecialBet('h2h')}
+              />
+            );
+          }
+
+          return (
+            <SpecialCard
+              key={special.id}
+              special={special}
+              poolData={{ total: h2hPool?.total || 0, bettorCount: h2hPool?.bettorCount || 0, topPicks }}
+              onOpen={() => setExpanded(special.id)}
+              deadlineTs={new Date(special.deadlineTs).getTime()}
+              myBet={h2hMyBet}
+              resolvesTs={null}
+            />
+          );
+        }
+
+        // Golden Boot: expandable detail view
+        if (special.id === 'golden_boot') {
+          const gbPool = poolsData.golden_boot;
+          const gbMyBets = myBetsData.golden_boot || [];
+          const gbPicks = picksData.golden_boot || [];
+          const gbMyBet = gbMyBets.length > 0 ? { amount: gbMyBets.reduce((s, b) => s + b.amount, 0), pick: null } : null;
+
+          if (isExpanded) {
+            return (
+              <GoldenBootDetail
+                key={special.id}
+                special={special}
+                poolData={gbPool}
+                picks={gbPicks}
+                myBets={gbMyBets}
+                user={user}
+                allUsers={allUsers}
+                onBack={() => setExpanded(null)}
+                onPlace={() => onOpenSpecialBet('golden_boot')}
+                onCancel={() => onOpenSpecialBet('golden_boot')}
+              />
+            );
+          }
+
+          return (
+            <SpecialCard
+              key={special.id}
+              special={{ ...special, title: `Golden Boot${gbMyBets.length > 0 ? ` · ${gbMyBets.length} picks` : ''}` }}
+              poolData={{ total: gbPool?.total || 0, bettorCount: gbPool?.bettorCount || 0, topPicks: gbPool?.topPicks || [] }}
+              onOpen={() => setExpanded(special.id)}
+              deadlineTs={new Date(special.deadlineTs).getTime()}
+              myBet={gbMyBet}
+              resolvesTs={null}
             />
           );
         }
@@ -754,9 +1112,9 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
             special={special}
             poolData={cardPool}
             onOpen={() => setExpanded(special.id)}
-            deadlineTs={deadlines[special.id]}
+            deadlineTs={special.deadlineTs ? new Date(special.deadlineTs).getTime() : deadlines[special.id]}
             myBet={myBet}
-            resolvesTs={special.id === 'cup_winner' ? new Date('2026-07-19T19:00:00Z').getTime() : null}
+            resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
           />
         );
       })}

@@ -2,6 +2,7 @@
 
 import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, fmtCountdown, getMatchKickoffTs, MATCH_BET_CUTOFF_MS } from '@/lib/data';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
+import { getSpecial } from '@/lib/specials';
 import { useState, useEffect } from 'react';
 
 // ── Betting window ───────────────────────────────────────────
@@ -102,6 +103,8 @@ export function LiveDot({ minute }) {
 // ── Special Bet Notification ────────────────────────────────
 const NOTIFICATIONS = [
   { id: 'notif_continent', label: 'Winning Continent', specialTab: 'specials' },
+  { id: 'notif_h2h', label: '⚔️ Messi vs Ronaldo H2H — bet now!', specialTab: 'specials' },
+  { id: 'notif_golden_boot', label: '👟 Golden Boot Winner — multi-pick!', specialTab: 'specials' },
 ];
 
 export function SpecialNotification({ onNavigate }) {
@@ -784,23 +787,68 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs }) {
   // Called unconditionally (Rules of Hooks) before any early return.
   const bettingOpen = useBettingOpen(kickoffTs);
 
-  if (!isSpecial && !match) return null;
+  if (!isSpecial && !match) {
+    const pickLabel = bet.pick === 'home' ? 'Home' : bet.pick === 'away' ? 'Away' : bet.pick === 'draw' ? 'Draw' : bet.pick;
+    const canCancel = bet.status === 'pending' && onCancelBet;
+    return (
+      <div className="bet-card">
+        <div className="bet-card__head">
+          <span>Match bet</span>
+          <span className={'bet-card__status ' + bet.status}>{bet.status}</span>
+        </div>
+        <div className="bet-card__pick">
+          <span className="eyebrow">Pick</span>
+          <span style={{ fontWeight: 600, fontSize: 13 }}>{pickLabel}</span>
+        </div>
+        <div className="bet-card__amounts">
+          <div><span>Stake</span><span>{fmtMoney(bet.amount)}</span></div>
+          <div>
+            <span>{bet.status === 'won' ? 'Payout' : bet.status === 'lost' ? 'Lost' : 'Status'}</span>
+            <span className={bet.status === 'won' ? 'win' : bet.status === 'lost' ? 'loss' : 'gold'}>
+              {bet.status === 'won' ? fmtMoney(bet.payout) : bet.status === 'lost' ? '−' + fmtMoney(bet.amount) : 'Pending'}
+            </span>
+          </div>
+        </div>
+        {canCancel && (
+          <button
+            onClick={() => onCancelBet(matchId)}
+            style={{
+              width: '100%', marginTop: 10, padding: '9px 0',
+              background: 'rgba(231, 76, 60, 0.08)', border: '1px solid rgba(231, 76, 60, 0.25)',
+              borderRadius: 8, color: 'var(--loss)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            Cancel bet
+          </button>
+        )}
+      </div>
+    );
+  }
 
   if (isSpecial) {
-    const pickTeam = getTeam(bet.pick);
+    const specialDef = getSpecial(bet.kind);
+    const pickLabel = specialDef?.formatPick?.(bet.pick) || bet.pick;
+    const isTeamPick = specialDef?.optionType === 'team';
     const specialDeadlinePassed = cupWinnerDeadlineTs && Date.now() >= cupWinnerDeadlineTs;
     const canCancel = bet.status === 'pending' && onCancelBet && !specialDeadlinePassed;
     return (
       <div className="bet-card">
         <div className="bet-card__head">
-          <span style={{ color: 'var(--gold)' }}>⭐ Special · {bet.kind === 'cup_winner' ? 'Cup Winner' : bet.kind}</span>
+          <span style={{ color: 'var(--gold)' }}>⭐ Special · {
+            bet.kind === 'cup_winner' ? 'Cup Winner' :
+            bet.kind === 'continent' ? 'Winning Continent' :
+            bet.kind === 'h2h' ? 'Messi vs Ronaldo' :
+            bet.kind === 'golden_boot' ? 'Golden Boot' :
+            bet.kind === 'goalscorer' ? 'Goalscorer' :
+            bet.kind
+          }</span>
           <span className={'bet-card__status ' + bet.status}>{bet.status}</span>
         </div>
 
         <div className="row center" style={{ gap: 8, margin: '8px 0' }}>
-          {pickTeam && <Flag code={bet.pick} size="sm" />}
+          {isTeamPick && <Flag code={bet.pick} size="sm" />}
           <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)' }}>
-            {pickTeam?.name || bet.pick}
+            {pickLabel}
           </span>
         </div>
 

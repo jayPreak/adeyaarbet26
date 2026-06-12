@@ -1,9 +1,9 @@
 import { SPECIALS, getSpecial, getSpecialByMatchId, getConfederation, isSpecialBet, CONFEDERATION_OPTIONS } from '@/lib/specials';
 
 describe('SPECIALS registry', () => {
-  test('has all 3 specials defined', () => {
-    expect(SPECIALS).toHaveLength(3);
-    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'goalscorer']);
+  test('has all 5 specials defined', () => {
+    expect(SPECIALS).toHaveLength(5);
+    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'h2h', 'golden_boot', 'goalscorer']);
   });
 
   test('each special has required fields', () => {
@@ -30,6 +30,23 @@ describe('SPECIALS registry', () => {
     expect(cont.multiPick).toBe(false);
     expect(cont.options).toHaveLength(6);
     expect(cont.options.map(o => o.value)).toEqual(['UEFA', 'CONMEBOL', 'CONCACAF', 'CAF', 'AFC', 'OFC']);
+  });
+
+  test('h2h has 2 options (messi/ronaldo), single-pick', () => {
+    const h2h = getSpecial('h2h');
+    expect(h2h.multiPick).toBe(false);
+    expect(h2h.matchId).toBe('MESSI_V_RONALDO');
+    expect(h2h.options.map(o => o.value)).toEqual(['messi', 'ronaldo']);
+    expect(h2h.deadlineTs).toBeTruthy();
+    expect(h2h.resolutionRules.length).toBeGreaterThan(0);
+  });
+
+  test('golden_boot has 44 candidates, multi-pick', () => {
+    const gb = getSpecial('golden_boot');
+    expect(gb.multiPick).toBe(true);
+    expect(gb.matchId).toBe('GOLDEN_BOOT');
+    expect(gb.options.length).toBe(44);
+    expect(gb.options.every(o => o.value && o.label && o.country)).toBe(true);
   });
 });
 
@@ -83,6 +100,8 @@ describe('isSpecialBet', () => {
     expect(isSpecialBet({ kind: 'cup_winner' })).toBe(true);
     expect(isSpecialBet({ kind: 'goalscorer' })).toBe(true);
     expect(isSpecialBet({ kind: 'continent' })).toBe(true);
+    expect(isSpecialBet({ kind: 'h2h' })).toBe(true);
+    expect(isSpecialBet({ kind: 'golden_boot' })).toBe(true);
     expect(isSpecialBet({ kind: 'match' })).toBe(false);
   });
 });
@@ -99,5 +118,20 @@ describe('formatPick', () => {
     expect(cont.formatPick('UEFA')).toBe('Europe (UEFA)');
     expect(cont.formatPick('CONMEBOL')).toBe('South America (CONMEBOL)');
     expect(cont.formatPick('UNKNOWN')).toBe('UNKNOWN');
+  });
+
+  test('h2h formats player slugs', () => {
+    const h2h = getSpecial('h2h');
+    expect(h2h.formatPick('messi')).toContain('Messi');
+    expect(h2h.formatPick('ronaldo')).toContain('Ronaldo');
+    expect(h2h.formatPick('unknown')).toBe('unknown');
+  });
+
+  test('golden_boot formats player slugs to full names', () => {
+    const gb = getSpecial('golden_boot');
+    expect(gb.formatPick('kylian_mbappe')).toBe('Kylian Mbappe');
+    expect(gb.formatPick('lionel_messi')).toBe('Lionel Messi');
+    expect(gb.formatPick('harry_kane')).toBe('Harry Kane');
+    expect(gb.formatPick('nonexistent')).toBe('nonexistent');
   });
 });
