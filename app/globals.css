@@ -199,20 +199,36 @@ body {
 }
 .brand-name { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
 .brand-name em { font-style: normal; color: var(--gold); }
-.balance-pill {
-  display: flex; align-items: center; gap: 6px;
+.app-header__avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background-size: cover; background-position: center;
+  border: 1.5px solid var(--line);
+}
+.stats-bar {
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 16px 8px;
+  padding: 8px 0;
   background: var(--surface-2);
   border: 1px solid var(--line);
-  padding: 7px 12px 7px 10px;
-  border-radius: 999px;
+  border-radius: 10px;
+  cursor: pointer;
 }
-.balance-pill__icon {
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--gold-soft); color: var(--gold);
-  display: grid; place-items: center;
-  font-size: 11px; font-weight: 800;
+.stats-bar__cell {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
 }
-.balance-pill__amt { font-family: var(--font-mono); font-weight: 600; font-size: 13px; }
+.stats-bar__label {
+  font-size: 10px; font-weight: 600; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.stats-bar__value {
+  font-family: var(--font-mono); font-weight: 700; font-size: 14px; color: var(--ink);
+}
+.stats-bar__value.positive { color: var(--win); }
+.stats-bar__value.negative { color: var(--hot); }
+.stats-bar__divider {
+  width: 1px; height: 28px; background: var(--line);
+}
 
 /* ── Tab bar ───────────────────────────────────────────────── */
 .tabbar {

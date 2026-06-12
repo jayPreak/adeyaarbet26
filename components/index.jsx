@@ -193,26 +193,39 @@ export function NewsTicker({ matches = [], bets = [], user }) {
 }
 
 // ── App Header ───────────────────────────────────────────────
-export function AppHeader({ balance, onTap, user, betsLoaded }) {
+export function AppHeader({ balance, realisedBalance, onTap, user, betsLoaded }) {
   return (
-    <div className="app-header">
-      <div className="app-header__brand">
-        <div className="brand-mark">A</div>
-        <div className="brand-name">AdeYaar <em>26</em></div>
+    <>
+      <div className="app-header">
+        <div className="app-header__brand">
+          <div className="brand-mark">A</div>
+          <div className="brand-name">AdeYaar <em>26</em></div>
+        </div>
+        <div className="app-header__right">
+          {user && <span className="app-header__user">{user.display_name || user.username}</span>}
+          {user?.avatar_url && (
+            <div className="app-header__avatar" style={{ backgroundImage: `url(${user.avatar_url})` }} />
+          )}
+        </div>
       </div>
-      <div className="app-header__right">
-        {user && <span className="app-header__user">{user.display_name || user.username}</span>}
-        <button className="balance-pill" onClick={onTap}>
-          <div className="balance-pill__icon" style={user?.avatar_url ? { backgroundImage: `url(${user.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center', fontSize: 0 } : undefined}>
-            {!user?.avatar_url && (user?.display_name?.[0] || '₹')}
-          </div>
+      <button className="stats-bar" onClick={onTap}>
+        <div className="stats-bar__cell">
+          <span className="stats-bar__label">Realised P&L</span>
           {betsLoaded === false
-            ? <span className="balance-pill__amt skeleton-text" style={{ width: 48 }}>&nbsp;</span>
-            : <span className="balance-pill__amt">{fmtNet(balance)}</span>
+            ? <span className="stats-bar__value skeleton-text" style={{ width: 48 }}>&nbsp;</span>
+            : <span className={`stats-bar__value ${realisedBalance >= 0 ? 'positive' : 'negative'}`}>{fmtNet(realisedBalance ?? 0)}</span>
           }
-        </button>
-      </div>
-    </div>
+        </div>
+        <div className="stats-bar__divider" />
+        <div className="stats-bar__cell">
+          <span className="stats-bar__label">Net Position</span>
+          {betsLoaded === false
+            ? <span className="stats-bar__value skeleton-text" style={{ width: 48 }}>&nbsp;</span>
+            : <span className={`stats-bar__value ${balance >= 0 ? 'positive' : 'negative'}`}>{fmtNet(balance)}</span>
+          }
+        </div>
+      </button>
+    </>
   );
 }
 
