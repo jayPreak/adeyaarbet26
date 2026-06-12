@@ -1,0 +1,129 @@
+import { SPECIALS, getSpecial, getSpecialByMatchId, getConfederation, isSpecialBet, HALFTIME_PERFORMERS, CONFEDERATION_OPTIONS } from '@/lib/specials';
+
+describe('SPECIALS registry', () => {
+  test('has all 4 specials defined', () => {
+    expect(SPECIALS).toHaveLength(4);
+    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'goalscorer', 'continent', 'halftime']);
+  });
+
+  test('each special has required fields', () => {
+    for (const s of SPECIALS) {
+      expect(s.id).toBeTruthy();
+      expect(s.title).toBeTruthy();
+      expect(s.description).toBeTruthy();
+      expect(s.emoji).toBeTruthy();
+      expect(typeof s.multiPick).toBe('boolean');
+      expect(typeof s.formatPick).toBe('function');
+    }
+  });
+
+  test('cup_winner is single-pick', () => {
+    const cw = getSpecial('cup_winner');
+    expect(cw.multiPick).toBe(false);
+    expect(cw.matchId).toBe('CUP_WINNER');
+    expect(cw.options.length).toBeGreaterThan(40);
+  });
+
+  test('halftime is multi-pick', () => {
+    const ht = getSpecial('halftime');
+    expect(ht.multiPick).toBe(true);
+    expect(ht.options).toHaveLength(30);
+    expect(ht.disclaimer).toContain('Any appearance on stage counts');
+  });
+
+  test('continent has 6 confederations', () => {
+    const cont = getSpecial('continent');
+    expect(cont.multiPick).toBe(false);
+    expect(cont.options).toHaveLength(6);
+    expect(cont.options.map(o => o.value)).toEqual(['UEFA', 'CONMEBOL', 'CONCACAF', 'CAF', 'AFC', 'OFC']);
+  });
+});
+
+describe('getSpecial / getSpecialByMatchId', () => {
+  test('getSpecial returns correct special', () => {
+    expect(getSpecial('cup_winner').id).toBe('cup_winner');
+    expect(getSpecial('nonexistent')).toBeNull();
+  });
+
+  test('getSpecialByMatchId finds by matchId', () => {
+    expect(getSpecialByMatchId('CUP_WINNER').id).toBe('cup_winner');
+    expect(getSpecialByMatchId('CONTINENT').id).toBe('continent');
+    expect(getSpecialByMatchId('UNKNOWN')).toBeNull();
+  });
+});
+
+describe('getConfederation', () => {
+  test('maps major teams to correct confederation', () => {
+    expect(getConfederation('BRA')).toBe('CONMEBOL');
+    expect(getConfederation('GER')).toBe('UEFA');
+    expect(getConfederation('MEX')).toBe('CONCACAF');
+    expect(getConfederation('NGA')).toBe('CAF');
+    expect(getConfederation('JPN')).toBe('AFC');
+    expect(getConfederation('NZL')).toBe('OFC');
+  });
+
+  test('returns null for unknown team', () => {
+    expect(getConfederation('XXX')).toBeNull();
+  });
+});
+
+describe('HALFTIME_PERFORMERS', () => {
+  test('has 30 performers', () => {
+    expect(HALFTIME_PERFORMERS).toHaveLength(30);
+  });
+
+  test('includes key artists', () => {
+    expect(HALFTIME_PERFORMERS).toContain('Shakira');
+    expect(HALFTIME_PERFORMERS).toContain('Coldplay');
+    expect(HALFTIME_PERFORMERS).toContain('Bad Bunny');
+    expect(HALFTIME_PERFORMERS).toContain('Beyoncé');
+  });
+
+  test('halftime formatPick resolves slug back to name', () => {
+    const ht = getSpecial('halftime');
+    expect(ht.formatPick('shakira')).toBe('Shakira');
+    expect(ht.formatPick('bad_bunny')).toBe('Bad Bunny');
+    expect(ht.formatPick('beyonc_')).toBe('Beyoncé');
+  });
+});
+
+describe('CONFEDERATION_OPTIONS', () => {
+  test('each confederation has teams', () => {
+    for (const conf of CONFEDERATION_OPTIONS) {
+      expect(conf.value).toBeTruthy();
+      expect(conf.label).toBeTruthy();
+      expect(conf.teams.length).toBeGreaterThan(0);
+    }
+  });
+
+  test('no team appears in two confederations', () => {
+    const allTeams = CONFEDERATION_OPTIONS.flatMap(c => c.teams);
+    const unique = new Set(allTeams);
+    expect(unique.size).toBe(allTeams.length);
+  });
+});
+
+describe('isSpecialBet', () => {
+  test('identifies special bets correctly', () => {
+    expect(isSpecialBet({ kind: 'cup_winner' })).toBe(true);
+    expect(isSpecialBet({ kind: 'goalscorer' })).toBe(true);
+    expect(isSpecialBet({ kind: 'continent' })).toBe(true);
+    expect(isSpecialBet({ kind: 'halftime' })).toBe(true);
+    expect(isSpecialBet({ kind: 'match' })).toBe(false);
+  });
+});
+
+describe('formatPick', () => {
+  test('cup_winner formats team code to name', () => {
+    const cw = getSpecial('cup_winner');
+    expect(cw.formatPick('BRA')).toBe('Brazil');
+    expect(cw.formatPick('ARG')).toBe('Argentina');
+  });
+
+  test('continent formats confederation code to label', () => {
+    const cont = getSpecial('continent');
+    expect(cont.formatPick('UEFA')).toBe('Europe (UEFA)');
+    expect(cont.formatPick('CONMEBOL')).toBe('South America (CONMEBOL)');
+    expect(cont.formatPick('UNKNOWN')).toBe('UNKNOWN');
+  });
+});
