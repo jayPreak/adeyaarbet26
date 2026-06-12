@@ -1,9 +1,9 @@
-import { SPECIALS, getSpecial, getSpecialByMatchId, getConfederation, isSpecialBet, HALFTIME_PERFORMERS, CONFEDERATION_OPTIONS } from '@/lib/specials';
+import { SPECIALS, getSpecial, getSpecialByMatchId, getConfederation, isSpecialBet, CONFEDERATION_OPTIONS } from '@/lib/specials';
 
 describe('SPECIALS registry', () => {
-  test('has all 4 specials defined', () => {
-    expect(SPECIALS).toHaveLength(4);
-    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'halftime', 'goalscorer']);
+  test('has all 3 specials defined', () => {
+    expect(SPECIALS).toHaveLength(3);
+    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'goalscorer']);
   });
 
   test('each special has required fields', () => {
@@ -24,12 +24,6 @@ describe('SPECIALS registry', () => {
     expect(cw.options.length).toBeGreaterThan(40);
   });
 
-  test('halftime is multi-pick', () => {
-    const ht = getSpecial('halftime');
-    expect(ht.multiPick).toBe(true);
-    expect(ht.options).toHaveLength(30);
-    expect(ht.disclaimer).toContain('MAIN performers');
-  });
 
   test('continent has 6 confederations', () => {
     const cont = getSpecial('continent');
@@ -67,25 +61,6 @@ describe('getConfederation', () => {
   });
 });
 
-describe('HALFTIME_PERFORMERS', () => {
-  test('has 30 performers', () => {
-    expect(HALFTIME_PERFORMERS).toHaveLength(30);
-  });
-
-  test('includes key artists', () => {
-    expect(HALFTIME_PERFORMERS).toContain('Shakira');
-    expect(HALFTIME_PERFORMERS).toContain('Coldplay');
-    expect(HALFTIME_PERFORMERS).toContain('Bad Bunny');
-    expect(HALFTIME_PERFORMERS).toContain('Beyoncé');
-  });
-
-  test('halftime formatPick resolves slug back to name', () => {
-    const ht = getSpecial('halftime');
-    expect(ht.formatPick('shakira')).toBe('Shakira');
-    expect(ht.formatPick('bad_bunny')).toBe('Bad Bunny');
-    expect(ht.formatPick('beyonc_')).toBe('Beyoncé');
-  });
-});
 
 describe('CONFEDERATION_OPTIONS', () => {
   test('each confederation has teams', () => {
@@ -108,7 +83,6 @@ describe('isSpecialBet', () => {
     expect(isSpecialBet({ kind: 'cup_winner' })).toBe(true);
     expect(isSpecialBet({ kind: 'goalscorer' })).toBe(true);
     expect(isSpecialBet({ kind: 'continent' })).toBe(true);
-    expect(isSpecialBet({ kind: 'halftime' })).toBe(true);
     expect(isSpecialBet({ kind: 'match' })).toBe(false);
   });
 });

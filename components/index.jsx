@@ -102,7 +102,6 @@ export function LiveDot({ minute }) {
 // ── Special Bet Notification ────────────────────────────────
 const NOTIFICATIONS = [
   { id: 'notif_continent', label: 'Winning Continent', specialTab: 'specials' },
-  { id: 'notif_halftime', label: 'Halftime Show Performer', specialTab: 'specials' },
 ];
 
 export function SpecialNotification({ onNavigate }) {

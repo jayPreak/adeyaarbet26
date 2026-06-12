@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { SPECIALS, getSpecial, HALFTIME_PERFORMERS } from '@/lib/specials';
+import { SPECIALS, getSpecial } from '@/lib/specials';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
 import { Flag } from '@/components';
 import { isMatchBettingOpen } from '@/lib/data';
@@ -493,156 +493,6 @@ function ContinentDetail({ special, poolData, picks, myBet, user, allUsers, onBa
   );
 }
 
-// Halftime show expanded view
-function HalftimeDetail({ special, poolData, myBets, user, onBack, onPlace }) {
-  const [expandedPerformer, setExpandedPerformer] = useState(null);
-  const performers = HALFTIME_PERFORMERS;
-  const totalPool = poolData?.totalPool || 0;
-  const totalBettors = poolData?.totalBettors || 0;
-  const totalBets = poolData?.totalBets || 0;
-  const performerData = poolData?.performers || {};
-
-  const myBetSet = useMemo(() => {
-    const map = {};
-    for (const b of (myBets || [])) {
-      map[b.performer || b.match_id || b.matchId] = b;
-    }
-    return map;
-  }, [myBets]);
-
-  const myBetCount = Object.keys(myBetSet).length;
-
-  return (
-    <div>
-      <div style={{ margin: '0 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--ink-2)', fontSize: 14, cursor: 'pointer', padding: '6px 10px', borderRadius: 8, fontWeight: 600 }}>← Back</button>
-        <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>🎤 Halftime Show</span>
-      </div>
-
-      <div style={{ padding: '0 16px' }}>
-        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 12, padding: '8px 12px', background: 'rgba(255,200,0,0.06)', borderRadius: 8, border: '1px solid rgba(255,200,0,0.15)' }}>
-          ⚠️ {special.disclaimer}
-        </div>
-
-        <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>TOTAL POOL</div>
-            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{fmtMoney(totalPool)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>YOUR BETS</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>{myBetCount}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>TOTAL BETS</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>{totalBets}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>PLAYERS</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>{totalBettors}</div>
-          </div>
-        </div>
-
-        <button
-          onClick={() => onPlace()}
-          style={{ width: '100%', padding: '14px', marginBottom: 16, borderRadius: 12, background: 'var(--gold)', color: '#0a0a0a', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-        >
-          {myBetCount > 0 ? 'Add / Change bets' : 'Place bets'}
-        </button>
-
-        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>PERFORMERS ({performers.length})</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {[...performers].sort((a, b) => {
-            const aKey = `HT_${a.toLowerCase().replace(/[^a-z0-9]/g, '_').toUpperCase()}`;
-            const bKey = `HT_${b.toLowerCase().replace(/[^a-z0-9]/g, '_').toUpperCase()}`;
-            const aTotal = performerData[aKey]?.total || 0;
-            const bTotal = performerData[bKey]?.total || 0;
-            if (bTotal !== aTotal) return bTotal - aTotal;
-            return a.localeCompare(b);
-          }).map(name => {
-            const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-            const poolKey = `HT_${slug.toUpperCase()}`;
-            const pData = performerData[poolKey];
-            const hasBet = !!myBetSet[poolKey] || !!myBetSet[name];
-            const isOpen = expandedPerformer === name;
-            const picks = pData?.picks || [];
-            const poolTotal = pData?.total || 0;
-
-            return (
-              <div key={name}>
-                <div
-                  onClick={() => setExpandedPerformer(isOpen ? null : name)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '10px 12px', borderRadius: isOpen ? '10px 10px 0 0' : 10, cursor: 'pointer',
-                    background: hasBet ? 'rgba(0,255,133,0.06)' : 'rgba(255,255,255,0.04)',
-                    border: hasBet ? '1px solid rgba(0,255,133,0.15)' : '1px solid rgba(255,255,255,0.08)',
-                  }}
-                >
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: hasBet ? 'var(--gold)' : 'var(--ink)' }}>{name}</span>
-                  {hasBet && <span style={{ fontSize: 10, color: 'var(--gold)' }}>✓</span>}
-                  {poolTotal > 0 && (
-                    <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--ink-3)' }}>{fmtMoney(poolTotal)}</span>
-                  )}
-                  <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{isOpen ? '▲' : '▼'}</span>
-                </div>
-                {isOpen && (
-                  <div style={{
-                    padding: '8px 12px 10px', borderRadius: '0 0 10px 10px',
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.06)', borderTop: 'none',
-                  }}>
-                    {picks.length === 0 ? (
-                      <div style={{ fontSize: 11, color: 'var(--ink-3)', padding: '8px 0' }}>No bets yet</div>
-                    ) : (
-                      <>
-                        <div style={{ display: 'flex', padding: '4px 0 6px', borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 4 }}>
-                          <span style={{ flex: 1, fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>USER</span>
-                          <span style={{ width: 40, fontSize: 10, color: 'var(--ink-3)', fontWeight: 600, textAlign: 'center' }}>PICK</span>
-                          <span style={{ width: 60, fontSize: 10, color: 'var(--ink-3)', fontWeight: 600, textAlign: 'right' }}>STAKE</span>
-                          <span style={{ width: 70, fontSize: 10, color: 'var(--ink-3)', fontWeight: 600, textAlign: 'right' }}>WIN IF ✓</span>
-                        </div>
-                        {picks.map((p, i) => {
-                          const sidePool = pData?.byOption?.[p.pick] || 0;
-                          const potentialWin = sidePool > 0 ? Math.floor((p.amount / sidePool) * poolTotal) : 0;
-                          const roi = p.amount > 0 && potentialWin > 0 ? Math.round(((potentialWin - p.amount) / p.amount) * 100) : 0;
-                          return (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '5px 0' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                <div style={{ width: 18, height: 18, borderRadius: '50%', background: p.avatarUrl ? `url(${p.avatarUrl}) center/cover` : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: 'var(--ink-3)' }}>
-                                  {!p.avatarUrl && (p.displayName?.[0] || '?')}
-                                </div>
-                                <span style={{ fontSize: 11, color: 'var(--ink-2)' }}>{p.displayName}</span>
-                              </div>
-                              <span style={{ width: 40, fontSize: 11, fontWeight: 600, textAlign: 'center', color: p.pick === 'yes' ? 'var(--win)' : 'var(--loss)' }}>
-                                {p.pick === 'yes' ? 'YES' : 'NO'}
-                              </span>
-                              <span style={{ width: 60, fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)', textAlign: 'right' }}>{fmtMoney(p.amount)}</span>
-                              <span style={{ width: 70, fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--win)', textAlign: 'right' }}>
-                                {fmtMoney(potentialWin)} <span style={{ fontSize: 9, opacity: 0.7 }}>+{roi}%</span>
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </>
-                    )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onPlace(name); }}
-                      style={{ marginTop: 8, width: '100%', padding: '8px', borderRadius: 8, background: 'var(--gold)', color: '#0a0a0a', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      {hasBet ? 'Change bet' : 'Place bet'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // Goalscorer expanded view: list of upcoming group-stage matches
 function GoalScorerMatchList({ matches, bets, onBet, onBack, gsSummary }) {
   const myGsBets = useMemo(() => {
@@ -760,15 +610,6 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       })
       .catch(() => {});
 
-    // Halftime summary (fetch all performer pools)
-    fetch(`/api/special-bet?match_id=HT_ALL&kind=halftime${user?.id ? `&user_id=${user.id}` : ''}&summary=true`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.performers) {
-          setPoolsData(prev => ({ ...prev, halftime: data }));
-        }
-      })
-      .catch(() => {});
 
     // Goalscorer summary
     const gsUrl = user?.id
@@ -866,44 +707,6 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               deadlineTs={null}
               myBet={contMyBet}
               resolvesTs={special.id === 'continent' ? new Date('2026-07-19T19:00:00Z').getTime() : null}
-            />
-          );
-        }
-
-        // Halftime: expandable detail view
-        if (special.id === 'halftime') {
-          const htData = poolsData.halftime || {};
-          const htMyBets = bets.filter(b => b.kind === 'halftime' && b.status === 'pending');
-          const htCardPool = {
-            total: htData.totalPool || 0,
-            bettorCount: htData.totalBettors || 0,
-            topPicks: [],
-          };
-
-          if (isExpanded) {
-            return (
-              <HalftimeDetail
-                key={special.id}
-                special={special}
-                poolData={htData}
-                myBets={htMyBets}
-                user={user}
-                onBack={() => setExpanded(null)}
-                onPlace={(performer) => onOpenSpecialBet('halftime', { performer })}
-              />
-            );
-          }
-
-          const htMyBet = htMyBets.length > 0 ? { amount: htMyBets.reduce((s, b) => s + b.amount, 0), pick: null } : null;
-          return (
-            <SpecialCard
-              key={special.id}
-              special={{ ...special, title: `Halftime Show${htMyBets.length > 0 ? ` · ${htMyBets.length} bets` : ''}` }}
-              poolData={htCardPool}
-              onOpen={() => setExpanded(special.id)}
-              deadlineTs={null}
-              myBet={htMyBet}
-              resolvesTs={special.resolvesTs || null}
             />
           );
         }

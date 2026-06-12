@@ -11,7 +11,6 @@ import FixturesScreen from '@/components/screens/FixturesScreen';
 import CupWinnerBetModal from '@/components/CupWinnerBetModal';
 import GoalScorerBetModal from '@/components/GoalScorerBetModal';
 import ContinentBetModal from '@/components/ContinentBetModal';
-import HalftimeBetModal from '@/components/HalftimeBetModal';
 import SpecialsScreen from '@/components/screens/SpecialsScreen';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
 
@@ -87,8 +86,6 @@ export default function AdeYaarApp() {
   const [goalScorerOpen, setGoalScorerOpen] = useState(false);
   const [goalScorerMatchId, setGoalScorerMatchId] = useState(null);
   const [continentOpen, setContinentOpen] = useState(false);
-  const [halftimeOpen, setHalftimeOpen] = useState(false);
-  const [halftimePerformer, setHalftimePerformer] = useState(null);
   const [poolMap, setPoolMap] = useState({});
 
   const balance = computeBalance(bets);
@@ -274,9 +271,6 @@ export default function AdeYaarApp() {
                       setGoalScorerOpen(true);
                     } else if (id === 'continent') {
                       setContinentOpen(true);
-                    } else if (id === 'halftime') {
-                      setHalftimePerformer(ctx?.performer || null);
-                      setHalftimeOpen(true);
                     } else {
                       setCupWinnerOpen(true);
                     }
@@ -337,15 +331,6 @@ export default function AdeYaarApp() {
         />
       </div>
 
-      <div data-theme={theme}>
-        <HalftimeBetModal
-          open={halftimeOpen}
-          onClose={() => { setHalftimeOpen(false); setHalftimePerformer(null); }}
-          user={user}
-          onPlaced={() => { refreshData(); }}
-          initialPerformer={halftimePerformer}
-        />
-      </div>
     </div>
   );
 }

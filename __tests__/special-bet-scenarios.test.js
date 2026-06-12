@@ -119,7 +119,7 @@ describe('Continent bet — single-pick scenarios', () => {
   });
 });
 
-describe('Halftime bet — multi-pick scenarios', () => {
+describe('Multi-pick bet scenarios (YES/NO pools)', () => {
   let db;
   beforeEach(() => { db = []; });
 
