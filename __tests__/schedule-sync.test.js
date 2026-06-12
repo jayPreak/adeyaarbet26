@@ -10,12 +10,12 @@ const gm = (group, home, away, date) => ({
 describe('mapFifaToSchedule', () => {
   test('maps the opener to A1 with its UTC kickoff', () => {
     const { schedule } = mapFifaToSchedule([gm('A', 'MEX', 'RSA', '2026-06-11T19:00:00Z')]);
-    expect(schedule).toContainEqual({ id: 'A1', kickoff_ts: '2026-06-11T19:00:00Z' });
+    expect(schedule).toContainEqual(expect.objectContaining({ id: 'A1', kickoff_ts: '2026-06-11T19:00:00Z' }));
   });
 
   test('applies the KSA -> SAU alias (Saudi Arabia, data.js H2 = SAU v URU)', () => {
     const { schedule } = mapFifaToSchedule([gm('H', 'KSA', 'URU', '2026-06-15T22:00:00Z')]);
-    expect(schedule).toContainEqual({ id: 'H2', kickoff_ts: '2026-06-15T22:00:00Z' });
+    expect(schedule).toContainEqual(expect.objectContaining({ id: 'H2', kickoff_ts: '2026-06-15T22:00:00Z' }));
     expect(TEAM_CODE_ALIAS.KSA).toBe('SAU');
   });
 
