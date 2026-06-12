@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { SPECIALS, getSpecial } from '@/lib/specials';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
 import { Flag } from '@/components';
+import { isMatchBettingOpen } from '@/lib/data';
 
 function useDeadlineCountdown(deadlineTs) {
   const [now, setNow] = useState(Date.now());
@@ -347,25 +348,121 @@ function ExpandedSpecial({ special, pool, picks, myBet, user, allUsers, deadline
   );
 }
 
-export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allUsers = [] }) {
+// Goalscorer expanded view: list of upcoming group-stage matches
+function GoalScorerMatchList({ matches, bets, onBet, onBack, gsSummary }) {
+  const myGsBets = useMemo(() => {
+    const map = {};
+    for (const b of bets) {
+      if (b.kind === 'goalscorer' && b.status === 'pending') map[b.match_id] = b;
+    }
+    return map;
+  }, [bets]);
+
+  // Only show matches where betting is still open or has a pending bet
+  const upcoming = useMemo(() =>
+    (matches || []).filter(m => isMatchBettingOpen(m) || myGsBets[m.id]),
+    [matches, myGsBets]
+  );
+
+  const total      = gsSummary?.total      || 0;
+  const bettorCount = gsSummary?.bettorCount || 0;
+
+  return (
+    <div>
+      <div style={{ margin: '0 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--ink-3)', fontSize: 18, cursor: 'pointer', padding: 0 }}>←</button>
+        <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>⚽ Anytime Goalscorer</span>
+      </div>
+
+      {total > 0 && (
+        <div style={{ margin: '0 16px 12px', display: 'flex', gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>TOTAL POOL</div>
+            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{fmtMoney(total)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>BETTORS</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>{bettorCount}</div>
+          </div>
+        </div>
+      )}
+
+      {upcoming.length === 0 ? (
+        <div style={{ margin: '0 16px', color: 'var(--ink-3)', fontSize: 13, textAlign: 'center', padding: '32px 0' }}>
+          No upcoming matches open for goalscorer bets
+        </div>
+      ) : (
+        <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {upcoming.map(m => {
+            const myBet = myGsBets[m.id];
+            return (
+              <div key={m.id} style={{
+                padding: '12px 14px', borderRadius: 12,
+                background: myBet ? 'rgba(74,222,128,0.06)' : 'rgba(255,255,255,0.04)',
+                border: myBet ? '1px solid rgba(74,222,128,0.15)' : '1px solid rgba(255,255,255,0.08)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Flag code={m.home} size="sm" />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>{m.home}</span>
+                  <span style={{ fontSize: 11, color: 'var(--ink-3)', margin: '0 2px' }}>vs</span>
+                  <Flag code={m.away} size="sm" />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>{m.away}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>{m.id}</span>
+                </div>
+                {myBet && (
+                  <div style={{ fontSize: 11, color: 'var(--win)', marginBottom: 8 }}>
+                    Your pick: player #{myBet.pick} · {fmtMoney(myBet.amount)} staked
+                  </div>
+                )}
+                <button
+                  onClick={() => onBet(m.id)}
+                  style={{
+                    width: '100%', padding: '8px', borderRadius: 8,
+                    background: myBet ? 'transparent' : 'var(--gold)',
+                    color: myBet ? 'var(--ink-2)' : '#0a0a0a',
+                    border: myBet ? '1px solid rgba(255,255,255,0.12)' : 'none',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  {myBet ? 'Change pick' : 'Place goalscorer bet'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allUsers = [], matches = [] }) {
   const [poolsData, setPoolsData] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [picksData, setPicksData] = useState({});
   const [deadlines, setDeadlines] = useState({});
   const [myBetsData, setMyBetsData] = useState({});
+  const [gsSummary, setGsSummary] = useState(null);
 
   useEffect(() => {
-    for (const s of SPECIALS) {
-      fetch(`/api/cup-winner-bet?user_id=${user?.id || ''}`)
-        .then(r => r.json())
-        .then(data => {
-          setPoolsData(prev => ({ ...prev, [s.id]: data.pool }));
-          setPicksData(prev => ({ ...prev, [s.id]: data.picks || [] }));
-          setMyBetsData(prev => ({ ...prev, [s.id]: data.myBet || null }));
-          if (data.deadlineTs) setDeadlines(prev => ({ ...prev, [s.id]: data.deadlineTs }));
-        })
-        .catch(() => {});
-    }
+    // Cup-winner data
+    fetch(`/api/cup-winner-bet?user_id=${user?.id || ''}`)
+      .then(r => r.json())
+      .then(data => {
+        setPoolsData(prev => ({ ...prev, cup_winner: data.pool }));
+        setPicksData(prev => ({ ...prev, cup_winner: data.picks || [] }));
+        setMyBetsData(prev => ({ ...prev, cup_winner: data.myBet || null }));
+        if (data.deadlineTs) setDeadlines(prev => ({ ...prev, cup_winner: data.deadlineTs }));
+      })
+      .catch(() => {});
+
+    // Goalscorer summary
+    const gsUrl = user?.id
+      ? `/api/goalscorer-bet?summary=true&user_id=${user.id}`
+      : '/api/goalscorer-bet?summary=true';
+    fetch(gsUrl)
+      .then(r => r.json())
+      .then(data => { if (!data.error) setGsSummary(data); })
+      .catch(() => {});
   }, [user, bets]);
 
   return (
@@ -375,10 +472,43 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       </div>
 
       {SPECIALS.map(special => {
+        const isExpanded = expanded === special.id;
+
+        // Goalscorer: custom expanded view (match list) + aggregate card stats
+        if (special.id === 'goalscorer') {
+          const myGsCount = bets.filter(b => b.kind === 'goalscorer' && b.status === 'pending').length;
+          const gsCardPool = {
+            total: gsSummary?.total || 0,
+            bettorCount: gsSummary?.bettorCount || 0,
+            topPicks: [],
+          };
+          if (isExpanded) {
+            return (
+              <GoalScorerMatchList
+                key={special.id}
+                matches={matches}
+                bets={bets}
+                gsSummary={gsSummary}
+                onBet={(matchId) => onOpenSpecialBet('goalscorer', { matchId })}
+                onBack={() => setExpanded(null)}
+              />
+            );
+          }
+          return (
+            <SpecialCard
+              key={special.id}
+              special={{ ...special, formatPick: () => '', title: `Anytime Goalscorer${myGsCount > 0 ? ` · ${myGsCount} active` : ''}` }}
+              poolData={gsCardPool}
+              onOpen={() => setExpanded(special.id)}
+              deadlineTs={null}
+            />
+          );
+        }
+
+        // Default (cup_winner)
         const pool = poolsData[special.id];
         const picks = picksData[special.id] || [];
         const myBet = myBetsData[special.id] || null;
-        const isExpanded = expanded === special.id;
 
         const topPicks = pool?.byTeam
           ? Object.entries(pool.byTeam)
