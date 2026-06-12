@@ -24,130 +24,93 @@ function useDeadlineCountdown(deadlineTs) {
   return `${m}m left`;
 }
 
-function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs }) {
+function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs, highlight }) {
   const total = poolData?.total || 0;
-  const bettorCount = poolData?.bettorCount || 0;
-  const topPicks = poolData?.topPicks || [];
   const countdown = useDeadlineCountdown(deadlineTs);
   const resolvesIn = useDeadlineCountdown(resolvesTs);
+
+  const canComputeWin = myBet?.pick && total > 0 && poolData?.byTeam?.[myBet.pick];
+  const myPool = canComputeWin ? poolData.byTeam[myBet.pick] : 0;
+  const potentialWin = canComputeWin ? Math.floor((myBet.amount / myPool) * total) : 0;
+  const roi = canComputeWin && myBet.amount > 0 ? Math.round(((potentialWin - myBet.amount) / myBet.amount) * 100) : 0;
 
   return (
     <div
       onClick={onOpen}
       style={{
-        margin: '0 16px 20px',
-        padding: '18px 20px 24px',
+        padding: '14px 16px',
         borderRadius: 14,
         background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.1)',
         cursor: 'pointer',
-        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        gap: 10,
+        minHeight: 160,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>
+      {/* Top section */}
+      <div>
+        {/* Title row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4, marginBottom: 6 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.3 }}>
             {special.emoji} {special.title}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
-            {special.description}
-          </div>
+          <span style={{
+            fontSize: 8, fontWeight: 700, padding: '2px 5px', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0,
+            background: special.multiPick ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.04)',
+            color: special.multiPick ? 'var(--gold)' : 'var(--ink-3)',
+            border: special.multiPick ? '1px solid rgba(255,215,0,0.15)' : '1px solid var(--line)',
+          }}>
+            {special.multiPick ? 'Multi' : 'Single'}
+          </span>
         </div>
-        {special.multiPick ? (
-          <span style={{ fontSize: 9, fontWeight: 700, padding: '3px 7px', borderRadius: 5, background: 'rgba(0,255,133,0.08)', color: 'var(--gold)', border: '1px solid rgba(0,255,133,0.15)' }}>Multi-bet</span>
-        ) : (
-          <span style={{ fontSize: 9, fontWeight: 700, padding: '3px 7px', borderRadius: 5, background: 'rgba(255,255,255,0.04)', color: 'var(--ink-3)', border: '1px solid var(--line)' }}>Single pick</span>
+
+        {/* Highlight: one unique data point per card */}
+        {highlight && (
+          <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 2 }}>
+            {highlight}
+          </div>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>POOL</div>
-          <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>
-            {fmtMoney(total)}
-          </div>
+      {/* Stats rows — labeled key/value pairs */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>Pool</span>
+          <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{fmtMoney(total)}</span>
         </div>
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>BETTORS</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>
-            {bettorCount}
+        {myBet && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>Your Stake</span>
+            <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>{fmtMoney(myBet.amount)}</span>
           </div>
-        </div>
+        )}
+        {canComputeWin && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>Potential Win</span>
+            <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>{fmtMoney(potentialWin)} <span style={{ fontSize: 10, opacity: 0.8 }}>+{roi}%</span></span>
+          </div>
+        )}
       </div>
 
-      {topPicks.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {topPicks.slice(0, 5).map(p => (
-            <div key={p.pick} style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              padding: '4px 8px', borderRadius: 8,
-              background: 'rgba(255,255,255,0.06)',
-              fontSize: 11, color: 'var(--ink-2)',
-            }}>
-              {special.optionType === 'team' && <Flag code={p.pick} size="xs" />}
-              <span>{special.formatPick(p.pick)}</span>
-              <span style={{ color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>{fmtMoney(p.amount)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Your stake / potential win */}
-      {myBet && (() => {
-        const canComputeWin = myBet.pick && total > 0 && poolData?.byTeam?.[myBet.pick];
-        const myPool = canComputeWin ? poolData.byTeam[myBet.pick] : 0;
-        const potentialWin = canComputeWin ? Math.floor((myBet.amount / myPool) * total) : 0;
-        const roi = canComputeWin && myBet.amount > 0 ? Math.round(((potentialWin - myBet.amount) / myBet.amount) * 100) : 0;
-        return (
-          <div style={{
-            marginTop: 12, padding: '10px 12px', borderRadius: 10,
-            background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.12)',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          }}>
-            <div>
-              <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>YOUR STAKE</div>
-              <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>
-                {fmtMoney(myBet.amount)}
-              </div>
-            </div>
-            {canComputeWin && (
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>POTENTIAL WIN</div>
-                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>
-                  {fmtMoney(potentialWin)} <span style={{ fontSize: 11, opacity: 0.8 }}>(+{roi}%)</span>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* Footer badges */}
-      <div style={{
-        position: 'absolute', bottom: -10, left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', gap: 6, whiteSpace: 'nowrap',
-      }}>
-        {countdown && (
-          <div style={{
-            padding: '4px 12px', borderRadius: 10,
-            background: countdown === 'closed' ? 'rgba(248,113,113,0.15)' : 'rgba(74,222,128,0.12)',
-            border: countdown === 'closed' ? '1px solid rgba(248,113,113,0.3)' : '1px solid rgba(74,222,128,0.25)',
-            color: countdown === 'closed' ? 'var(--loss)' : 'var(--win)',
-            fontSize: 11, fontWeight: 700,
-          }}>
-            {countdown === 'closed' ? 'Betting closed' : `⏱ Closes in ${countdown}`}
-          </div>
+      {/* Bottom: timers */}
+      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        {countdown && countdown !== 'closed' && (
+          <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 5px', borderRadius: 4, background: 'rgba(74,222,128,0.1)', color: 'var(--win)' }}>
+            Closes {countdown}
+          </span>
+        )}
+        {countdown === 'closed' && (
+          <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 5px', borderRadius: 4, background: 'rgba(248,113,113,0.12)', color: 'var(--loss)' }}>
+            Closed
+          </span>
         )}
         {resolvesIn && resolvesIn !== 'closed' && (
-          <div style={{
-            padding: '4px 12px', borderRadius: 10,
-            background: 'rgba(255,215,0,0.1)',
-            border: '1px solid rgba(255,215,0,0.2)',
-            color: 'var(--gold)',
-            fontSize: 11, fontWeight: 700,
-          }}>
-            🏁 Resolves in {resolvesIn}
-          </div>
+          <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 5px', borderRadius: 4, background: 'rgba(255,215,0,0.08)', color: 'var(--gold)' }}>
+            Resolves {resolvesIn}
+          </span>
         )}
       </div>
     </div>
@@ -903,221 +866,204 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       .catch(() => {});
   }, [user, bets]);
 
+  const expandedSpecial = expanded ? SPECIALS.find(s => s.id === expanded) : null;
+
+  // If something is expanded, render only that detail view
+  if (expandedSpecial) {
+    if (expandedSpecial.id === 'goalscorer') {
+      return (
+        <div>
+          <GoalScorerMatchList
+            matches={matches}
+            bets={bets}
+            gsSummary={gsSummary}
+            onBet={(matchId) => onOpenSpecialBet('goalscorer', { matchId })}
+            onBack={() => setExpanded(null)}
+          />
+        </div>
+      );
+    }
+    if (expandedSpecial.id === 'continent') {
+      return (
+        <div>
+          <ContinentDetail
+            special={expandedSpecial}
+            poolData={poolsData.continent}
+            picks={picksData.continent || []}
+            myBet={myBetsData.continent || null}
+            user={user}
+            allUsers={allUsers}
+            onBack={() => setExpanded(null)}
+            onPlace={() => onOpenSpecialBet('continent')}
+          />
+        </div>
+      );
+    }
+    if (expandedSpecial.id === 'h2h') {
+      return (
+        <div>
+          <H2HDetail
+            special={expandedSpecial}
+            poolData={poolsData.h2h}
+            picks={picksData.h2h || []}
+            myBet={myBetsData.h2h || null}
+            user={user}
+            allUsers={allUsers}
+            onBack={() => setExpanded(null)}
+            onPlace={() => onOpenSpecialBet('h2h')}
+            onCancel={() => onOpenSpecialBet('h2h')}
+          />
+        </div>
+      );
+    }
+    if (expandedSpecial.id === 'golden_boot') {
+      return (
+        <div>
+          <GoldenBootDetail
+            special={expandedSpecial}
+            poolData={poolsData.golden_boot}
+            picks={picksData.golden_boot || []}
+            myBets={myBetsData.golden_boot || []}
+            user={user}
+            allUsers={allUsers}
+            onBack={() => setExpanded(null)}
+            onPlace={() => onOpenSpecialBet('golden_boot')}
+            onCancel={() => onOpenSpecialBet('golden_boot')}
+          />
+        </div>
+      );
+    }
+    // Cup winner (default)
+    const pool = poolsData[expandedSpecial.id];
+    const picks = picksData[expandedSpecial.id] || [];
+    const myBet = myBetsData[expandedSpecial.id] || null;
+    return (
+      <div>
+        <ExpandedSpecial
+          special={expandedSpecial}
+          pool={pool}
+          picks={picks}
+          myBet={myBet}
+          user={user}
+          allUsers={allUsers}
+          deadlineTs={deadlines[expandedSpecial.id]}
+          onBack={() => setExpanded(null)}
+          onPlace={() => onOpenSpecialBet(expandedSpecial.id)}
+          onCancel={() => onOpenSpecialBet(expandedSpecial.id)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="section-head">
         <div className="section-head__title display">Special Bets</div>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, padding: '0 16px' }}>
       {SPECIALS.map(special => {
-        const isExpanded = expanded === special.id;
-
-        // When another special is expanded, hide this one
-        if (expanded && !isExpanded) return null;
-
-        // Goalscorer: custom expanded view (match list) + aggregate card stats
+        // Goalscorer card
         if (special.id === 'goalscorer') {
           const myGsCount = bets.filter(b => b.kind === 'goalscorer' && b.status === 'pending').length;
-          const gsCardPool = {
-            total: gsSummary?.total || 0,
-            bettorCount: gsSummary?.bettorCount || 0,
-            topPicks: [],
-          };
-          if (isExpanded) {
-            return (
-              <GoalScorerMatchList
-                key={special.id}
-                matches={matches}
-                bets={bets}
-                gsSummary={gsSummary}
-                onBet={(matchId) => onOpenSpecialBet('goalscorer', { matchId })}
-                onBack={() => setExpanded(null)}
-              />
-            );
-          }
           const myGsTotalStake = bets.filter(b => b.kind === 'goalscorer' && b.status === 'pending').reduce((s, b) => s + b.amount, 0);
           const gsMyBet = myGsCount > 0 ? { amount: myGsTotalStake, pick: null } : null;
           return (
             <SpecialCard
               key={special.id}
-              special={{ ...special, formatPick: () => '', title: `Anytime Goalscorer${myGsCount > 0 ? ` · ${myGsCount} active` : ''}` }}
-              poolData={gsCardPool}
+              special={special}
+              poolData={{ total: gsSummary?.total || 0, byTeam: {} }}
               onOpen={() => setExpanded(special.id)}
               deadlineTs={null}
               myBet={gsMyBet}
               resolvesTs={null}
+              highlight={myGsCount > 0 ? `${myGsCount} pick${myGsCount > 1 ? 's' : ''} active` : 'Per-match scorer bets'}
             />
           );
         }
 
-        // Continent: expandable detail view
+        // Continent card
         if (special.id === 'continent') {
           const contPool = poolsData.continent;
-          const contPicks = picksData.continent || [];
           const contMyBet = myBetsData.continent || null;
-          const contCardPool = {
-            total: contPool?.total || 0,
-            bettorCount: contPool?.bettorCount || 0,
-            topPicks: contPool?.byTeam
-              ? Object.entries(contPool.byTeam).map(([pick, amount]) => ({ pick, amount })).sort((a, b) => b.amount - a.amount).slice(0, 5)
-              : [],
-            byTeam: contPool?.byTeam || {},
-          };
-
-          if (isExpanded) {
-            return (
-              <ContinentDetail
-                key={special.id}
-                special={special}
-                poolData={contPool}
-                picks={contPicks}
-                myBet={contMyBet}
-                user={user}
-                allUsers={allUsers}
-                onBack={() => setExpanded(null)}
-                onPlace={() => onOpenSpecialBet('continent')}
-              />
-            );
-          }
-
+          const topCont = contPool?.byTeam ? Object.entries(contPool.byTeam).sort((a, b) => b[1] - a[1])[0] : null;
           return (
             <SpecialCard
               key={special.id}
               special={special}
-              poolData={contCardPool}
+              poolData={{ total: contPool?.total || 0, byTeam: contPool?.byTeam || {} }}
               onOpen={() => setExpanded(special.id)}
-              deadlineTs={deadlines[special.id]}
+              deadlineTs={special.deadlineTs ? new Date(special.deadlineTs).getTime() : deadlines[special.id]}
               myBet={contMyBet}
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
+              highlight={topCont ? `Leading: ${special.formatPick(topCont[0])}` : null}
             />
           );
         }
 
-        // H2H: expandable detail view
+        // H2H card
         if (special.id === 'h2h') {
           const h2hPool = poolsData.h2h;
           const h2hMyBet = myBetsData.h2h || null;
-          const h2hPicks = picksData.h2h || [];
-          const topPicks = h2hPool?.byTeam
-            ? Object.entries(h2hPool.byTeam).map(([pick, amount]) => ({ pick, amount })).sort((a, b) => b.amount - a.amount)
-            : [];
-
-          if (isExpanded) {
-            return (
-              <H2HDetail
-                key={special.id}
-                special={special}
-                poolData={h2hPool}
-                picks={h2hPicks}
-                myBet={h2hMyBet}
-                user={user}
-                allUsers={allUsers}
-                onBack={() => setExpanded(null)}
-                onPlace={() => onOpenSpecialBet('h2h')}
-                onCancel={() => onOpenSpecialBet('h2h')}
-              />
-            );
-          }
-
+          const messiAmt = h2hPool?.byTeam?.messi || 0;
+          const ronaldoAmt = h2hPool?.byTeam?.ronaldo || 0;
+          const h2hTotal = h2hPool?.total || 0;
+          const highlight = h2hTotal > 0
+            ? `Messi ${Math.round((messiAmt / h2hTotal) * 100)}% · Ronaldo ${Math.round((ronaldoAmt / h2hTotal) * 100)}%`
+            : 'Messi vs Ronaldo goals';
           return (
             <SpecialCard
               key={special.id}
               special={special}
-              poolData={{ total: h2hPool?.total || 0, bettorCount: h2hPool?.bettorCount || 0, topPicks }}
+              poolData={{ total: h2hTotal, byTeam: h2hPool?.byTeam || {} }}
               onOpen={() => setExpanded(special.id)}
               deadlineTs={new Date(special.deadlineTs).getTime()}
               myBet={h2hMyBet}
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
+              highlight={highlight}
             />
           );
         }
 
-        // Golden Boot: expandable detail view
+        // Golden Boot card
         if (special.id === 'golden_boot') {
           const gbPool = poolsData.golden_boot;
           const gbMyBets = myBetsData.golden_boot || [];
-          const gbPicks = picksData.golden_boot || [];
           const gbMyBet = gbMyBets.length > 0 ? { amount: gbMyBets.reduce((s, b) => s + b.amount, 0), pick: null } : null;
-
-          if (isExpanded) {
-            return (
-              <GoldenBootDetail
-                key={special.id}
-                special={special}
-                poolData={gbPool}
-                picks={gbPicks}
-                myBets={gbMyBets}
-                user={user}
-                allUsers={allUsers}
-                onBack={() => setExpanded(null)}
-                onPlace={() => onOpenSpecialBet('golden_boot')}
-                onCancel={() => onOpenSpecialBet('golden_boot')}
-              />
-            );
-          }
-
+          const topPlayer = gbPool?.topPicks?.[0];
           return (
             <SpecialCard
               key={special.id}
-              special={{ ...special, title: `Golden Boot${gbMyBets.length > 0 ? ` · ${gbMyBets.length} picks` : ''}` }}
-              poolData={{ total: gbPool?.total || 0, bettorCount: gbPool?.bettorCount || 0, topPicks: gbPool?.topPicks || [] }}
+              special={special}
+              poolData={{ total: gbPool?.total || 0, byTeam: gbPool?.byTeam || {} }}
               onOpen={() => setExpanded(special.id)}
               deadlineTs={new Date(special.deadlineTs).getTime()}
               myBet={gbMyBet}
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
+              highlight={topPlayer ? `Favourite: ${special.formatPick(topPlayer.pick)}` : null}
             />
           );
         }
 
-        // Cup winner: expandable detail view
+        // Cup winner card (default)
         const pool = poolsData[special.id];
-        const picks = picksData[special.id] || [];
         const myBet = myBetsData[special.id] || null;
-
-        const topPicks = pool?.byTeam
-          ? Object.entries(pool.byTeam)
-              .map(([pick, amount]) => ({ pick, amount }))
-              .sort((a, b) => b.amount - a.amount)
-              .slice(0, 5)
-          : [];
-
-        const cardPool = {
-          total: pool?.total || 0,
-          bettorCount: pool?.bettorCount || 0,
-          topPicks,
-          byTeam: pool?.byTeam || {},
-        };
-
-        if (isExpanded) {
-          return (
-            <ExpandedSpecial
-              key={special.id}
-              special={special}
-              pool={pool}
-              picks={picks}
-              myBet={myBet}
-              user={user}
-              allUsers={allUsers}
-              deadlineTs={deadlines[special.id]}
-              onBack={() => setExpanded(null)}
-              onPlace={() => onOpenSpecialBet(special.id)}
-              onCancel={() => onOpenSpecialBet(special.id)}
-            />
-          );
-        }
+        const topTeam = pool?.byTeam ? Object.entries(pool.byTeam).sort((a, b) => b[1] - a[1])[0] : null;
 
         return (
           <SpecialCard
             key={special.id}
             special={special}
-            poolData={cardPool}
+            poolData={{ total: pool?.total || 0, byTeam: pool?.byTeam || {} }}
             onOpen={() => setExpanded(special.id)}
             deadlineTs={deadlines[special.id]}
             myBet={myBet}
             resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
+            highlight={topTeam ? `Favourite: ${special.formatPick(topTeam[0])}` : null}
           />
         );
       })}
+      </div>
     </div>
   );
 }
