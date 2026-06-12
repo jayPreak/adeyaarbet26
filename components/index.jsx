@@ -110,11 +110,9 @@ export function NewsTicker({ matches = [], bets = [], user }) {
   const items = [];
 
   const live = matches.filter(m => m.status === 'live');
-  const upcoming = matches.filter(m => m.status === 'upcoming').sort((a, b) => {
-    const da = new Date(`${a.date}T${a.time || '00:00'}`);
-    const db = new Date(`${b.date}T${b.time || '00:00'}`);
-    return da - db;
-  });
+  const upcoming = matches
+    .filter(m => m.status !== 'finished' && m.status !== 'live' && m.kickoffTs)
+    .sort((a, b) => (a.kickoffTs || '').localeCompare(b.kickoffTs || ''));
   const next = upcoming[0];
 
   if (live.length > 0) {
@@ -129,8 +127,7 @@ export function NewsTicker({ matches = [], bets = [], user }) {
   if (next) {
     const h = getTeam(next.home);
     const a = getTeam(next.away);
-    const matchTime = new Date(`${next.date}T${next.time || '00:00'}:00+05:30`);
-    const diff = matchTime - now;
+    const diff = new Date(next.kickoffTs).getTime() - now;
     if (diff > 0) {
       const days = Math.floor(diff / 86400000);
       const hrs = Math.floor((diff % 86400000) / 3600000);
@@ -142,10 +139,11 @@ export function NewsTicker({ matches = [], bets = [], user }) {
       items.push(`⚽ Next: ${h.name} vs ${a.name} in ${parts.join(' ')}`);
     }
 
-    if (user) {
+    // Only nudge if match is within 24h
+    if (user && diff > 0 && diff < 86400000) {
       const hasBetOnNext = bets.some(b => (b.match_id || b.matchId) === next.id && b.status === 'pending');
       if (!hasBetOnNext) {
-        items.push(`🚨 You haven't placed your bet for ${getTeam(next.home).name} vs ${getTeam(next.away).name}!`);
+        items.push(`🚨 You haven't placed your bet for ${h.name} vs ${a.name}!`);
       }
     }
   }

@@ -507,9 +507,9 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
       <div className="chip-row" style={{ marginBottom: 12 }}>
         {[
           { id: 'pending', label: `Open · ${realBets.filter(b => b.status === 'pending').length}` },
-          { id: 'won',  label: 'Won' },
-          { id: 'lost', label: 'Lost' },
-          { id: 'all',  label: 'All' },
+          { id: 'won',  label: `Won · ${realBets.filter(b => b.status === 'won').length}` },
+          { id: 'lost', label: `Lost · ${realBets.filter(b => b.status === 'lost').length}` },
+          { id: 'all',  label: `All · ${realBets.length}` },
         ].map(t => (
           <button
             key={t.id}

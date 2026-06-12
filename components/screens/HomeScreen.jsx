@@ -17,7 +17,10 @@ function relativeTime(iso) {
 
 export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs }) {
   const live = matches.filter(m => m.status === 'live');
-  const upcoming = matches.filter(m => m.status === 'upcoming').slice(0, 3);
+  const upcoming = matches
+    .filter(m => m.status === 'upcoming')
+    .sort((a, b) => (a.kickoffTs || '').localeCompare(b.kickoffTs || ''))
+    .slice(0, 3);
   const featured = live[0] || upcoming[0];
 
   const [activity, setActivity] = useState([]);

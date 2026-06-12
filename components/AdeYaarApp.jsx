@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Component } from 'react';
 import { MATCHES, getMatch, getTeam } from '@/lib/data';
 import { fmtMoney } from '@/lib/currency';
-import { computeBalance } from '@/lib/ledger';
+import { computeBalance, computeRealisedBalance } from '@/lib/ledger';
 import { useUser } from '@/lib/hooks';
 import { AppHeader, TabBar, PlaceBetSheet, Toast, NewsTicker } from '@/components';
 import HomeScreen from '@/components/screens/HomeScreen';
@@ -87,6 +87,7 @@ export default function AdeYaarApp() {
   const [poolMap, setPoolMap] = useState({});
 
   const balance = computeBalance(bets);
+  const realisedBalance = computeRealisedBalance(bets.filter(b => b.match_id !== '_topup'));
 
   useEffect(() => {
     if (loading) return;
@@ -249,7 +250,7 @@ export default function AdeYaarApp() {
     <div className="stage">
       <div className="phone-frame">
         <div className="app" data-theme={theme}>
-          <AppHeader balance={balance} user={user} onTap={() => setTab('bets')} betsLoaded={betsLoaded} />
+          <AppHeader balance={balance} realisedBalance={realisedBalance} user={user} onTap={() => setTab('bets')} betsLoaded={betsLoaded} />
           <NewsTicker matches={matches} bets={bets} user={user} />
 
           <div className="scroll">
