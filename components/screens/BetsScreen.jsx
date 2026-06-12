@@ -300,6 +300,8 @@ function AccountSection({ user, onProfileUpdate }) {
 
 function AchievementBadges({ user }) {
   const [badges, setBadges] = useState([]);
+  const [myStreak, setMyStreak] = useState(0);
+  const [tooltip, setTooltip] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -310,30 +312,52 @@ function AchievementBadges({ user }) {
         const medals = ['🥇', '🥈', '🥉'];
         const earned = [];
 
+        const me = data.rankings.find(r => r.id === user.id);
+        if (me) setMyStreak(me.winStreak || 0);
+
         const pnl = [...data.rankings].sort((a, b) => (b.realisedBalance || 0) - (a.realisedBalance || 0));
         const pnlRank = pnl.findIndex(r => r.id === user.id);
         if (pnlRank >= 0 && pnlRank < 3 && (pnl[pnlRank].realisedBalance || 0) !== 0) {
-          earned.push({ medal: medals[pnlRank], label: 'P&L', color: '#4ade80' });
+          earned.push({ medal: medals[pnlRank], label: 'Moneybags', tip: 'Top 3 in Realised P&L', color: '#4ade80' });
         }
 
         const bettor = [...data.rankings].sort((a, b) => (b.totalStaked || 0) - (a.totalStaked || 0));
         const bettorRank = bettor.findIndex(r => r.id === user.id);
         if (bettorRank >= 0 && bettorRank < 3) {
-          earned.push({ medal: medals[bettorRank], label: 'Bettor', color: 'var(--gold)' });
+          earned.push({ medal: medals[bettorRank], label: 'Whale', tip: 'Top 3 biggest total stake', color: 'var(--gold)' });
         }
 
         if (data.biggestWins?.length) {
           const winRank = data.biggestWins.findIndex(w => w.userId === user.id);
           if (winRank >= 0 && winRank < 3) {
-            earned.push({ medal: medals[winRank], label: 'Win', color: '#4ade80' });
+            earned.push({ medal: medals[winRank], label: 'Jackpot', tip: 'Top 3 single biggest win', color: '#4ade80' });
           }
         }
 
         if (data.biggestLosses?.length) {
           const lossRank = data.biggestLosses.findIndex(w => w.userId === user.id);
           if (lossRank >= 0 && lossRank < 3) {
-            earned.push({ medal: medals[lossRank], label: 'Loss', color: '#f87171' });
+            earned.push({ medal: medals[lossRank], label: 'Degen', tip: 'Top 3 biggest single loss', color: '#f87171' });
           }
+        }
+
+        // Sharpshooter — highest win rate (min 3 resolved)
+        const sharpshooter = [...data.rankings]
+          .filter(r => r.winRate != null)
+          .sort((a, b) => b.winRate - a.winRate);
+        const sharpRank = sharpshooter.findIndex(r => r.id === user.id);
+        if (sharpRank >= 0 && sharpRank < 3) {
+          earned.push({ medal: '🎯', label: 'Sharpshooter', tip: `Top 3 win rate (${sharpshooter[sharpRank].winRate}%)`, color: '#a78bfa' });
+        }
+
+        // Win streak
+        const streakers = [...data.rankings]
+          .filter(r => (r.winStreak || 0) >= 2)
+          .sort((a, b) => (b.winStreak || 0) - (a.winStreak || 0));
+        const streakRank = streakers.findIndex(r => r.id === user.id);
+        if (streakRank >= 0 && streakRank < 3) {
+          const streak = streakers[streakRank].winStreak;
+          earned.push({ medal: `${streak}`, label: 'On Fire', tip: `${streak} wins in a row`, color: '#fb923c', fire: streak >= 3 });
         }
 
         setBadges(earned);
@@ -341,21 +365,51 @@ function AchievementBadges({ user }) {
       .catch(() => {});
   }, [user]);
 
-  if (badges.length === 0) return null;
+  if (badges.length === 0 && myStreak === 0) return null;
 
   return (
-    <div style={{ display: 'flex', gap: 8, padding: '0 16px 12px', flexWrap: 'wrap' }}>
-      {badges.map((b, i) => (
-        <div key={i} style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          padding: '6px 12px', borderRadius: 20,
-          background: 'rgba(255,255,255,0.04)',
-          border: `1px solid ${b.color}33`,
+    <div style={{ padding: '0 0 12px', position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px 8px' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)', letterSpacing: '0.04em' }}>Badges</span>
+        {myStreak > 0 && (
+          <span style={{ fontSize: 11, fontWeight: 700, color: myStreak >= 3 ? '#fb923c' : 'var(--ink-2)' }}>
+            {myStreak >= 3 ? '🔥 ' : ''}Longest streak: {myStreak}W
+          </span>
+        )}
+      </div>
+      {tooltip && (
+        <div style={{
+          position: 'absolute', top: -4, left: '50%', transform: 'translateX(-50%)',
+          background: '#1a1d23', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
+          padding: '6px 12px', fontSize: 11, fontWeight: 600, color: 'var(--ink)', zIndex: 20,
+          whiteSpace: 'nowrap', boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
         }}>
-          <span style={{ fontSize: 16 }}>{b.medal}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: b.color }}>{b.label}</span>
+          {tooltip}
         </div>
-      ))}
+      )}
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '0 16px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+        {badges.map((b, i) => (
+          <div key={i}
+            onClick={() => { setTooltip(b.tip); setTimeout(() => setTooltip(null), 2500); }}
+            style={{
+              minWidth: 76, width: 76,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+              padding: '12px 8px 10px',
+              borderRadius: 12,
+              background: b.fire ? 'linear-gradient(180deg, rgba(251,146,60,0.15) 0%, var(--surface-2) 100%)' : 'var(--surface-2)',
+              border: `1px solid ${b.color}33`,
+              flexShrink: 0,
+              cursor: 'pointer',
+              position: 'relative',
+            }}>
+            {b.fire && (
+              <div style={{ position: 'absolute', top: -2, left: '50%', transform: 'translateX(-50)', fontSize: 14, opacity: 0.9 }}>🔥</div>
+            )}
+            <span style={{ fontSize: 26, lineHeight: 1 }}>{b.medal}</span>
+            <span style={{ fontSize: 9, fontWeight: 700, color: b.color, textAlign: 'center', lineHeight: 1.2 }}>{b.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -478,9 +532,9 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
   return (
     <div>
       <AccountSection user={user} onProfileUpdate={onProfileUpdate} />
-      <AchievementBadges user={user} />
-      <SettlementCard user={user} bets={bets} />
       <NetWorthGraph bets={bets} />
+      <SettlementCard user={user} bets={bets} />
+      <AchievementBadges user={user} />
 
       <div className="section-head" style={{ marginTop: 0 }}>
         <div className="section-head__title display">My Bets</div>

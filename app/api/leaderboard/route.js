@@ -64,7 +64,19 @@ export async function GET() {
         }
       }
 
-      return { ...p, balance, realisedBalance, totalStaked, betCount, matchesBet, maxReturn };
+      // Win rate + streak
+      const resolved = userBets
+        .filter(b => b.status === 'won' || b.status === 'lost')
+        .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+      const wins = resolved.filter(b => b.status === 'won').length;
+      const winRate = resolved.length >= 3 ? Math.round(100 * wins / resolved.length) : null;
+      let winStreak = 0, maxStreak = 0;
+      for (const b of resolved) {
+        if (b.status === 'won') { winStreak++; if (winStreak > maxStreak) maxStreak = winStreak; }
+        else winStreak = 0;
+      }
+
+      return { ...p, balance, realisedBalance, totalStaked, betCount, matchesBet, maxReturn, winRate, winStreak: maxStreak };
     });
 
   result.sort((a, b) => b.totalStaked - a.totalStaked);
