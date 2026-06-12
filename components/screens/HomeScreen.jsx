@@ -262,23 +262,40 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
   );
 }
 
+function formatSpecialMatchLabel(matchId) {
+  if (matchId === 'CUP_WINNER') return 'Cup Winner';
+  if (matchId === 'CONTINENT') return 'Winning Continent';
+  if (matchId?.startsWith('HT_')) {
+    const slug = matchId.slice(3).toLowerCase().replace(/_/g, ' ');
+    return slug.replace(/\b\w/g, c => c.toUpperCase());
+  }
+  return null;
+}
+
 function formatActivityText(a) {
-  const isCupWinner = a.payload?.match_id === 'CUP_WINNER';
-  const match = (!isCupWinner && a.payload?.match_id) ? getMatch(a.payload.match_id) : null;
-  const matchLabel = isCupWinner
-    ? 'Cup Winner'
-    : match
-      ? `${getTeam(match.home).name} vs ${getTeam(match.away).name}`
-      : a.payload?.match_id || '';
+  const matchId = a.payload?.match_id;
+  const specialLabel = formatSpecialMatchLabel(matchId);
+  const isSpecial = !!specialLabel;
+  const match = (!isSpecial && matchId) ? getMatch(matchId) : null;
+  const matchLabel = specialLabel
+    || (match ? `${getTeam(match.home).name} vs ${getTeam(match.away).name}` : matchId || '');
 
   if (a.type === 'bet_placed' && a.payload) {
-    const pickCode = isCupWinner ? (a.payload.team || a.payload.pick) : a.payload.pick;
-    const pickTeam = isCupWinner
-      ? (getTeam(pickCode)?.name || pickCode)
-      : match
-        ? (pickCode === 'home' ? getTeam(match.home).name : pickCode === 'away' ? getTeam(match.away).name : 'Draw')
-        : pickCode;
-    return `bet ${CURRENCY_SYMBOL}${a.payload.amount} on ${pickTeam} · ${matchLabel}`;
+    const pickCode = a.payload.team || a.payload.pick;
+    let pickLabel;
+    if (matchId === 'CUP_WINNER') {
+      pickLabel = getTeam(pickCode)?.name || pickCode;
+    } else if (matchId === 'CONTINENT') {
+      const confLabels = { UEFA: 'Europe', CONMEBOL: 'S. America', CONCACAF: 'N/C America', CAF: 'Africa', AFC: 'Asia', OFC: 'Oceania' };
+      pickLabel = confLabels[pickCode] || pickCode;
+    } else if (matchId?.startsWith('HT_')) {
+      pickLabel = pickCode === 'yes' ? 'YES' : pickCode === 'no' ? 'NO' : pickCode;
+    } else if (match) {
+      pickLabel = pickCode === 'home' ? getTeam(match.home).name : pickCode === 'away' ? getTeam(match.away).name : 'Draw';
+    } else {
+      pickLabel = pickCode;
+    }
+    return `bet ${CURRENCY_SYMBOL}${a.payload.amount} on ${pickLabel} · ${matchLabel}`;
   }
   if (a.type === 'bet_cancelled' && a.payload) {
     if (a.payload.reason === 'side_switch') {

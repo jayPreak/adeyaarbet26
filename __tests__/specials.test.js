@@ -3,7 +3,7 @@ import { SPECIALS, getSpecial, getSpecialByMatchId, getConfederation, isSpecialB
 describe('SPECIALS registry', () => {
   test('has all 4 specials defined', () => {
     expect(SPECIALS).toHaveLength(4);
-    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'goalscorer', 'continent', 'halftime']);
+    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'halftime', 'goalscorer']);
   });
 
   test('each special has required fields', () => {
@@ -28,7 +28,7 @@ describe('SPECIALS registry', () => {
     const ht = getSpecial('halftime');
     expect(ht.multiPick).toBe(true);
     expect(ht.options).toHaveLength(30);
-    expect(ht.disclaimer).toContain('Any appearance on stage counts');
+    expect(ht.disclaimer).toContain('MAIN performers');
   });
 
   test('continent has 6 confederations', () => {

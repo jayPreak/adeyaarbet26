@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { fmtMoney, MAX_BET } from '@/lib/currency';
 import { HALFTIME_PERFORMERS } from '@/lib/specials';
 
@@ -21,12 +21,19 @@ export default function HalftimeBetModal({ open, onClose, user, onPlaced, initia
   const [poolData, setPoolData] = useState({}); // keyed by performer slug
   const [myBets, setMyBets] = useState([]); // all user's halftime bets across performers
 
+  const [poolSummary, setPoolSummary] = useState({}); // keyed by HT_SLUG -> { total, bettorCount }
+
   useEffect(() => {
     if (!open || !user) return;
     setError(null);
     if (initialPerformer) {
       setSelectedPerformer(initialPerformer);
     }
+    // Fetch aggregate pool data for sorting
+    fetch('/api/special-bet?match_id=HT_ALL&kind=halftime&summary=true')
+      .then(r => r.json())
+      .then(data => { if (data.performers) setPoolSummary(data.performers); })
+      .catch(() => {});
   }, [open, user, initialPerformer]);
 
   useEffect(() => {
@@ -122,10 +129,19 @@ export default function HalftimeBetModal({ open, onClose, user, onPlaced, initia
         </div>
 
         {!selectedPerformer ? (
-          // Performer grid
+          // Performer grid — sorted by pool size (most bet on first), then alphabetical
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-            {HALFTIME_PERFORMERS.map(name => {
+            {[...HALFTIME_PERFORMERS].sort((a, b) => {
+              const aKey = `HT_${a.toLowerCase().replace(/[^a-z0-9]/g, '_').toUpperCase()}`;
+              const bKey = `HT_${b.toLowerCase().replace(/[^a-z0-9]/g, '_').toUpperCase()}`;
+              const aTotal = poolSummary[aKey]?.total || 0;
+              const bTotal = poolSummary[bKey]?.total || 0;
+              if (bTotal !== aTotal) return bTotal - aTotal;
+              return a.localeCompare(b);
+            }).map(name => {
               const hasBet = bettedPerformers.has(name);
+              const pKey = `HT_${name.toLowerCase().replace(/[^a-z0-9]/g, '_').toUpperCase()}`;
+              const poolAmt = poolSummary[pKey]?.total || 0;
               return (
                 <button
                   key={name}
@@ -139,6 +155,7 @@ export default function HalftimeBetModal({ open, onClose, user, onPlaced, initia
                 >
                   <div style={{ fontSize: 12, fontWeight: 700, color: hasBet ? 'var(--gold)' : 'var(--ink)' }}>{name}</div>
                   {hasBet && <div style={{ fontSize: 10, color: 'var(--gold)', marginTop: 2 }}>✓ Bet placed</div>}
+                  {poolAmt > 0 && !hasBet && <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>{fmtMoney(poolAmt)} in pool</div>}
                 </button>
               );
             })}

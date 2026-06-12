@@ -20,7 +20,7 @@ export async function GET(request) {
   if (matchId === 'HT_ALL' && summary === 'true') {
     const { data: bets, error } = await supabase
       .from('bets')
-      .select('id, user_id, match_id, pick, amount, status')
+      .select('id, user_id, match_id, pick, amount, status, profiles(display_name, avatar_url)')
       .eq('kind', 'halftime')
       .neq('status', 'cancelled');
 
@@ -29,19 +29,28 @@ export async function GET(request) {
     const pending = (bets || []).filter(b => b.status === 'pending');
     const totalPool = pending.reduce((s, b) => s + b.amount, 0);
     const totalBettors = new Set(pending.map(b => b.user_id)).size;
+    const totalBets = pending.length;
 
     const performers = {};
     for (const b of pending) {
-      if (!performers[b.match_id]) performers[b.match_id] = { total: 0, bettors: new Set() };
+      if (!performers[b.match_id]) performers[b.match_id] = { total: 0, bettors: new Set(), byOption: {}, picks: [] };
       performers[b.match_id].total += b.amount;
       performers[b.match_id].bettors.add(b.user_id);
+      performers[b.match_id].byOption[b.pick] = (performers[b.match_id].byOption[b.pick] || 0) + b.amount;
+      performers[b.match_id].picks.push({
+        userId: b.user_id,
+        displayName: b.profiles?.display_name || '?',
+        avatarUrl: b.profiles?.avatar_url || null,
+        pick: b.pick,
+        amount: b.amount,
+      });
     }
     const performerData = {};
     for (const [mid, data] of Object.entries(performers)) {
-      performerData[mid] = { total: data.total, bettorCount: data.bettors.size };
+      performerData[mid] = { total: data.total, bettorCount: data.bettors.size, byOption: data.byOption, picks: data.picks };
     }
 
-    return NextResponse.json({ totalPool, totalBettors, performers: performerData });
+    return NextResponse.json({ totalPool, totalBettors, totalBets, performers: performerData });
   }
 
   const { data: bets, error } = await supabase
