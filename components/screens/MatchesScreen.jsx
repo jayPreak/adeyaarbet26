@@ -1,55 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { fmtDay, fmtDate } from '@/lib/data';
 import { MatchCard } from '@/components';
 
 export default function MatchesScreen({ matches = [], onBet, bets = [], onCancelBet, poolMap = {}, allUsers = [] }) {
-  const [filter, setFilter] = useState('all');
+  const [tab, setTab] = useState('upcoming');
 
-  const filters = [
-    { id: 'all',   label: 'All' },
-    { id: 'live',  label: 'Live' },
-    { id: 'today', label: 'Today' },
-    { id: 'r32',   label: 'Round of 32' },
-    { id: 'group', label: 'Group' },
-  ];
+  const { upcoming, completed } = useMemo(() => {
+    const up = [];
+    const done = [];
+    for (const m of matches) {
+      if (m.status === 'finished') {
+        done.push(m);
+      } else {
+        up.push(m);
+      }
+    }
+    up.sort((a, b) => (a.kickoffTs || '').localeCompare(b.kickoffTs || ''));
+    done.sort((a, b) => (b.kickoffTs || '').localeCompare(a.kickoffTs || ''));
+    return { upcoming: up, completed: done };
+  }, [matches]);
 
-  const TODAY = new Date().toISOString().split('T')[0];
+  const list = tab === 'upcoming' ? upcoming : completed;
 
-  const getMatchDate = (m) => {
-    if (m.kickoffTs) return m.kickoffTs.split('T')[0];
-    return null;
-  };
-
-  let filtered = matches;
-  if (filter === 'live')  filtered = matches.filter(m => m.status === 'live');
-  if (filter === 'today') filtered = matches.filter(m => getMatchDate(m) === TODAY);
-  if (filter === 'r32')   filtered = matches.filter(m => !m.group);
-  if (filter === 'group') filtered = matches.filter(m => !!m.group);
+  const getMatchDate = (m) => m.kickoffTs ? m.kickoffTs.split('T')[0] : null;
 
   const byDate = {};
-  filtered.forEach(m => {
+  list.forEach(m => {
     const key = getMatchDate(m) || 'tbd';
     (byDate[key] = byDate[key] || []).push(m);
   });
-  const dates = Object.keys(byDate).sort();
+  const dates = Object.keys(byDate).sort((a, b) => {
+    if (a === 'tbd') return 1;
+    if (b === 'tbd') return -1;
+    return tab === 'upcoming' ? a.localeCompare(b) : b.localeCompare(a);
+  });
 
   return (
     <div>
       <div className="section-head" style={{ marginTop: 8 }}>
         <div className="section-head__title display">Fixtures</div>
-        <div className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>{filtered.length} matches</div>
+        <div className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>{list.length} matches</div>
       </div>
 
-      <div className="chip-row" style={{ marginBottom: 12 }}>
-        {filters.map(f => (
+      <div style={{ display: 'flex', gap: 0, margin: '0 16px 16px', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+        {[
+          { id: 'upcoming', label: `Upcoming · ${upcoming.length}` },
+          { id: 'completed', label: `Completed · ${completed.length}` },
+        ].map(t => (
           <button
-            key={f.id}
-            className={'chip ' + (filter === f.id ? 'active' : '')}
-            onClick={() => setFilter(f.id)}
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              flex: 1, padding: '10px 4px', border: 'none', cursor: 'pointer',
+              fontSize: 11, fontWeight: 600,
+              background: tab === t.id ? 'rgba(255,255,255,0.1)' : 'transparent',
+              color: tab === t.id ? 'var(--ink)' : 'var(--ink-3)',
+              transition: 'all 0.15s',
+            }}
           >
-            {f.label}
+            {t.label}
           </button>
         ))}
       </div>
@@ -61,7 +72,7 @@ export default function MatchesScreen({ matches = [], onBet, bets = [], onCancel
             <div className="date-group__date">{date === 'tbd' ? '' : fmtDate(date)}</div>
           </div>
           {byDate[date].map(m => {
-            const myBets = bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending');
+            const myBets = bets.filter(b => (b.match_id || b.matchId) === m.id && b.status !== 'cancelled');
             return <MatchCard key={m.id} match={m} onBet={onBet} myBets={myBets} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} />;
           })}
         </div>

@@ -87,6 +87,26 @@ function KnockoutView() {
   );
 }
 
+function computeGroupStandings(group, matches) {
+  const stats = {};
+  for (const t of group.teams) {
+    stats[t.code] = { code: t.code, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  }
+  const groupMatches = matches.filter(m => m.group === group.id && m.status === 'finished' && m.score);
+  for (const m of groupMatches) {
+    const [hg, ag] = m.score;
+    const h = stats[m.home], a = stats[m.away];
+    if (!h || !a) continue;
+    h.p++; a.p++;
+    h.gf += hg; h.ga += ag;
+    a.gf += ag; a.ga += hg;
+    if (hg > ag) { h.w++; h.pts += 3; a.l++; }
+    else if (hg < ag) { a.w++; a.pts += 3; h.l++; }
+    else { h.d++; a.d++; h.pts += 1; a.pts += 1; }
+  }
+  return Object.values(stats).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf);
+}
+
 export default function BracketScreen({ matches = MATCHES }) {
   const [view, setView] = useState('groups');
 
@@ -115,12 +135,13 @@ export default function BracketScreen({ matches = MATCHES }) {
       {view === 'groups' && (
         <div className="groups-grid">
           {GROUPS.map(g => {
+            const standings = computeGroupStandings(g, matches);
             const groupMatches = matches.filter(m => m.group === g.id);
             const cities = [...new Set(groupMatches.map(m => m.venue?.split(',').pop()?.trim()).filter(Boolean))];
             return (
               <div key={g.id} className="group-card">
                 <div className="group-card__title">Group <em>{g.id}</em></div>
-                {g.teams.map((t, i) => {
+                {standings.map((t, i) => {
                   const team = getTeam(t.code);
                   return (
                     <div key={t.code} className={'group-row ' + (i < 2 ? 'q' : '')}>

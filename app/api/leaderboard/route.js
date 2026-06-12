@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
-import { FRIENDS } from '@/lib/data';
-import { computeBalance } from '@/lib/ledger';
+import { FRIENDS, getMatch, getTeam } from '@/lib/data';
+import { computeBalance, computeRealisedBalance } from '@/lib/ledger';
 
 
 export async function GET() {
@@ -23,7 +23,7 @@ export async function GET() {
 
   const { data: bets, error: bErr } = await supabase
     .from('bets')
-    .select('user_id, amount, status, payout, match_id, pick, kind');
+    .select('user_id, amount, status, payout, match_id, pick, kind, created_at');
 
   if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 });
 
@@ -49,6 +49,7 @@ export async function GET() {
     .map(p => {
       const userBets = betsByUser[p.id];
       const balance = computeBalance(userBets);
+      const realisedBalance = computeRealisedBalance(userBets);
       const activeBets = userBets.filter(b => b.status === 'pending');
       const totalStaked = activeBets.reduce((sum, b) => sum + b.amount, 0);
       const betCount = activeBets.length;
@@ -63,7 +64,7 @@ export async function GET() {
         }
       }
 
-      return { ...p, balance, totalStaked, betCount, matchesBet, maxReturn };
+      return { ...p, balance, realisedBalance, totalStaked, betCount, matchesBet, maxReturn };
     });
 
   result.sort((a, b) => b.totalStaked - a.totalStaked);
@@ -72,19 +73,71 @@ export async function GET() {
   const profileMap = Object.fromEntries(profiles.map(p => [p.id, p]));
   const biggestWins = bets
     .filter(b => b.status === 'won' && b.payout > 0 && b.match_id !== '_topup')
-    .map(b => ({
-      userId: b.user_id,
-      displayName: profileMap[b.user_id]?.display_name || profileMap[b.user_id]?.username || '?',
-      avatarUrl: profileMap[b.user_id]?.avatar_url || null,
-      matchId: b.match_id,
-      pick: b.pick,
-      kind: b.kind || 'match',
-      stake: b.amount,
-      payout: b.payout,
-      profit: b.payout - b.amount,
-    }))
+    .map(b => {
+      let matchLabel = b.match_id;
+      let pickLabel = b.pick;
+      const m = getMatch(b.match_id);
+      if (m) {
+        const h = getTeam(m.home);
+        const a = getTeam(m.away);
+        matchLabel = `${h.code} vs ${a.code}`;
+        if (b.pick === 'home') pickLabel = h.name;
+        else if (b.pick === 'away') pickLabel = a.name;
+        else pickLabel = 'Draw';
+      } else if (b.match_id === 'CUP_WINNER') {
+        matchLabel = 'Cup Winner';
+        const pt = getTeam(b.pick);
+        if (pt) pickLabel = pt.name;
+      }
+      return {
+        userId: b.user_id,
+        displayName: profileMap[b.user_id]?.display_name || profileMap[b.user_id]?.username || '?',
+        avatarUrl: profileMap[b.user_id]?.avatar_url || null,
+        matchId: b.match_id,
+        matchLabel,
+        pickLabel,
+        kind: b.kind || 'match',
+        stake: b.amount,
+        payout: b.payout,
+        profit: b.payout - b.amount,
+        resolvedAt: b.created_at,
+      };
+    })
     .sort((a, b) => b.profit - a.profit)
     .slice(0, 20);
 
-  return NextResponse.json({ rankings: result, biggestWins });
+  const biggestLosses = bets
+    .filter(b => b.status === 'lost' && b.match_id !== '_topup')
+    .map(b => {
+      let matchLabel = b.match_id;
+      let pickLabel = b.pick;
+      const m = getMatch(b.match_id);
+      if (m) {
+        const h = getTeam(m.home);
+        const a = getTeam(m.away);
+        matchLabel = `${h.code} vs ${a.code}`;
+        if (b.pick === 'home') pickLabel = h.name;
+        else if (b.pick === 'away') pickLabel = a.name;
+        else pickLabel = 'Draw';
+      } else if (b.match_id === 'CUP_WINNER') {
+        matchLabel = 'Cup Winner';
+        const pt = getTeam(b.pick);
+        if (pt) pickLabel = pt.name;
+      }
+      return {
+        userId: b.user_id,
+        displayName: profileMap[b.user_id]?.display_name || profileMap[b.user_id]?.username || '?',
+        avatarUrl: profileMap[b.user_id]?.avatar_url || null,
+        matchId: b.match_id,
+        matchLabel,
+        pickLabel,
+        kind: b.kind || 'match',
+        amount: b.amount,
+        resolvedAt: b.created_at,
+      };
+    })
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 20);
+
+  return NextResponse.json({ rankings: result, biggestWins, biggestLosses });
 }

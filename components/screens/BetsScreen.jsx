@@ -298,6 +298,68 @@ function AccountSection({ user, onProfileUpdate }) {
 }
 
 
+function AchievementBadges({ user }) {
+  const [badges, setBadges] = useState([]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch('/api/leaderboard')
+      .then(r => r.json())
+      .then(data => {
+        if (!data?.rankings) return;
+        const medals = ['🥇', '🥈', '🥉'];
+        const earned = [];
+
+        const pnl = [...data.rankings].sort((a, b) => (b.realisedBalance || 0) - (a.realisedBalance || 0));
+        const pnlRank = pnl.findIndex(r => r.id === user.id);
+        if (pnlRank >= 0 && pnlRank < 3 && (pnl[pnlRank].realisedBalance || 0) !== 0) {
+          earned.push({ medal: medals[pnlRank], label: 'P&L', color: '#4ade80' });
+        }
+
+        const bettor = [...data.rankings].sort((a, b) => (b.totalStaked || 0) - (a.totalStaked || 0));
+        const bettorRank = bettor.findIndex(r => r.id === user.id);
+        if (bettorRank >= 0 && bettorRank < 3) {
+          earned.push({ medal: medals[bettorRank], label: 'Bettor', color: 'var(--gold)' });
+        }
+
+        if (data.biggestWins?.length) {
+          const winRank = data.biggestWins.findIndex(w => w.userId === user.id);
+          if (winRank >= 0 && winRank < 3) {
+            earned.push({ medal: medals[winRank], label: 'Win', color: '#4ade80' });
+          }
+        }
+
+        if (data.biggestLosses?.length) {
+          const lossRank = data.biggestLosses.findIndex(w => w.userId === user.id);
+          if (lossRank >= 0 && lossRank < 3) {
+            earned.push({ medal: medals[lossRank], label: 'Loss', color: '#f87171' });
+          }
+        }
+
+        setBadges(earned);
+      })
+      .catch(() => {});
+  }, [user]);
+
+  if (badges.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', gap: 8, padding: '0 16px 12px', flexWrap: 'wrap' }}>
+      {badges.map((b, i) => (
+        <div key={i} style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          padding: '6px 12px', borderRadius: 20,
+          background: 'rgba(255,255,255,0.04)',
+          border: `1px solid ${b.color}33`,
+        }}>
+          <span style={{ fontSize: 16 }}>{b.medal}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: b.color }}>{b.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function SettlementCard({ user, bets = [] }) {
   const [myPosition, setMyPosition] = useState(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -386,7 +448,7 @@ function SettlementCard({ user, bets = [] }) {
   );
 }
 
-export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, scheduleMap = {} }) {
+export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, scheduleMap = {}, cupWinnerDeadlineTs = null }) {
   const [tab, setTab] = useState('pending');
 
   const realBets = useMemo(() => bets.filter(b => b.match_id !== '_topup'), [bets]);
@@ -404,6 +466,10 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
     () => realBets.filter(b => b.status === 'won').reduce((s, b) => s + ((b.payout || 0) - b.amount), 0),
     [realBets]
   );
+  const totalLost = useMemo(
+    () => realBets.filter(b => b.status === 'lost').reduce((s, b) => s + b.amount, 0),
+    [realBets]
+  );
   const settled = realBets.filter(b => b.status === 'won' || b.status === 'lost');
   const winRate = settled.length
     ? Math.round(100 * realBets.filter(b => b.status === 'won').length / settled.length)
@@ -412,6 +478,7 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
   return (
     <div>
       <AccountSection user={user} onProfileUpdate={onProfileUpdate} />
+      <AchievementBadges user={user} />
       <SettlementCard user={user} bets={bets} />
       <NetWorthGraph bets={bets} />
 
@@ -423,13 +490,14 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
         {[
           { label: 'Open stake', val: fmtMoney(totalOpen), tint: 'gold' },
           { label: 'Won',        val: '+' + fmtMoney(totalWon), tint: 'win' },
+          { label: 'Lost',       val: '-' + fmtMoney(totalLost), tint: 'loss' },
           { label: 'Win rate',   val: winRate + '%', tint: null },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div className="stat-label">{s.label}</div>
             <div className="stat-value" style={{
               fontSize: 18,
-              color: s.tint === 'gold' ? 'var(--gold)' : s.tint === 'win' ? 'var(--win)' : 'var(--ink)',
+              color: s.tint === 'gold' ? 'var(--gold)' : s.tint === 'win' ? 'var(--win)' : s.tint === 'loss' ? 'var(--loss)' : 'var(--ink)',
             }}>{s.val}</div>
           </div>
         ))}
@@ -459,7 +527,7 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
             {realBets.length === 0 ? 'Place your first bet!' : `No ${tab} bets yet`}
           </div>
         )}
-        {filtered.map(b => <BetCard key={b.id} bet={b} onCancelBet={onCancelBet} kickoffTs={scheduleMap[b.match_id || b.matchId] || null} />)}
+        {filtered.map(b => <BetCard key={b.id} bet={b} onCancelBet={onCancelBet} kickoffTs={scheduleMap[b.match_id || b.matchId] || null} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />)}
       </div>
     </div>
   );

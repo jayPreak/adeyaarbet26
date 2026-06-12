@@ -24,11 +24,12 @@ function useDeadlineCountdown(deadlineTs) {
   return `${m}m left`;
 }
 
-function SpecialCard({ special, poolData, onOpen, deadlineTs }) {
+function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs }) {
   const total = poolData?.total || 0;
   const bettorCount = poolData?.bettorCount || 0;
   const topPicks = poolData?.topPicks || [];
   const countdown = useDeadlineCountdown(deadlineTs);
+  const resolvesIn = useDeadlineCountdown(resolvesTs);
 
   return (
     <div
@@ -86,19 +87,64 @@ function SpecialCard({ special, poolData, onOpen, deadlineTs }) {
         </div>
       )}
 
-      {/* Footer badge — sits on bottom border */}
-      {countdown && (
-        <div style={{
-          position: 'absolute', bottom: -10, left: '50%', transform: 'translateX(-50%)',
-          padding: '4px 12px', borderRadius: 10,
-          background: countdown === 'closed' ? 'rgba(248,113,113,0.15)' : 'rgba(74,222,128,0.12)',
-          border: countdown === 'closed' ? '1px solid rgba(248,113,113,0.3)' : '1px solid rgba(74,222,128,0.25)',
-          color: countdown === 'closed' ? 'var(--loss)' : 'var(--win)',
-          fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
-        }}>
-          {countdown === 'closed' ? 'Betting closed' : `⏱ Closes in ${countdown}`}
-        </div>
-      )}
+      {/* Your stake / potential win */}
+      {myBet && (() => {
+        const canComputeWin = myBet.pick && total > 0 && poolData?.byTeam?.[myBet.pick];
+        const myPool = canComputeWin ? poolData.byTeam[myBet.pick] : 0;
+        const potentialWin = canComputeWin ? Math.floor((myBet.amount / myPool) * total) : 0;
+        const roi = canComputeWin && myBet.amount > 0 ? Math.round(((potentialWin - myBet.amount) / myBet.amount) * 100) : 0;
+        return (
+          <div style={{
+            marginTop: 12, padding: '10px 12px', borderRadius: 10,
+            background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.12)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>YOUR STAKE</div>
+              <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>
+                {fmtMoney(myBet.amount)}
+              </div>
+            </div>
+            {canComputeWin && (
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>POTENTIAL WIN</div>
+                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>
+                  {fmtMoney(potentialWin)} <span style={{ fontSize: 11, opacity: 0.8 }}>(+{roi}%)</span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Footer badges */}
+      <div style={{
+        position: 'absolute', bottom: -10, left: '50%', transform: 'translateX(-50%)',
+        display: 'flex', gap: 6, whiteSpace: 'nowrap',
+      }}>
+        {countdown && (
+          <div style={{
+            padding: '4px 12px', borderRadius: 10,
+            background: countdown === 'closed' ? 'rgba(248,113,113,0.15)' : 'rgba(74,222,128,0.12)',
+            border: countdown === 'closed' ? '1px solid rgba(248,113,113,0.3)' : '1px solid rgba(74,222,128,0.25)',
+            color: countdown === 'closed' ? 'var(--loss)' : 'var(--win)',
+            fontSize: 11, fontWeight: 700,
+          }}>
+            {countdown === 'closed' ? 'Betting closed' : `⏱ Closes in ${countdown}`}
+          </div>
+        )}
+        {resolvesIn && resolvesIn !== 'closed' && (
+          <div style={{
+            padding: '4px 12px', borderRadius: 10,
+            background: 'rgba(255,215,0,0.1)',
+            border: '1px solid rgba(255,215,0,0.2)',
+            color: 'var(--gold)',
+            fontSize: 11, fontWeight: 700,
+          }}>
+            🏁 Resolves in {resolvesIn}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -474,6 +520,9 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       {SPECIALS.map(special => {
         const isExpanded = expanded === special.id;
 
+        // When another special is expanded, hide this one
+        if (expanded && !isExpanded) return null;
+
         // Goalscorer: custom expanded view (match list) + aggregate card stats
         if (special.id === 'goalscorer') {
           const myGsCount = bets.filter(b => b.kind === 'goalscorer' && b.status === 'pending').length;
@@ -494,6 +543,8 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               />
             );
           }
+          const myGsTotalStake = bets.filter(b => b.kind === 'goalscorer' && b.status === 'pending').reduce((s, b) => s + b.amount, 0);
+          const gsMyBet = myGsCount > 0 ? { amount: myGsTotalStake, pick: null } : null;
           return (
             <SpecialCard
               key={special.id}
@@ -501,6 +552,8 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               poolData={gsCardPool}
               onOpen={() => setExpanded(special.id)}
               deadlineTs={null}
+              myBet={gsMyBet}
+              resolvesTs={null}
             />
           );
         }
@@ -521,6 +574,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
           total: pool?.total || 0,
           bettorCount: pool?.bettorCount || 0,
           topPicks,
+          byTeam: pool?.byTeam || {},
         };
 
         if (isExpanded) {
@@ -548,6 +602,8 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
             poolData={cardPool}
             onOpen={() => setExpanded(special.id)}
             deadlineTs={deadlines[special.id]}
+            myBet={myBet}
+            resolvesTs={special.id === 'cup_winner' ? new Date('2026-07-19T19:00:00Z').getTime() : null}
           />
         );
       })}

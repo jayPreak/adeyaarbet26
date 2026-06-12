@@ -1,6 +1,6 @@
 'use client';
 
-import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, getMatchKickoffTs, MATCH_BET_CUTOFF_MS } from '@/lib/data';
+import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, fmtCountdown, getMatchKickoffTs, MATCH_BET_CUTOFF_MS } from '@/lib/data';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { useState, useEffect } from 'react';
 
@@ -272,14 +272,18 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
   const hasBet = myTotal > 0;
   const myPick = myBets[0]?.pick;
   const pickLabel = myPick === 'home' ? home.code : myPick === 'away' ? away.code : myPick === 'draw' ? 'Draw' : '';
+  const myResult = isFinished && hasBet ? (myBets.some(b => b.status === 'won') ? 'won' : myBets.some(b => b.status === 'lost') ? 'lost' : null) : null;
 
   return (
-    <div className="match-card">
+    <div className="match-card" style={myResult ? {
+      borderColor: myResult === 'won' ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)',
+      background: myResult === 'won' ? 'rgba(74,222,128,0.04)' : 'rgba(248,113,113,0.04)',
+    } : undefined}>
       <div className="match-card__head">
         <span>{stageLabel}{city ? ` · ${city}` : ''}</span>
         {isLive ? <LiveDot minute={match.minute} /> :
          isFinished ? <span style={{ color: 'var(--ink-3)' }}>FT</span> :
-         <span style={{ fontFamily: 'var(--font-mono)' }}>{fmtKickoffIST(match.kickoffTs)}</span>}
+         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{fmtCountdown(match.kickoffTs)}</span>}
       </div>
 
       <div className="match-card__teams">
@@ -330,13 +334,19 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
         </div>
       )}
 
-      {!isFinished && poolData && poolData.bets && poolData.bets.length > 0 && (
+      {poolData && poolData.bets && poolData.bets.length > 0 && (
         <MatchPoolTable poolData={poolData} home={home} away={away} allUsers={allUsers} />
       )}
 
-      {!isFinished && (
-        <div className={`match-card__footer ${hasBet ? 'has-bet' : 'no-bet'}`}>
-          {hasBet ? (
+      {hasBet && (
+        <div className={`match-card__footer has-bet`}>
+          {isFinished ? (() => {
+            const wonBet = myBets.find(b => b.status === 'won');
+            const lostBet = myBets.find(b => b.status === 'lost');
+            if (wonBet) return <span style={{ color: 'var(--win)' }}>Won {fmtMoney(wonBet.payout || 0)} on {pickLabel} (+{fmtMoney((wonBet.payout || 0) - wonBet.amount)})</span>;
+            if (lostBet) return <span style={{ color: 'var(--loss)' }}>Lost {fmtMoney(myTotal)} on {pickLabel}</span>;
+            return <span>Bet: {fmtMoney(myTotal)} on {pickLabel}</span>;
+          })() : (
             <>
               <span>Your bet: {fmtMoney(myTotal)} on {pickLabel}</span>
               {bettingOpen && onCancelBet && (
@@ -351,9 +361,12 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
                 </button>
               )}
             </>
-          ) : (
-            <span>No bet placed</span>
           )}
+        </div>
+      )}
+      {!hasBet && !isFinished && (
+        <div className="match-card__footer no-bet">
+          <span>No bet placed</span>
         </div>
       )}
     </div>
@@ -365,6 +378,7 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
   const homeBets = poolData.bets.filter(b => b.pick === 'home');
   const awayBets = poolData.bets.filter(b => b.pick === 'away');
   const drawBets = poolData.bets.filter(b => b.pick === 'draw');
+  const isResolved = poolData.resolved;
 
   const bettorIds = new Set(poolData.bets.map(b => b.user_id));
   const notBet = allUsers.filter(u => !bettorIds.has(u.id));
@@ -386,20 +400,25 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
             <tr>
               <th style={{ padding: '3px 6px', textAlign: 'left', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>User</th>
               <th style={{ padding: '3px 6px', textAlign: 'right', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Bet</th>
-              <th style={{ padding: '3px 6px', textAlign: 'right', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Win</th>
+              <th style={{ padding: '3px 6px', textAlign: 'right', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{isResolved ? 'Result' : 'Win'}</th>
             </tr>
           </thead>
           <tbody>
-            {bets.map((b, i) => (
-              <tr key={i}>
-                <td style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.9)', fontSize: 12 }}>{(b.display_name || b.username || '?').split(' ')[0]}</td>
-                <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>{CURRENCY_SYMBOL}{b.amount}</td>
-                <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: '#4ade80', fontSize: 11 }}>
-                  {CURRENCY_SYMBOL}{b.possible_win}
-                  {b.possible_win > b.amount && <span style={{ fontSize: 9, opacity: 0.7 }}> +{Math.round(((b.possible_win - b.amount) / b.amount) * 100)}%</span>}
-                </td>
-              </tr>
-            ))}
+            {bets.map((b, i) => {
+              const won = b.status === 'won';
+              const lost = b.status === 'lost';
+              return (
+                <tr key={i} style={won ? { background: 'rgba(74,222,128,0.06)' } : lost ? { background: 'rgba(248,113,113,0.04)' } : undefined}>
+                  <td style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.9)', fontSize: 12 }}>{(b.display_name || b.username || '?').split(' ')[0]}</td>
+                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>{CURRENCY_SYMBOL}{b.amount}</td>
+                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11, color: won ? '#4ade80' : lost ? '#f87171' : '#4ade80' }}>
+                    {won ? `+${CURRENCY_SYMBOL}${(b.payout || 0) - b.amount}` : lost ? `-${CURRENCY_SYMBOL}${b.amount}` : (
+                      <>{CURRENCY_SYMBOL}{b.possible_win}{b.possible_win > b.amount && <span style={{ fontSize: 9, opacity: 0.7 }}> +{Math.round(((b.possible_win - b.amount) / b.amount) * 100)}%</span>}</>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
@@ -791,7 +810,7 @@ export function Toast({ message, onDone }) {
 }
 
 // ── Bet card (My Bets screen) ────────────────────────────────
-export function BetCard({ bet, onCancelBet, kickoffTs }) {
+export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs }) {
   const matchId = bet.match_id || bet.matchId;
   const isSpecial = bet.kind && bet.kind !== 'match';
   const match = !isSpecial ? getMatch(matchId) : null;
@@ -802,7 +821,8 @@ export function BetCard({ bet, onCancelBet, kickoffTs }) {
 
   if (isSpecial) {
     const pickTeam = getTeam(bet.pick);
-    const canCancel = bet.status === 'pending' && onCancelBet;
+    const specialDeadlinePassed = cupWinnerDeadlineTs && Date.now() >= cupWinnerDeadlineTs;
+    const canCancel = bet.status === 'pending' && onCancelBet && !specialDeadlinePassed;
     return (
       <div className="bet-card">
         <div className="bet-card__head">

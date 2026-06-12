@@ -10,10 +10,10 @@ export async function GET(request) {
     return NextResponse.json({});
   }
 
-  // If no match_id, return all active pools (matches with pending bets) + all profiles
+  // If no match_id, return all pools (pending + resolved) + all profiles
   if (!matchId) {
     const [betsRes, profilesRes] = await Promise.all([
-      supabase.from('bets').select('match_id, user_id, pick, amount, profiles(display_name, avatar_url)').eq('status', 'pending'),
+      supabase.from('bets').select('match_id, user_id, pick, amount, status, payout, profiles(display_name, avatar_url)').neq('status', 'cancelled'),
       supabase.from('profiles').select('id, display_name, avatar_url'),
     ]);
 
@@ -26,6 +26,7 @@ export async function GET(request) {
 
     const grouped = {};
     for (const b of bets) {
+      if (b.match_id === '_topup') continue;
       (grouped[b.match_id] = grouped[b.match_id] || []).push(b);
     }
 
@@ -34,17 +35,24 @@ export async function GET(request) {
       const total = mBets.reduce((s, b) => s + b.amount, 0);
       const bySide = { home: 0, away: 0, draw: 0 };
       mBets.forEach(b => { bySide[b.pick] = (bySide[b.pick] || 0) + b.amount; });
+      const isResolved = mBets.some(b => b.status === 'won' || b.status === 'lost');
       pools[mid] = {
         matchId: mid,
         total,
         bettorCount: new Set(mBets.map(b => b.user_id)).size,
         bySide,
+        resolved: isResolved,
         bets: mBets.map(b => ({
           user_id: b.user_id,
           display_name: b.profiles?.display_name || 'Unknown',
+          avatar_url: b.profiles?.avatar_url || null,
           pick: b.pick,
           amount: b.amount,
-          possible_win: Math.floor((b.amount / (bySide[b.pick] || 1)) * total),
+          status: b.status,
+          payout: b.payout || null,
+          possible_win: isResolved
+            ? (b.status === 'won' ? (b.payout || 0) : 0)
+            : Math.floor((b.amount / (bySide[b.pick] || 1)) * total),
         })),
       };
     }
