@@ -9,6 +9,7 @@ import { AppHeader, TabBar, PlaceBetSheet, Toast, NewsTicker } from '@/component
 import HomeScreen from '@/components/screens/HomeScreen';
 import FixturesScreen from '@/components/screens/FixturesScreen';
 import CupWinnerBetModal from '@/components/CupWinnerBetModal';
+import GoalScorerBetModal from '@/components/GoalScorerBetModal';
 import SpecialsScreen from '@/components/screens/SpecialsScreen';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
 
@@ -81,6 +82,8 @@ export default function AdeYaarApp() {
   const [cupWinnerDeadlineTs, setCupWinnerDeadlineTs] = useState(null);
   const [cupWinnerOpen, setCupWinnerOpen] = useState(false);
   const [myCupWinnerBet, setMyCupWinnerBet] = useState(null);
+  const [goalScorerOpen, setGoalScorerOpen] = useState(false);
+  const [goalScorerMatchId, setGoalScorerMatchId] = useState(null);
   const [poolMap, setPoolMap] = useState({});
 
   const balance = computeBalance(bets);
@@ -253,7 +256,22 @@ export default function AdeYaarApp() {
             <ErrorBoundary>
               {tab === 'home'     && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={() => setCupWinnerOpen(true)} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />}
               {tab === 'fixtures' && <FixturesScreen matches={matches} onBet={openBet} bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers} />}
-              {tab === 'specials' && <SpecialsScreen user={user} bets={bets} onOpenSpecialBet={() => setCupWinnerOpen(true)} allUsers={allUsers} />}
+              {tab === 'specials' && (
+                <SpecialsScreen
+                  user={user}
+                  bets={bets}
+                  matches={matches}
+                  allUsers={allUsers}
+                  onOpenSpecialBet={(id, ctx) => {
+                    if (id === 'goalscorer' && ctx?.matchId) {
+                      setGoalScorerMatchId(ctx.matchId);
+                      setGoalScorerOpen(true);
+                    } else {
+                      setCupWinnerOpen(true);
+                    }
+                  }}
+                />
+              )}
               {tab === 'leaders'  && <LeaderboardScreen user={user} />}
               {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} scheduleMap={scheduleMap} />}
             </ErrorBoundary>
@@ -286,6 +304,16 @@ export default function AdeYaarApp() {
           myCupWinnerBet={myCupWinnerBet}
           onPlaced={() => { refreshCupWinnerBet(); refreshData(); }}
           deadlineTs={cupWinnerDeadlineTs}
+        />
+      </div>
+
+      <div data-theme={theme}>
+        <GoalScorerBetModal
+          open={goalScorerOpen}
+          onClose={() => setGoalScorerOpen(false)}
+          matchId={goalScorerMatchId}
+          user={user}
+          onPlaced={() => { refreshData(); refreshPools(); }}
         />
       </div>
     </div>

@@ -121,3 +121,60 @@ reject the deployment configuration.
 
 ### Verification
 - `npm run build` → succeeds cleanly (only non-blocking viewport metadata warnings).
+
+---
+
+## 2026-06-12 — Anytime Goalscorer special bet (Sonnet 4.6)
+
+### What was built
+Full "anytime goalscorer" parimutuel bet market, one pool per group-stage match.
+
+### Files changed / created
+- **`supabase/migrations/012_goalscorer_bets.sql`** (new) — extends `bets_kind_check`
+  to include `'goalscorer'`; relaxes `activity_type_check` to include `'bet_cancelled'`
+  (was already used in migrations 009/010 but never formalized); adds `fifa_id_stage` /
+  `fifa_id_match` columns to `match_schedule`; creates `match_players` cache table; adds
+  `place_goalscorer_bet`, `cancel_goalscorer_bet`, `settle_goalscorer` RPCs.
+- **`lib/schedule-sync.js`** — `mapFifaToSchedule` now extracts `fifa_id_stage` and
+  `fifa_id_match` from each FIFA calendar result and includes them in the upsert payload.
+- **`app/api/goalscorer-players/[matchId]/route.js`** (new) — serves the player roster
+  for a match. Checks `match_players` cache first; on cache miss calls the FIFA live
+  endpoint (`/api/v3/live/football/17/285023/{stage}/{match}`), parses the response,
+  writes to cache, returns players grouped into `{ home, away }` sorted FWD→MID→DEF→GK.
+- **`app/api/goalscorer-bet/route.js`** (new) — GET for per-match pool + my bet or
+  aggregate summary (`?summary=true`); POST calls `place_goalscorer_bet` RPC; DELETE
+  calls `cancel_goalscorer_bet` RPC.
+- **`app/api/auto-resolve/route.js`** — after each `resolve_match` call, now also
+  fetches the FIFA live endpoint for that match (using FIFA IDs from the calendar
+  response), extracts goal-scorer player IDs (own goals excluded by comparing
+  `goal.IdTeam` against the scorer's team from the Players array), and calls
+  `settle_goalscorer`. Returns a `goalscorer` array alongside `resolved` in the response.
+- **`lib/specials.js`** — added `goalscorer` entry to `SPECIALS`.
+- **`components/GoalScorerBetModal.jsx`** (new) — bottom-sheet modal. Fetches players
+  per match, shows two-column player picker (home | away), FWD first. Has amount
+  slider + presets identical to CupWinnerBetModal. Switch between "pick" and "see picks"
+  views; shows current bet with cancel button.
+- **`components/screens/SpecialsScreen.jsx`** — fixed the pool-fetch loop (was calling
+  `/api/cup-winner-bet` for every special including future ones); now routes correctly
+  per special. Added `GoalScorerMatchList` component for expanded goalscorer view:
+  shows upcoming matches with a bet CTA; calls `onOpenSpecialBet('goalscorer', { matchId })`.
+  Accepts new `matches` prop (passed from AdeYaarApp).
+- **`components/AdeYaarApp.jsx`** — imports `GoalScorerBetModal`; adds `goalScorerOpen`
+  / `goalScorerMatchId` state; passes `matches` to `SpecialsScreen`; renders
+  `GoalScorerBetModal` alongside `CupWinnerBetModal`.
+
+### Decisions
+- **Parimutuel model** — consistent with match bets and cup-winner. No odds management
+  needed. Pool split proportionally among winners; refund all on 0-0 or no winner.
+- **Own goal exclusion** — goal's `IdTeam` (team that benefited) is compared to the
+  scorer's `IdTeam` from the Players array. Mismatch = own goal → excluded from winners.
+- **Lazy player cache** — `match_players` is populated on first visit to the player
+  picker. Returns 202 with an informative message if FIFA IDs haven't been synced yet.
+- **FIFA IDs sourced at settle time** — `auto-resolve` pulls `IdStage`/`IdMatch` from
+  the calendar response in the same request, so no separate sync step is required for
+  settlement. The schedule-sync route also stores them for the player-roster endpoint.
+- **One active bet per user per match** — switching player cancels and replaces the
+  existing bet (same as cup-winner switch flow). No multi-pick.
+
+### Verification
+- `npm run build` → 25/25 pages, no errors (same pre-existing viewport warnings).
