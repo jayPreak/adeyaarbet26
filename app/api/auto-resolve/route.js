@@ -1,31 +1,18 @@
 import { NextResponse } from 'next/server';
 import supabaseAnon from '@/lib/supabase';
 import supabaseAdmin from '@/lib/supabase-admin';
-import { FIFA_MATCHES_URL, TEAM_CODE_ALIAS } from '@/lib/schedule-sync';
-import { MATCHES } from '@/lib/data';
+import { FIFA_MATCHES_URL } from '@/lib/schedule-sync';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const db = supabaseAdmin || supabaseAnon;
 
-// FIFA competition/season — same as the calendar URL
 const FIFA_LIVE_BASE = 'https://api.fifa.com/api/v3/live/football/17/285023';
-
-function buildLookup() {
-  const lookup = {};
-  for (const m of MATCHES) lookup[`${m.group}|${m.home}|${m.away}`] = m.id;
-  return lookup;
-}
 
 function groupLetter(fifaMatch) {
   const g = fifaMatch.GroupName?.[0]?.Description;
   return g ? g.replace('Group ', '').trim() : null;
-}
-
-function teamCode(team) {
-  const c = team?.Abbreviation;
-  return (c && TEAM_CODE_ALIAS[c]) || c;
 }
 
 function determineWinner(fifaMatch) {
@@ -56,23 +43,21 @@ function extractScorerIds(liveData) {
   const scorers = new Set();
   for (const goal of liveData.Goals || []) {
     if (!goal.IdPlayer) continue;
-    const scorerId     = String(goal.IdPlayer);
-    const benefitTeam  = String(goal.IdTeam || '');
-    const scorerTeam   = playerTeam[scorerId];
-    // Regular goal: scorer's team matches the team credited with the goal
+    const scorerId    = String(goal.IdPlayer);
+    const benefitTeam = String(goal.IdTeam || '');
+    const scorerTeam  = playerTeam[scorerId];
     if (scorerTeam && scorerTeam === benefitTeam) {
       scorers.add(scorerId);
     }
-    // Own goal (scorerTeam !== benefitTeam): excluded from winning picks
   }
   return [...scorers];
 }
 
-async function settleGoalscorer(matchId, schedRow) {
-  if (!schedRow?.fifa_id_stage || !schedRow?.fifa_id_match) return null;
+// matchId IS the FIFA match ID after migration; fifa_id_stage needed for URL.
+async function settleGoalscorer(matchId, fifaIdStage) {
+  if (!fifaIdStage) return null;
   if (!db) return null;
 
-  // Only proceed if there are pending goalscorer bets for this match
   const { data: pending } = await db
     .from('bets')
     .select('id')
@@ -84,7 +69,7 @@ async function settleGoalscorer(matchId, schedRow) {
 
   let liveData;
   try {
-    const url = `${FIFA_LIVE_BASE}/${schedRow.fifa_id_stage}/${schedRow.fifa_id_match}`;
+    const url = `${FIFA_LIVE_BASE}/${fifaIdStage}/${matchId}`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return { error: `FIFA live ${res.status}` };
     liveData = await res.json();
@@ -94,8 +79,8 @@ async function settleGoalscorer(matchId, schedRow) {
 
   const scorerIds = extractScorerIds(liveData);
   const { data, error } = await db.rpc('settle_goalscorer', {
-    p_match_id:            matchId,
-    p_scoring_player_ids:  scorerIds.length > 0 ? scorerIds : null,
+    p_match_id:           matchId,
+    p_scoring_player_ids: scorerIds.length > 0 ? scorerIds : null,
   });
   if (error) return { error: error.message };
   return data;
@@ -114,15 +99,12 @@ export async function GET() {
     return NextResponse.json({ resolved: [], error: e.message });
   }
 
-  const lookup = buildLookup();
-
   const finished = [];
   for (const fm of fifaResults) {
     if (fm.MatchStatus !== 0) continue;
     const group = groupLetter(fm);
-    if (!group) continue;
-    const key = `${group}|${teamCode(fm.Home)}|${teamCode(fm.Away)}`;
-    const matchId = lookup[key];
+    if (!group) continue; // skip knockout matches for now
+    const matchId = fm.IdMatch ? String(fm.IdMatch) : null;
     if (!matchId) continue;
     const winner = determineWinner(fm);
     if (!winner) continue;
@@ -130,7 +112,6 @@ export async function GET() {
       matchId,
       winner,
       fifa_id_stage: fm.IdStage ? String(fm.IdStage) : null,
-      fifa_id_match: fm.IdMatch ? String(fm.IdMatch) : null,
     });
   }
 
@@ -152,8 +133,7 @@ export async function GET() {
   const resolved = [];
   const goalscorer = [];
 
-  for (const { matchId, winner, fifa_id_stage, fifa_id_match } of toResolve) {
-    // Settle match bets
+  for (const { matchId, winner, fifa_id_stage } of toResolve) {
     const { error } = await db.rpc('resolve_match', {
       p_match_id: matchId,
       p_winner:   winner,
@@ -161,8 +141,7 @@ export async function GET() {
     if (!error) {
       resolved.push(matchId);
 
-      // Settle goalscorer bets for the same match using FIFA IDs from the calendar result
-      const gsResult = await settleGoalscorer(matchId, { fifa_id_stage, fifa_id_match });
+      const gsResult = await settleGoalscorer(matchId, fifa_id_stage);
       if (gsResult && !gsResult.error) goalscorer.push({ matchId, ...gsResult });
     }
   }

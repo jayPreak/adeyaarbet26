@@ -775,7 +775,7 @@ function GoalScorerMatchList({ matches, bets, onBet, onBack, gsSummary }) {
                   <span style={{ fontSize: 11, color: 'var(--ink-3)', margin: '0 2px' }}>vs</span>
                   <Flag code={m.away} size="sm" />
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>{m.away}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>{m.id}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>{m.label || m.id}</span>
                 </div>
                 {myBet && (
                   <div style={{ fontSize: 11, color: 'var(--win)', marginBottom: 8 }}>

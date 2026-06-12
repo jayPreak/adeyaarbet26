@@ -15,13 +15,12 @@ const FIFA_ABBREV_TO_CODE = { ...TEAM_CODE_ALIAS };
 for (const code of Object.keys(TEAM)) FIFA_ABBREV_TO_CODE[code] = code;
 
 function parsePlayers(liveData, matchId, homeCode, awayCode) {
-  const homeTeamId = liveData.Home?.IdTeam ? String(liveData.Home.IdTeam) : null;
-  // Try both flat Players[] and nested Home/Away.Players[]
+  const homeTeamId = liveData.HomeTeam?.IdTeam ? String(liveData.HomeTeam.IdTeam) : null;
   const allPlayers = Array.isArray(liveData.Players)
     ? liveData.Players
     : [
-        ...(liveData.Home?.Players || []),
-        ...(liveData.Away?.Players || []),
+        ...(liveData.HomeTeam?.Players || []),
+        ...(liveData.AwayTeam?.Players || []),
       ];
 
   const players = [];
@@ -40,7 +39,7 @@ function parsePlayers(liveData, matchId, homeCode, awayCode) {
       player_id: String(p.IdPlayer),
       player_name: name,
       team_code: teamCode,
-      jersey_num: p.JerseyNum != null ? String(p.JerseyNum) : null,
+      jersey_num: p.ShirtNumber != null ? String(p.ShirtNumber) : null,
       position: p.Position != null ? p.Position : null,
     });
   }
@@ -62,16 +61,16 @@ export async function GET(request, { params }) {
     return NextResponse.json(groupPlayers(cached));
   }
 
-  // 2. Need to fetch from FIFA — look up FIFA IDs
+  // 2. matchId IS the FIFA match ID; only need fifa_id_stage for the live URL
   const { data: schedRow } = await db
     .from('match_schedule')
-    .select('fifa_id_stage, fifa_id_match')
+    .select('fifa_id_stage')
     .eq('id', matchId)
     .single();
 
-  if (!schedRow?.fifa_id_stage || !schedRow?.fifa_id_match) {
+  if (!schedRow?.fifa_id_stage) {
     return NextResponse.json(
-      { error: 'Player list not yet available (FIFA IDs not synced)', players: { home: [], away: [] } },
+      { error: 'Player list not yet available (match not found in schedule)', players: { home: [], away: [] } },
       { status: 202 }
     );
   }
@@ -84,7 +83,7 @@ export async function GET(request, { params }) {
   // 3. Fetch live endpoint
   let liveData;
   try {
-    const url = `${FIFA_LIVE_BASE}/${schedRow.fifa_id_stage}/${schedRow.fifa_id_match}`;
+    const url = `${FIFA_LIVE_BASE}/${schedRow.fifa_id_stage}/${matchId}`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) {
       return NextResponse.json({ error: `FIFA API ${res.status}`, players: { home: [], away: [] } }, { status: 502 });
@@ -118,13 +117,11 @@ function groupPlayers(rows) {
     return pb - pa;
   });
 
-  const home = [];
-  const away = [];
-  // Figure out home/away from first non-empty group; we can't know statically
-  // but rows have team_code from the MATCHES lookup during population
   const teams = [...new Set(sorted.map(p => p.team_code))];
   const [homeCode, awayCode] = teams;
 
+  const home = [];
+  const away = [];
   for (const p of sorted) {
     const enriched = { ...p, position_label: POSITION_LABELS[p.position] || '' };
     if (p.team_code === homeCode) home.push(enriched);
