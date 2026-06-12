@@ -99,95 +99,52 @@ export function LiveDot({ minute }) {
   );
 }
 
-// ── News Ticker ─────────────────────────────────────────────
-export function NewsTicker({ matches = [], bets = [], user }) {
-  const [now, setNow] = useState(Date.now());
+// ── Special Bet Notification ────────────────────────────────
+const NOTIFICATIONS = [
+  { id: 'notif_continent', label: 'Winning Continent', specialTab: 'specials' },
+  { id: 'notif_halftime', label: 'Halftime Show Performer', specialTab: 'specials' },
+];
+
+export function SpecialNotification({ onNavigate }) {
+  const [visible, setVisible] = useState(null);
+
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(id);
+    const dismissed = JSON.parse(localStorage.getItem('adeyaar_dismissed_notifs') || '[]');
+    const pending = NOTIFICATIONS.find(n => !dismissed.includes(n.id));
+    setVisible(pending || null);
   }, []);
 
-  const items = [];
+  const dismiss = () => {
+    if (!visible) return;
+    const dismissed = JSON.parse(localStorage.getItem('adeyaar_dismissed_notifs') || '[]');
+    dismissed.push(visible.id);
+    localStorage.setItem('adeyaar_dismissed_notifs', JSON.stringify(dismissed));
+    const next = NOTIFICATIONS.find(n => !dismissed.includes(n.id));
+    setVisible(next || null);
+  };
 
-  const live = matches.filter(m => m.status === 'live');
-  const upcoming = matches
-    .filter(m => m.status !== 'finished' && m.status !== 'live' && m.kickoffTs)
-    .sort((a, b) => (a.kickoffTs || '').localeCompare(b.kickoffTs || ''));
-  const next = upcoming[0];
-
-  if (live.length > 0) {
-    live.forEach(m => {
-      const h = getTeam(m.home);
-      const a = getTeam(m.away);
-      const score = m.score ? ` ${m.score[0]}–${m.score[1]}` : '';
-      items.push(`🔴 LIVE: ${h.name} vs ${a.name}${score}${m.minute ? ` (${m.minute}')` : ''}`);
-    });
-  }
-
-  if (next) {
-    const h = getTeam(next.home);
-    const a = getTeam(next.away);
-    const diff = new Date(next.kickoffTs).getTime() - now;
-    if (diff > 0) {
-      const days = Math.floor(diff / 86400000);
-      const hrs = Math.floor((diff % 86400000) / 3600000);
-      const mins = Math.floor((diff % 3600000) / 60000);
-      const parts = [];
-      if (days > 0) parts.push(`${days}d`);
-      if (hrs > 0) parts.push(`${hrs}h`);
-      parts.push(`${mins}m`);
-      items.push(`⚽ Next: ${h.name} vs ${a.name} in ${parts.join(' ')}`);
-    }
-
-    // Only nudge if match is within 24h
-    if (user && diff > 0 && diff < 86400000) {
-      const hasBetOnNext = bets.some(b => (b.match_id || b.matchId) === next.id && b.status === 'pending');
-      if (!hasBetOnNext) {
-        items.push(`🚨 You haven't placed your bet for ${h.name} vs ${a.name}!`);
-      }
-    }
-  }
-
-  if (items.length === 0) {
-    items.push('🏆 FIFA World Cup 2026 · AdeYaar Betting League');
-  }
-
-  const text = items.join('     ·     ');
+  if (!visible) return null;
 
   return (
     <div style={{
-      overflow: 'hidden',
-      whiteSpace: 'nowrap',
-      background: 'rgba(0,0,0,0.4)',
-      borderBottom: '1px solid rgba(255,255,255,0.06)',
-      padding: '6px 0',
-      position: 'relative',
+      display: 'flex', alignItems: 'center', gap: 8,
+      padding: '8px 12px 8px 16px',
+      background: 'linear-gradient(90deg, rgba(0,255,133,0.08) 0%, rgba(77,168,255,0.08) 100%)',
+      borderBottom: '1px solid rgba(0,255,133,0.15)',
     }}>
-      <div style={{
-        display: 'inline-block',
-        animation: 'marquee 20s linear infinite',
-        paddingLeft: '100%',
-        fontSize: 12,
-        fontWeight: 700,
-        background: 'linear-gradient(90deg, #ff0000, #ff7700, #ffff00, #00ff00, #0077ff, #8b00ff, #ff0000)',
-        backgroundSize: '200% 100%',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
-        animation: 'marquee 18s linear infinite, rainbow 3s linear infinite',
-      }}>
-        {text}
-      </div>
-      <style>{`
-        @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-100%); }
-        }
-        @keyframes rainbow {
-          0% { background-position: 0% 50%; }
-          100% { background-position: 200% 50%; }
-        }
-      `}</style>
+      <span style={{ fontSize: 14 }}>🎉</span>
+      <span
+        onClick={() => { onNavigate(); dismiss(); }}
+        style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--gold)', cursor: 'pointer' }}
+      >
+        NEW SPECIAL BET: {visible.label}! <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>Go bet →</span>
+      </span>
+      <button
+        onClick={dismiss}
+        style={{ width: 20, height: 20, display: 'grid', placeItems: 'center', borderRadius: 4, color: 'var(--ink-3)', fontSize: 14 }}
+      >
+        ✕
+      </button>
     </div>
   );
 }

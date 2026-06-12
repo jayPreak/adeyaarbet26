@@ -5,7 +5,7 @@ import { MATCHES, getMatch, getTeam } from '@/lib/data';
 import { fmtMoney } from '@/lib/currency';
 import { computeBalance, computeRealisedBalance } from '@/lib/ledger';
 import { useUser } from '@/lib/hooks';
-import { AppHeader, TabBar, PlaceBetSheet, Toast, NewsTicker } from '@/components';
+import { AppHeader, TabBar, PlaceBetSheet, Toast, SpecialNotification } from '@/components';
 import HomeScreen from '@/components/screens/HomeScreen';
 import FixturesScreen from '@/components/screens/FixturesScreen';
 import CupWinnerBetModal from '@/components/CupWinnerBetModal';
@@ -251,7 +251,7 @@ export default function AdeYaarApp() {
       <div className="phone-frame">
         <div className="app" data-theme={theme}>
           <AppHeader balance={balance} realisedBalance={realisedBalance} user={user} onTap={() => setTab('bets')} betsLoaded={betsLoaded} />
-          <NewsTicker matches={matches} bets={bets} user={user} />
+          <SpecialNotification onNavigate={() => setTab('specials')} />
 
           <div className="scroll">
             <ErrorBoundary>
