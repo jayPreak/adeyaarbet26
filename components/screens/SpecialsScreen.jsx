@@ -1027,7 +1027,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               onOpen={() => setExpanded(special.id)}
               deadlineTs={new Date(special.deadlineTs).getTime()}
               myBet={h2hMyBet}
-              resolvesTs={null}
+              resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
             />
           );
         }
@@ -1064,7 +1064,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               onOpen={() => setExpanded(special.id)}
               deadlineTs={new Date(special.deadlineTs).getTime()}
               myBet={gbMyBet}
-              resolvesTs={null}
+              resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
             />
           );
         }
