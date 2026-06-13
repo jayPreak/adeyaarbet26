@@ -206,11 +206,14 @@ body {
 }
 .stats-bar {
   display: flex; align-items: center; justify-content: center;
-  margin: 0 16px 8px;
-  padding: 8px 0;
+  margin: 0 0 8px;
+  padding: 10px 0;
   background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
   cursor: pointer;
 }
 .stats-bar__cell {

@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 
 const TABS = [
-  { id: 'total', label: 'Realised P&L' },
-  { id: 'wins', label: 'Biggest Wins' },
+  { id: 'total', label: 'Rankings' },
+  { id: 'wins', label: 'Top Payouts' },
   { id: 'losses', label: 'Biggest Losses' },
-  { id: 'bettor', label: 'Biggest Bettor' },
+  { id: 'bettor', label: 'High Rollers' },
 ];
 
 function timeAgo(dateStr) {
@@ -26,18 +26,12 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 
 function SubTabs({ active, onChange }) {
   return (
-    <div style={{ display: 'flex', gap: 0, margin: '12px 16px 16px', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+    <div className="material-tabs">
       {TABS.map(t => (
         <button
           key={t.id}
+          className={'material-tab' + (active === t.id ? ' active' : '')}
           onClick={() => onChange(t.id)}
-          style={{
-            flex: 1, padding: '10px 4px', border: 'none', cursor: 'pointer',
-            fontSize: 11, fontWeight: 600,
-            background: active === t.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-            color: active === t.id ? 'var(--ink)' : 'var(--ink-3)',
-            transition: 'all 0.15s',
-          }}
         >
           {t.label}
         </button>

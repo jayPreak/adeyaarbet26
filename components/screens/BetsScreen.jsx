@@ -525,14 +525,15 @@ function SettlementCard({ user, bets = [] }) {
 }
 
 export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, scheduleMap = {}, cupWinnerDeadlineTs = null }) {
-  const [tab, setTab] = useState('pending');
+  const [view, setView] = useState('overview');
+  const [betFilter, setBetFilter] = useState('pending');
 
-  const realBets = useMemo(() => bets.filter(b => b.match_id !== '_topup'), [bets]);
+  const realBets = useMemo(() => bets.filter(b => b.match_id !== '_topup' && b.status !== 'cancelled'), [bets]);
 
   const filtered = useMemo(() => {
-    if (tab === 'all') return realBets;
-    return realBets.filter(b => b.status === tab);
-  }, [realBets, tab]);
+    if (betFilter === 'all') return realBets;
+    return realBets.filter(b => b.status === betFilter);
+  }, [realBets, betFilter]);
 
   const totalOpen = useMemo(
     () => realBets.filter(b => b.status === 'pending').reduce((s, b) => s + b.amount, 0),
@@ -554,57 +555,84 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
   return (
     <div>
       <AccountSection user={user} onProfileUpdate={onProfileUpdate} />
-      <NetWorthGraph bets={bets} />
-      <SettlementCard user={user} bets={bets} />
-      <AchievementBadges user={user} />
 
-      <div className="section-head" style={{ marginTop: 0 }}>
-        <div className="section-head__title display">My Bets</div>
+      <div className="material-tabs">
+        <button
+          className={'material-tab' + (view === 'overview' ? ' active' : '')}
+          onClick={() => setView('overview')}
+        >
+          Overview
+        </button>
+        <button
+          className={'material-tab' + (view === 'bets' ? ' active' : '')}
+          onClick={() => setView('bets')}
+        >
+          My Bets ({realBets.length})
+        </button>
       </div>
 
-      <div className="stats-strip">
-        {[
-          { label: 'Open stake', val: fmtMoney(totalOpen), tint: 'gold' },
-          { label: 'Won',        val: '+' + fmtMoney(totalWon), tint: 'win' },
-          { label: 'Lost',       val: '-' + fmtMoney(totalLost), tint: 'loss' },
-          { label: 'Win rate',   val: winRate + '%', tint: null },
-        ].map(s => (
-          <div key={s.label} className="stat-card">
-            <div className="stat-label">{s.label}</div>
-            <div className="stat-value" style={{
-              fontSize: 18,
-              color: s.tint === 'gold' ? 'var(--gold)' : s.tint === 'win' ? 'var(--win)' : s.tint === 'loss' ? 'var(--loss)' : 'var(--ink)',
-            }}>{s.val}</div>
+      {view === 'overview' && (
+        <>
+          <div className="section-head" style={{ marginTop: 8 }}>
+            <div className="section-head__title" style={{ fontSize: 14, fontWeight: 700 }}>P&L Graph</div>
           </div>
-        ))}
-      </div>
+          <NetWorthGraph bets={bets} />
+          <SettlementCard user={user} bets={bets} />
+          <AchievementBadges user={user} />
+        </>
+      )}
 
-
-      <div className="chip-row" style={{ marginBottom: 12 }}>
-        {[
-          { id: 'pending', label: `Open · ${realBets.filter(b => b.status === 'pending').length}` },
-          { id: 'won',  label: `Won · ${realBets.filter(b => b.status === 'won').length}` },
-          { id: 'lost', label: `Lost · ${realBets.filter(b => b.status === 'lost').length}` },
-          { id: 'all',  label: `All · ${realBets.length}` },
-        ].map(t => (
-          <button
-            key={t.id}
-            className={'chip ' + (tab === t.id ? 'active' : '')}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {filtered.length === 0 && (
-          <div className="card" style={{ textAlign: 'center', padding: 28, color: 'var(--ink-3)' }}>
-            {realBets.length === 0 ? 'Place your first bet!' : `No ${tab} bets yet`}
+      {view === 'bets' && (
+        <>
+          <div className="stats-bar" style={{ cursor: 'default', marginTop: 0 }}>
+            <div className="stats-bar__cell">
+              <div className="stats-bar__label">Open Stake</div>
+              <div className="stats-bar__value" style={{ color: 'var(--gold)' }}>{fmtMoney(totalOpen)}</div>
+            </div>
+            <div className="stats-bar__divider" />
+            <div className="stats-bar__cell">
+              <div className="stats-bar__label">Won</div>
+              <div className="stats-bar__value" style={{ color: 'var(--win)' }}>+{fmtMoney(totalWon)}</div>
+            </div>
+            <div className="stats-bar__divider" />
+            <div className="stats-bar__cell">
+              <div className="stats-bar__label">Lost</div>
+              <div className="stats-bar__value" style={{ color: 'var(--loss)' }}>-{fmtMoney(totalLost)}</div>
+            </div>
+            <div className="stats-bar__divider" />
+            <div className="stats-bar__cell">
+              <div className="stats-bar__label">Win Rate</div>
+              <div className="stats-bar__value">{winRate}%</div>
+            </div>
           </div>
-        )}
-        {filtered.map(b => <BetCard key={b.id} bet={b} onCancelBet={onCancelBet} kickoffTs={scheduleMap[b.match_id || b.matchId] || null} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />)}
-      </div>
+
+          <div className="chip-row" style={{ marginBottom: 12, marginTop: 12 }}>
+            {[
+              { id: 'pending', label: `Open · ${realBets.filter(b => b.status === 'pending').length}` },
+              { id: 'won',  label: `Won · ${realBets.filter(b => b.status === 'won').length}` },
+              { id: 'lost', label: `Lost · ${realBets.filter(b => b.status === 'lost').length}` },
+              { id: 'all',  label: `All · ${realBets.length}` },
+            ].map(t => (
+              <button
+                key={t.id}
+                className={'chip ' + (betFilter === t.id ? 'active' : '')}
+                onClick={() => setBetFilter(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {filtered.length === 0 && (
+              <div className="card" style={{ textAlign: 'center', padding: 28, color: 'var(--ink-3)' }}>
+                {realBets.length === 0 ? 'Place your first bet!' : `No ${betFilter} bets yet`}
+              </div>
+            )}
+            {filtered.map(b => <BetCard key={b.id} bet={b} onCancelBet={onCancelBet} kickoffTs={scheduleMap[b.match_id || b.matchId] || null} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />)}
+          </div>
+        </>
+      )}
     </div>
   );
 }
