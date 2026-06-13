@@ -97,6 +97,13 @@ export default function AdeYaarApp() {
   const pendingBets = bets.filter(b => b.match_id !== '_topup' && b.status === 'pending');
   const pendingStake = pendingBets.reduce((s, b) => s + b.amount, 0);
   const pendingCount = pendingBets.length;
+  const bestCaseWin = pendingBets.reduce((s, b) => {
+    const pool = poolMap[b.match_id];
+    if (!pool) return s + b.amount;
+    const total = pool.total || 0;
+    const sidePool = pool.bySide?.[b.pick] || b.amount;
+    return s + Math.floor((b.amount / sidePool) * total) - b.amount;
+  }, 0);
 
   useEffect(() => {
     if (loading) return;
@@ -259,7 +266,7 @@ export default function AdeYaarApp() {
     <div className="stage">
       <div className="phone-frame">
         <div className="app" data-theme={theme}>
-          <AppHeader balance={balance} realisedBalance={realisedBalance} pendingStake={pendingStake} pendingCount={pendingCount} user={user} onTap={() => setTab('bets')} betsLoaded={betsLoaded} />
+          <AppHeader balance={balance} realisedBalance={realisedBalance} pendingStake={pendingStake} pendingCount={pendingCount} bestCaseWin={bestCaseWin} user={user} onTap={() => setTab('bets')} betsLoaded={betsLoaded} />
           <SpecialNotification onNavigate={() => setTab('specials')} />
 
           <div className="scroll">
@@ -289,7 +296,7 @@ export default function AdeYaarApp() {
                 />
               )}
               {tab === 'leaders'  && <LeaderboardScreen user={user} />}
-              {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} scheduleMap={scheduleMap} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />}
+              {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} scheduleMap={scheduleMap} cupWinnerDeadlineTs={cupWinnerDeadlineTs} bestCaseWin={bestCaseWin} />}
             </ErrorBoundary>
           </div>
 

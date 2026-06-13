@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
+import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 import { getMatch, getTeam } from '@/lib/data';
 import { getSpecial } from '@/lib/specials';
 import { BetCard } from '@/components';
@@ -524,7 +524,7 @@ function SettlementCard({ user, bets = [] }) {
   );
 }
 
-export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, scheduleMap = {}, cupWinnerDeadlineTs = null }) {
+export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, scheduleMap = {}, cupWinnerDeadlineTs = null, bestCaseWin = 0 }) {
   const [view, setView] = useState('overview');
   const [betFilter, setBetFilter] = useState('pending');
 
@@ -547,6 +547,7 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
     () => realBets.filter(b => b.status === 'lost').reduce((s, b) => s + b.amount, 0),
     [realBets]
   );
+  const pendingCount = realBets.filter(b => b.status === 'pending').length;
   const settled = realBets.filter(b => b.status === 'won' || b.status === 'lost');
   const winRate = settled.length
     ? Math.round(100 * realBets.filter(b => b.status === 'won').length / settled.length)
@@ -578,6 +579,33 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
           </div>
           <NetWorthGraph bets={bets} />
           <SettlementCard user={user} bets={bets} />
+
+          {pendingCount > 0 && (
+            <div style={{
+              margin: '0 16px 12px', padding: '14px 16px', borderRadius: 12,
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>
+                Outcome range · {pendingCount} open bet{pendingCount !== 1 ? 's' : ''}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ textAlign: 'center', flex: 1 }}>
+                  <div style={{ fontSize: 10, color: 'var(--ink-3)', marginBottom: 2 }}>Worst case</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--loss)' }}>
+                    {fmtNet((totalWon - totalLost) - totalOpen)}
+                  </div>
+                </div>
+                <div style={{ width: 1, height: 28, background: 'var(--line)' }} />
+                <div style={{ textAlign: 'center', flex: 1 }}>
+                  <div style={{ fontSize: 10, color: 'var(--ink-3)', marginBottom: 2 }}>Best case 🤞</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>
+                    {fmtNet((totalWon - totalLost) + bestCaseWin)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <AchievementBadges user={user} />
         </>
       )}

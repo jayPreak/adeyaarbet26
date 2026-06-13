@@ -152,7 +152,7 @@ export function SpecialNotification({ onNavigate }) {
 }
 
 // ── App Header ───────────────────────────────────────────────
-export function AppHeader({ balance, realisedBalance, pendingStake, pendingCount, onTap, user, betsLoaded }) {
+export function AppHeader({ balance, realisedBalance, pendingStake, pendingCount, bestCaseWin, onTap, user, betsLoaded }) {
   return (
     <>
       <div className="app-header">
