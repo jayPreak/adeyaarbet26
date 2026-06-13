@@ -13,7 +13,7 @@ export async function GET(request) {
   // If no match_id, return all pools (pending + resolved) + all profiles
   if (!matchId) {
     const [betsRes, profilesRes] = await Promise.all([
-      supabase.from('bets').select('match_id, user_id, pick, amount, status, payout, profiles(display_name, avatar_url)').neq('status', 'cancelled'),
+      supabase.from('bets').select('match_id, user_id, pick, amount, status, payout, profiles(display_name, avatar_url)'),
       supabase.from('profiles').select('id, display_name, avatar_url'),
     ]);
 
@@ -31,17 +31,21 @@ export async function GET(request) {
     }
 
     const pools = {};
-    for (const [mid, mBets] of Object.entries(grouped)) {
-      const total = mBets.reduce((s, b) => s + b.amount, 0);
+    for (const [mid, allBets] of Object.entries(grouped)) {
+      const activeBets = allBets.filter(b => b.status !== 'cancelled');
+      const isRefunded = activeBets.length === 0 && allBets.length > 0;
+      const mBets = isRefunded ? allBets : activeBets;
+      const total = activeBets.reduce((s, b) => s + b.amount, 0);
       const bySide = { home: 0, away: 0, draw: 0 };
-      mBets.forEach(b => { bySide[b.pick] = (bySide[b.pick] || 0) + b.amount; });
-      const isResolved = mBets.some(b => b.status === 'won' || b.status === 'lost');
+      activeBets.forEach(b => { bySide[b.pick] = (bySide[b.pick] || 0) + b.amount; });
+      const isResolved = activeBets.some(b => b.status === 'won' || b.status === 'lost');
       pools[mid] = {
         matchId: mid,
-        total,
+        total: isRefunded ? allBets.reduce((s, b) => s + b.amount, 0) : total,
         bettorCount: new Set(mBets.map(b => b.user_id)).size,
-        bySide,
-        resolved: isResolved,
+        bySide: isRefunded ? (() => { const s = { home: 0, away: 0, draw: 0 }; allBets.forEach(b => { s[b.pick] = (s[b.pick] || 0) + b.amount; }); return s; })() : bySide,
+        resolved: isResolved || isRefunded,
+        refunded: isRefunded,
         bets: mBets.map(b => ({
           user_id: b.user_id,
           display_name: b.profiles?.display_name || 'Unknown',
@@ -50,9 +54,11 @@ export async function GET(request) {
           amount: b.amount,
           status: b.status,
           payout: b.payout || null,
-          possible_win: isResolved
-            ? (b.status === 'won' ? (b.payout || 0) : 0)
-            : Math.floor((b.amount / (bySide[b.pick] || 1)) * total),
+          possible_win: isRefunded
+            ? 0
+            : isResolved
+              ? (b.status === 'won' ? (b.payout || 0) : 0)
+              : Math.floor((b.amount / (bySide[b.pick] || 1)) * total),
         })),
       };
     }

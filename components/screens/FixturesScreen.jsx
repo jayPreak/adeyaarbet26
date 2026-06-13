@@ -66,7 +66,7 @@ export default function FixturesScreen({ matches = [], onBet, bets = [], onCance
             <div className="date-group__date">{date === 'tbd' ? '' : fmtDate(date)}</div>
           </div>
           {byDate[date].map(m => {
-            const myBets = bets.filter(b => (b.match_id || b.matchId) === m.id && b.status !== 'cancelled');
+            const myBets = bets.filter(b => (b.match_id || b.matchId) === m.id && (b.status !== 'cancelled' || m.status === 'finished'));
             return <MatchCard key={m.id} match={m} onBet={onBet} myBets={myBets} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} />;
           })}
         </div>

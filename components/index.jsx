@@ -313,8 +313,10 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
           {isFinished ? (() => {
             const wonBet = myBets.find(b => b.status === 'won');
             const lostBet = myBets.find(b => b.status === 'lost');
+            const refundedBet = myBets.find(b => b.status === 'cancelled');
             if (wonBet) return <span style={{ color: 'var(--win)' }}>Won {fmtMoney(wonBet.payout || 0)} on {pickLabel} (+{fmtMoney((wonBet.payout || 0) - wonBet.amount)})</span>;
             if (lostBet) return <span style={{ color: 'var(--loss)' }}>Lost {fmtMoney(myTotal)} on {pickLabel}</span>;
+            if (refundedBet) return <span style={{ color: 'var(--ink-3)' }}>Refunded {fmtMoney(myTotal)} — no winner picked</span>;
             return <span>Bet: {fmtMoney(myTotal)} on {pickLabel}</span>;
           })() : (
             <>
@@ -349,6 +351,7 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
   const awayBets = poolData.bets.filter(b => b.pick === 'away');
   const drawBets = poolData.bets.filter(b => b.pick === 'draw');
   const isResolved = poolData.resolved;
+  const isRefunded = poolData.refunded;
 
   const bettorIds = new Set(poolData.bets.map(b => b.user_id));
   const notBet = allUsers.filter(u => !bettorIds.has(u.id));
@@ -370,19 +373,20 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
             <tr>
               <th style={{ padding: '3px 6px', textAlign: 'left', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>User</th>
               <th style={{ padding: '3px 6px', textAlign: 'right', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Bet</th>
-              <th style={{ padding: '3px 6px', textAlign: 'right', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{isResolved ? 'Result' : 'Win'}</th>
+              <th style={{ padding: '3px 6px', textAlign: 'right', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{isRefunded ? 'Status' : isResolved ? 'Result' : 'Win'}</th>
             </tr>
           </thead>
           <tbody>
             {bets.map((b, i) => {
               const won = b.status === 'won';
               const lost = b.status === 'lost';
+              const refunded = b.status === 'cancelled';
               return (
-                <tr key={i} style={won ? { background: 'rgba(74,222,128,0.06)' } : lost ? { background: 'rgba(248,113,113,0.04)' } : undefined}>
+                <tr key={i} style={won ? { background: 'rgba(74,222,128,0.06)' } : lost ? { background: 'rgba(248,113,113,0.04)' } : refunded ? { background: 'rgba(255,255,255,0.02)' } : undefined}>
                   <td style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.9)', fontSize: 12 }}>{(b.display_name || b.username || '?').split(' ')[0]}</td>
                   <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>{CURRENCY_SYMBOL}{b.amount}</td>
-                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11, color: won ? '#4ade80' : lost ? '#f87171' : '#4ade80' }}>
-                    {won ? `+${CURRENCY_SYMBOL}${(b.payout || 0) - b.amount}` : lost ? `-${CURRENCY_SYMBOL}${b.amount}` : (
+                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11, color: won ? '#4ade80' : lost ? '#f87171' : refunded ? 'var(--ink-3)' : '#4ade80' }}>
+                    {refunded ? 'Refunded' : won ? `+${CURRENCY_SYMBOL}${(b.payout || 0) - b.amount}` : lost ? `-${CURRENCY_SYMBOL}${b.amount}` : (
                       <>{CURRENCY_SYMBOL}{b.possible_win}{b.possible_win > b.amount && <span style={{ fontSize: 9, opacity: 0.7 }}> +{Math.round(((b.possible_win - b.amount) / b.amount) * 100)}%</span>}</>
                     )}
                   </td>
@@ -408,7 +412,10 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
         letterSpacing: '0.8px', color: 'rgba(255,255,255,0.5)', marginBottom: 10,
         textAlign: 'center',
       }}>
-        Pool: {CURRENCY_SYMBOL}{poolData.total} · {poolData.bettorCount} bettor{poolData.bettorCount !== 1 ? 's' : ''}
+        {isRefunded
+          ? <span style={{ color: 'var(--ink-3)' }}>Refunded · no one picked the winner</span>
+          : <>Pool: {CURRENCY_SYMBOL}{poolData.total} · {poolData.bettorCount} bettor{poolData.bettorCount !== 1 ? 's' : ''}</>
+        }
       </div>
       <div style={{ display: 'flex', gap: 16 }}>
         {renderSideTable(homeBets, home.name)}
