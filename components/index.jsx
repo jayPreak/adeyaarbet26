@@ -152,7 +152,7 @@ export function SpecialNotification({ onNavigate }) {
 }
 
 // ── App Header ───────────────────────────────────────────────
-export function AppHeader({ balance, realisedBalance, onTap, user, betsLoaded }) {
+export function AppHeader({ balance, realisedBalance, pendingStake, pendingCount, onTap, user, betsLoaded }) {
   return (
     <>
       <div className="app-header">
@@ -169,7 +169,7 @@ export function AppHeader({ balance, realisedBalance, onTap, user, betsLoaded })
       </div>
       <button className="stats-bar" onClick={onTap}>
         <div className="stats-bar__cell">
-          <span className="stats-bar__label">Realised P&L</span>
+          <span className="stats-bar__label">Net Win/Loss</span>
           {betsLoaded === false
             ? <span className="stats-bar__value skeleton-text" style={{ width: 48 }}>&nbsp;</span>
             : <span className={`stats-bar__value ${realisedBalance >= 0 ? 'positive' : 'negative'}`}>{fmtNet(realisedBalance ?? 0)}</span>
@@ -177,10 +177,10 @@ export function AppHeader({ balance, realisedBalance, onTap, user, betsLoaded })
         </div>
         <div className="stats-bar__divider" />
         <div className="stats-bar__cell">
-          <span className="stats-bar__label">Net Position</span>
+          <span className="stats-bar__label">Pending Bets</span>
           {betsLoaded === false
             ? <span className="stats-bar__value skeleton-text" style={{ width: 48 }}>&nbsp;</span>
-            : <span className={`stats-bar__value ${balance >= 0 ? 'positive' : 'negative'}`}>{fmtNet(balance)}</span>
+            : <span className="stats-bar__value">{fmtMoney(pendingStake || 0)} <span style={{ fontSize: 10, opacity: 0.6 }}>({pendingCount || 0})</span></span>
           }
         </div>
       </button>
