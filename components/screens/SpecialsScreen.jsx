@@ -92,12 +92,9 @@ function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs,
           </div>
         )}
         {!myBet && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>You</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: 'var(--gold)' }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--gold)', animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
-              Jump in
-            </span>
+          <div style={{ marginTop: 2, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,180,50,0.08)', border: '1px dashed rgba(255,180,50,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ffb432', animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#ffb432' }}>You're not in yet!</span>
           </div>
         )}
         {canComputeWin && (
