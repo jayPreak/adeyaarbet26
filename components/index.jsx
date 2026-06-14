@@ -773,15 +773,18 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
 
 // ── Toast ────────────────────────────────────────────────────
 export function Toast({ message, onDone }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 2400);
-    return () => clearTimeout(t);
-  }, [onDone]);
   const isError = message?.startsWith('Error');
+  useEffect(() => {
+    const t = setTimeout(onDone, isError ? 30000 : 2400);
+    return () => clearTimeout(t);
+  }, [onDone, isError]);
   return (
     <div className="toast" style={isError ? { borderColor: 'var(--loss)' } : undefined}>
       <span>{isError ? '✗' : '✓'}</span>
-      <span>{message}</span>
+      <span style={{ flex: 1 }}>{message}</span>
+      {isError && (
+        <button onClick={onDone} style={{ background: 'none', border: 'none', color: 'var(--ink-3)', fontSize: 16, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>✕</button>
+      )}
     </div>
   );
 }

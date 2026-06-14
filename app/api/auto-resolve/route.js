@@ -151,21 +151,28 @@ export async function GET() {
 
   const resolved = [];
   const goalscorer = [];
+  const errors = [];
 
   for (const { matchId, winner, fifa_id_stage, fifa_id_match } of toResolve) {
-    // Settle match bets
-    const { error } = await db.rpc('resolve_match', {
-      p_match_id: matchId,
-      p_winner:   winner,
-    });
-    if (!error) {
+    try {
+      const { error } = await db.rpc('resolve_match', {
+        p_match_id: matchId,
+        p_winner:   winner,
+      });
+      if (error) {
+        errors.push({ matchId, stage: 'resolve_match', error: error.message });
+        continue;
+      }
       resolved.push(matchId);
 
-      // Settle goalscorer bets for the same match using FIFA IDs from the calendar result
+      // Settle goalscorer bets for the same match
       const gsResult = await settleGoalscorer(matchId, { fifa_id_stage, fifa_id_match });
       if (gsResult && !gsResult.error) goalscorer.push({ matchId, ...gsResult });
+      else if (gsResult?.error) errors.push({ matchId, stage: 'goalscorer', error: gsResult.error });
+    } catch (e) {
+      errors.push({ matchId, stage: 'resolve', error: e.message });
     }
   }
 
-  return NextResponse.json({ resolved, goalscorer });
+  return NextResponse.json({ resolved, goalscorer, ...(errors.length ? { errors } : {}) });
 }

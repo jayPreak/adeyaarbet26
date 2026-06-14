@@ -279,6 +279,7 @@ export default function AdeYaarApp() {
                   bets={bets}
                   matches={matches}
                   allUsers={allUsers}
+                  onToast={setToast}
                   onOpenSpecialBet={(id, ctx) => {
                     if (id === 'goalscorer' && ctx?.matchId) {
                       setGoalScorerMatchId(ctx.matchId);

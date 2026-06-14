@@ -832,7 +832,7 @@ function GoalScorerMatchList({ matches, bets, onBet, onBack, gsSummary }) {
   );
 }
 
-export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allUsers = [], matches = [] }) {
+export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allUsers = [], matches = [], onToast }) {
   const [poolsData, setPoolsData] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [picksData, setPicksData] = useState({});
@@ -959,14 +959,18 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
             onPlace={() => onOpenSpecialBet('golden_boot')}
             onCancel={() => onOpenSpecialBet('golden_boot')}
             onCancelPick={async (betId) => {
-              const res = await fetch('/api/special-bet', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.id, betId }),
-              });
-              if (res.ok) {
+              try {
+                const res = await fetch('/api/special-bet', {
+                  method: 'DELETE',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ userId: user.id, betId }),
+                });
+                if (!res.ok) {
+                  const data = await res.json();
+                  throw new Error(data.error || 'Cancel failed');
+                }
                 setMyBetsData(prev => ({ ...prev, golden_boot: (prev.golden_boot || []).filter(b => b.id !== betId) }));
-                // Refresh pool data
+                onToast?.('Bet cancelled');
                 fetch(`/api/special-bet?match_id=GOLDEN_BOOT&kind=golden_boot&user_id=${user.id}`)
                   .then(r => r.json())
                   .then(data => {
@@ -975,6 +979,8 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
                     setPicksData(prev => ({ ...prev, golden_boot: data.picks || [] }));
                   })
                   .catch(() => {});
+              } catch (err) {
+                onToast?.(`Error: ${err.message}`);
               }
             }}
           />
