@@ -94,7 +94,10 @@ function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs,
         {!myBet && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>You</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--loss)', opacity: 0.8 }}>Not in yet</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: 'var(--gold)' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--gold)', animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
+              Jump in
+            </span>
           </div>
         )}
         {canComputeWin && (
