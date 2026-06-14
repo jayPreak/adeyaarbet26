@@ -112,7 +112,14 @@ export async function GET() {
         };
       });
 
-      return { ...p, balance, realisedBalance, totalStaked, betCount, matchesBet, maxReturn, winRate, winStreak: maxStreak, topBets };
+      // Chart points: cumulative P&L for sparkline
+      let cumPnL = 0;
+      const chartPoints = resolved.map(b => {
+        cumPnL += b.status === 'won' ? (b.payout || 0) - b.amount : -b.amount;
+        return cumPnL;
+      });
+
+      return { ...p, balance, realisedBalance, totalStaked, betCount, matchesBet, maxReturn, winRate, winStreak: maxStreak, topBets, chartPoints };
     });
 
   result.sort((a, b) => b.totalStaked - a.totalStaked);
