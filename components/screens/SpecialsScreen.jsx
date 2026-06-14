@@ -601,7 +601,8 @@ function H2HDetail({ special, poolData, picks, myBet, user, allUsers, onBack, on
 }
 
 // Golden Boot expanded view
-function GoldenBootDetail({ special, poolData, picks, myBets, user, allUsers, onBack, onPlace, onCancel }) {
+function GoldenBootDetail({ special, poolData, picks, myBets, user, allUsers, onBack, onPlace, onCancel, onCancelPick }) {
+  const [cancellingId, setCancellingId] = useState(null);
   const countdown = useDeadlineCountdown(new Date(special.deadlineTs).getTime());
   const total = poolData?.total || 0;
   const byTeam = poolData?.byTeam || {};
@@ -653,6 +654,19 @@ function GoldenBootDetail({ special, poolData, picks, myBets, user, allUsers, on
                   <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{special.formatPick(b.pick)}</span>
                   <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>{fmtMoney(b.amount)}</span>
                   {potentialWin > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>→ {fmtMoney(potentialWin)}</span>}
+                  {!closed && onCancelPick && (
+                    <button
+                      disabled={cancellingId === b.id}
+                      onClick={async () => {
+                        setCancellingId(b.id);
+                        await onCancelPick(b.id);
+                        setCancellingId(null);
+                      }}
+                      style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.08)', color: 'var(--loss)', cursor: 'pointer', opacity: cancellingId === b.id ? 0.5 : 1 }}
+                    >
+                      {cancellingId === b.id ? '...' : '✕'}
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -944,6 +958,25 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
             onBack={() => setExpanded(null)}
             onPlace={() => onOpenSpecialBet('golden_boot')}
             onCancel={() => onOpenSpecialBet('golden_boot')}
+            onCancelPick={async (betId) => {
+              const res = await fetch('/api/special-bet', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id, betId }),
+              });
+              if (res.ok) {
+                setMyBetsData(prev => ({ ...prev, golden_boot: (prev.golden_boot || []).filter(b => b.id !== betId) }));
+                // Refresh pool data
+                fetch(`/api/special-bet?match_id=GOLDEN_BOOT&kind=golden_boot&user_id=${user.id}`)
+                  .then(r => r.json())
+                  .then(data => {
+                    const byOpt = data.pool?.byOption || {};
+                    setPoolsData(prev => ({ ...prev, golden_boot: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, topPicks: Object.entries(byOpt).map(([pick, amount]) => ({ pick, amount })).sort((a, b) => b.amount - a.amount).slice(0, 5), byTeam: byOpt } }));
+                    setPicksData(prev => ({ ...prev, golden_boot: data.picks || [] }));
+                  })
+                  .catch(() => {});
+              }
+            }}
           />
         </div>
       );
