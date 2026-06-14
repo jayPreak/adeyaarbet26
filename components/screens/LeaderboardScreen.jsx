@@ -24,12 +24,12 @@ function timeAgo(dateStr) {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-function MiniSparkline({ points, width = 80, height = 32 }) {
+function MiniSparkline({ points, width = 80, height = 32, globalMin, globalMax }) {
   if (!points || points.length < 2) {
     return <svg width={width} height={height}><line x1={4} y1={height / 2} x2={width - 4} y2={height / 2} stroke="rgba(255,255,255,0.1)" strokeDasharray="2,2" /></svg>;
   }
-  const min = Math.min(...points, 0);
-  const max = Math.max(...points, 0);
+  const min = globalMin != null ? globalMin : Math.min(...points, 0);
+  const max = globalMax != null ? globalMax : Math.max(...points, 0);
   const range = max - min || 1;
   const px = 4, py = 4;
   const chartW = width - px * 2, chartH = height - py * 2;
@@ -52,6 +52,10 @@ function MiniSparkline({ points, width = 80, height = 32 }) {
 function NetWorthCarousel({ rankings }) {
   const sorted = [...rankings].sort((a, b) => (b.realisedBalance || 0) - (a.realisedBalance || 0));
   if (!sorted.some(r => r.chartPoints?.length >= 2)) return null;
+  // Shared scale across all charts
+  const allValues = sorted.flatMap(r => r.chartPoints || []).concat(0);
+  const globalMin = Math.min(...allValues);
+  const globalMax = Math.max(...allValues);
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '0 16px 8px' }}>
@@ -77,7 +81,7 @@ function NetWorthCarousel({ rankings }) {
                   {(r.display_name || r.username || '?').split(' ')[0]}
                 </span>
               </div>
-              <MiniSparkline points={r.chartPoints} width={96} height={28} />
+              <MiniSparkline points={r.chartPoints} width={96} height={28} globalMin={globalMin} globalMax={globalMax} />
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, color: val >= 0 ? 'var(--win)' : 'var(--loss)', marginTop: 4 }}>
                 {val >= 0 ? '+' : ''}{fmtMoney(val)}
               </div>
