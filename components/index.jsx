@@ -356,13 +356,13 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
   const bettorIds = new Set(poolData.bets.map(b => b.user_id));
   const notBet = allUsers.filter(u => !bettorIds.has(u.id));
 
-  const renderSideTable = (bets, label) => (
-    <div style={{ flex: 1, minWidth: 0 }}>
+  const renderSideTable = (bets, label, isWinningSide) => (
+    <div style={{ flex: 1, minWidth: 0, padding: isWinningSide ? '8px 6px' : undefined, borderRadius: isWinningSide ? 8 : undefined, border: isWinningSide ? '1px solid rgba(74,222,128,0.25)' : undefined, background: isWinningSide ? 'rgba(74,222,128,0.04)' : undefined }}>
       <div style={{
         fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-        letterSpacing: '0.5px', color: '#fff', marginBottom: 6,
+        letterSpacing: '0.5px', color: isWinningSide ? '#4ade80' : '#fff', marginBottom: 6,
         textAlign: 'center',
-      }}>{label}</div>
+      }}>{label}{isWinningSide ? ' ✓' : ''}</div>
       {bets.length === 0 ? (
         <div style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.3)', padding: '8px 0' }}>
           —
@@ -418,13 +418,13 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
         }
       </div>
       <div style={{ display: 'flex', gap: 16 }}>
-        {renderSideTable(homeBets, home.name)}
+        {renderSideTable(homeBets, home.name, isResolved && homeBets.some(b => b.status === 'won'))}
         <div style={{ width: 1, background: 'rgba(255,255,255,0.1)' }} />
-        {renderSideTable(awayBets, away.name)}
+        {renderSideTable(awayBets, away.name, isResolved && awayBets.some(b => b.status === 'won'))}
       </div>
       {drawBets.length > 0 && (
         <div style={{ marginTop: 10, maxWidth: '60%', marginLeft: 'auto', marginRight: 'auto' }}>
-          {renderSideTable(drawBets, 'Draw')}
+          {renderSideTable(drawBets, 'Draw', isResolved && drawBets.some(b => b.status === 'won'))}
         </div>
       )}
       {/* Proportional bar */}

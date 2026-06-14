@@ -576,7 +576,7 @@ function H2HDetail({ special, poolData, picks, myBet, user, allUsers, onBack, on
 
         {/* Haven't bet yet */}
         {allUsers.length > 0 && (() => {
-          const bettorIds = new Set(picks.map(p => p.user_id));
+          const bettorIds = new Set(picks.map(p => p.userId || p.user_id));
           const notBet = allUsers.filter(u => !bettorIds.has(u.id));
           if (notBet.length === 0) return null;
           return (
@@ -721,7 +721,7 @@ function GoldenBootDetail({ special, poolData, picks, myBets, user, allUsers, on
 
         {/* Haven't bet yet */}
         {allUsers.length > 0 && (() => {
-          const bettorIds = new Set(picks.map(p => p.user_id));
+          const bettorIds = new Set(picks.map(p => p.userId || p.user_id));
           const notBet = allUsers.filter(u => !bettorIds.has(u.id));
           if (notBet.length === 0) return null;
           return (
