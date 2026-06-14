@@ -386,7 +386,7 @@ function MatchPoolTable({ poolData, home, away, allUsers = [] }) {
                   <td style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.9)', fontSize: 12 }}>{(b.display_name || b.username || '?').split(' ')[0]}</td>
                   <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>{CURRENCY_SYMBOL}{b.amount}</td>
                   <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11, color: won ? '#4ade80' : lost ? '#f87171' : refunded ? 'var(--ink-3)' : '#4ade80' }}>
-                    {refunded ? 'Refunded' : won ? `+${CURRENCY_SYMBOL}${(b.payout || 0) - b.amount}` : lost ? `-${CURRENCY_SYMBOL}${b.amount}` : (
+                    {refunded ? '↩ ₹0' : won ? `+${CURRENCY_SYMBOL}${(b.payout || 0) - b.amount}` : lost ? `-${CURRENCY_SYMBOL}${b.amount}` : (
                       <>{CURRENCY_SYMBOL}{b.possible_win}{b.possible_win > b.amount && <span style={{ fontSize: 9, opacity: 0.7 }}> +{Math.round(((b.possible_win - b.amount) / b.amount) * 100)}%</span>}</>
                     )}
                   </td>

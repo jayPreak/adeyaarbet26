@@ -80,8 +80,7 @@ export async function GET() {
       // Top individual bets (biggest by amount, include outcome)
       const allNonCancelled = userBets
         .filter(b => b.status !== 'cancelled')
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 8);
+        .sort((a, b) => b.amount - a.amount);
       const topBets = allNonCancelled.map(b => {
         let matchLabel = b.match_id;
         let pickLabel = b.pick;
