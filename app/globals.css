@@ -1201,64 +1201,65 @@ body {
 .search-dropdown .search-overlay__inner { height: auto; max-height: 420px; }
 .search-dropdown .search-overlay__results { max-height: 340px; }
 
-/* Reset password page */
+/* Reset password page — matches login page theme */
 .reset-page {
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: var(--bg, #0a0a0a);
+  background: #051912;
+  font-family: system-ui, sans-serif;
 }
 .reset-card {
   width: 100%;
-  max-width: 340px;
-  padding: 32px 24px;
+  max-width: 380px;
+  padding: 40px 36px;
   border-radius: 16px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: #0a2e22;
+  border: 1px solid #1a4a3a;
 }
 .reset-card h2 {
   font-size: 20px;
   font-weight: 700;
-  color: var(--ink, #f5f5f5);
-  margin: 0 0 16px;
+  color: #f5f5f5;
+  margin: 0 0 8px;
 }
 .reset-card p {
-  font-size: 14px;
-  color: var(--ink-2, rgba(255,255,255,0.7));
-  margin: 0 0 16px;
+  font-size: 13px;
+  color: #8ba898;
+  margin: 0 0 20px;
 }
 .reset-input {
   width: 100%;
   padding: 12px 14px;
   font-size: 14px;
   border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.04);
-  color: var(--ink, #f5f5f5);
+  border: 1px solid #1a4a3a;
+  background: #051912;
+  color: #f5f5f5;
   outline: none;
   margin-bottom: 12px;
   box-sizing: border-box;
 }
 .reset-input:focus {
-  border-color: var(--gold, #ffd700);
+  border-color: #2ecc71;
 }
 .reset-error {
   font-size: 12px;
-  color: var(--loss, #f87171);
+  color: #f87171;
   margin-bottom: 12px;
 }
 .reset-btn {
   display: block;
   width: 100%;
-  padding: 12px;
+  padding: 13px 20px;
   font-size: 14px;
-  font-weight: 700;
-  border-radius: 10px;
+  font-weight: 600;
+  border-radius: 8px;
   border: none;
-  background: var(--gold, #ffd700);
-  color: #0a0a0a;
+  background: #2ecc71;
+  color: #051912;
   cursor: pointer;
   text-align: center;
   text-decoration: none;
