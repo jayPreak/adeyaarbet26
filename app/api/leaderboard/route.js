@@ -80,8 +80,7 @@ export async function GET() {
       // Top individual bets (biggest by amount, include outcome)
       const allNonCancelled = userBets
         .filter(b => b.status !== 'cancelled')
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 8);
+        .sort((a, b) => b.amount - a.amount);
       const topBets = allNonCancelled.map(b => {
         let matchLabel = b.match_id;
         let pickLabel = b.pick;
@@ -113,7 +112,14 @@ export async function GET() {
         };
       });
 
-      return { ...p, balance, realisedBalance, totalStaked, betCount, matchesBet, maxReturn, winRate, winStreak: maxStreak, topBets };
+      // Chart points: cumulative P&L for sparkline
+      let cumPnL = 0;
+      const chartPoints = resolved.map(b => {
+        cumPnL += b.status === 'won' ? (b.payout || 0) - b.amount : -b.amount;
+        return cumPnL;
+      });
+
+      return { ...p, balance, realisedBalance, totalStaked, betCount, matchesBet, maxReturn, winRate, winStreak: maxStreak, topBets, chartPoints };
     });
 
   result.sort((a, b) => b.totalStaked - a.totalStaked);

@@ -57,7 +57,6 @@ function DesktopShell({ tab, onNav, balance, children, title, sub, hideSearch, u
   const navItems = [
     { id: 'home',    label: 'Dashboard', icon: DIcon.home },
     { id: 'matches', label: 'Fixtures',  icon: DIcon.ball,    badge: '12' },
-    { id: 'bracket', label: 'Bracket',   icon: DIcon.bracket },
     { id: 'leaders', label: 'Leaderboard', icon: DIcon.trophy },
     { id: 'bets',    label: 'My Bets',   icon: DIcon.receipt },
   ];
@@ -495,43 +494,38 @@ function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap 
 
 // ── Desktop Matches ───────────────────────────────────────────
 function DMatchesScreen({ matches, onBet, bets = [], poolMap = {} }) {
-  const [filter, setFilter] = useState('all');
-  const filters = [
-    { id: 'all',   label: 'All fixtures' },
-    { id: 'live',  label: 'Live now' },
-    { id: 'today', label: 'Today' },
-    { id: 'r32',   label: 'Round of 32' },
-    { id: 'group', label: 'Group stage' },
-  ];
+  const [tab, setTab] = useState('upcoming');
 
-  let filtered = matches;
-  if (filter === 'live')  filtered = matches.filter(m => m.status === 'live');
-  if (filter === 'today') filtered = matches.filter(m => m.date === new Date().toISOString().split('T')[0]);
-  if (filter === 'r32')   filtered = matches.filter(m => m.stage === 'R32');
-  if (filter === 'group') filtered = matches.filter(m => m.stage === 'GROUP');
+  const upcoming = matches.filter(m => m.status !== 'finished').sort((a, b) => (a.kickoffTs || '').localeCompare(b.kickoffTs || ''));
+  const completed = matches.filter(m => m.status === 'finished').sort((a, b) => (b.kickoffTs || '').localeCompare(a.kickoffTs || ''));
+  const list = tab === 'upcoming' ? upcoming : completed;
 
   const byDate = {};
-  filtered.forEach(m => { (byDate[m.date] = byDate[m.date] || []).push(m); });
-  const dates = Object.keys(byDate).sort();
+  list.forEach(m => {
+    const key = m.kickoffTs ? m.kickoffTs.split('T')[0] : (m.date || 'tbd');
+    (byDate[key] = byDate[key] || []).push(m);
+  });
+  const dates = Object.keys(byDate).sort((a, b) => {
+    if (a === 'tbd') return 1;
+    if (b === 'tbd') return -1;
+    return tab === 'upcoming' ? a.localeCompare(b) : b.localeCompare(a);
+  });
 
   return (
     <>
       <div className="desk-chiprow">
-        {filters.map(f => (
-          <button
-            key={f.id}
-            className={'chip ' + (filter === f.id ? 'active' : '')}
-            onClick={() => setFilter(f.id)}
-          >
-            {f.label}
-          </button>
-        ))}
+        <button className={'chip ' + (tab === 'upcoming' ? 'active' : '')} onClick={() => setTab('upcoming')}>
+          Upcoming{upcoming.some(m => m.status === 'live') ? ' / Live' : ''} · {upcoming.length}
+        </button>
+        <button className={'chip ' + (tab === 'completed' ? 'active' : '')} onClick={() => setTab('completed')}>
+          Completed · {completed.length}
+        </button>
       </div>
 
       {dates.map(date => (
         <div key={date} style={{ marginBottom: 22 }}>
           <div className="desk-section__head" style={{ marginBottom: 12 }}>
-            <h3>{fmtDay(date)} · <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{fmtDate(date)}</span></h3>
+            <h3>{date === 'tbd' ? 'Unknown' : fmtDay(date)} · <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{date === 'tbd' ? '' : fmtDate(date)}</span></h3>
             <span className="more mono">{byDate[date].length} matches</span>
           </div>
           <div className="desk-grid fixtures" style={{ marginTop: 0 }}>
@@ -983,11 +977,10 @@ export default function DesktopApp({ tab, setTab, balance, openBet, matches, use
     <DesktopShell
       tab={tab} onNav={setTab} balance={balance}
       title={t.title} sub={t.sub}
-      hideSearch={tab === 'bracket'} user={user} onLogout={onLogout}
+      hideSearch={false} user={user} onLogout={onLogout}
     >
       {tab === 'home'    && <DHomeScreen matches={matches} balance={balance} onBet={openBet} onNav={setTab} user={user} bets={bets} poolMap={poolMap} onCancelBet={onCancelBet} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={onOpenCupWinner} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />}
       {tab === 'matches' && <DMatchesScreen matches={matches} onBet={openBet} bets={bets} poolMap={poolMap} />}
-      {tab === 'bracket' && <DBracketScreen matches={matches} />}
       {tab === 'leaders' && <DLeaderboardScreen user={user} />}
       {tab === 'bets'    && <DBetsScreen user={user} onCancelBet={onCancelBet} bets={bets} />}
     </DesktopShell>

@@ -12,15 +12,18 @@ export async function GET(request) {
 
   // If no match_id, return all pools (pending + resolved) + all profiles
   if (!matchId) {
-    const [betsRes, profilesRes] = await Promise.all([
-      supabase.from('bets').select('match_id, user_id, pick, amount, status, payout, profiles(display_name, avatar_url)').neq('status', 'cancelled'),
+    const [betsRes, profilesRes, schedRes] = await Promise.all([
+      supabase.from('bets').select('match_id, user_id, pick, amount, status, payout, created_at, profiles(display_name, avatar_url)'),
       supabase.from('profiles').select('id, display_name, avatar_url'),
+      supabase.from('match_schedule').select('id, kickoff_ts'),
     ]);
 
     if (betsRes.error) return NextResponse.json({ error: betsRes.error.message }, { status: 500 });
 
     const allUsers = (profilesRes.data || []).map(p => ({ id: p.id, display_name: p.display_name, avatar_url: p.avatar_url }));
     const bets = betsRes.data || [];
+    const now = Date.now();
+    const finishedMatches = new Set((schedRes.data || []).filter(s => s.kickoff_ts && new Date(s.kickoff_ts).getTime() < now - 2 * 60 * 60 * 1000).map(s => s.id));
 
     if (!bets.length) return NextResponse.json({ pools: {}, allUsers });
 
@@ -31,17 +34,34 @@ export async function GET(request) {
     }
 
     const pools = {};
-    for (const [mid, mBets] of Object.entries(grouped)) {
-      const total = mBets.reduce((s, b) => s + b.amount, 0);
+    for (const [mid, allBets] of Object.entries(grouped)) {
+      const activeBets = allBets.filter(b => b.status !== 'cancelled');
+      // Only mark as "refunded" if the match is finished (kickoff > 2h ago) AND all bets are cancelled.
+      // Manual cancellations on upcoming matches should show as empty pool, not "refunded".
+      const isRefunded = activeBets.length === 0 && allBets.length > 0 && finishedMatches.has(mid);
+      // For refunded matches, only show the last bet per user+pick (the one active at resolution)
+      let mBets;
+      if (isRefunded) {
+        const latest = {};
+        for (const b of allBets) {
+          const key = `${b.user_id}|${b.pick}`;
+          if (!latest[key] || (b.created_at || '') > (latest[key].created_at || '')) latest[key] = b;
+        }
+        mBets = Object.values(latest);
+      } else {
+        mBets = activeBets;
+      }
+      const total = activeBets.reduce((s, b) => s + b.amount, 0);
       const bySide = { home: 0, away: 0, draw: 0 };
-      mBets.forEach(b => { bySide[b.pick] = (bySide[b.pick] || 0) + b.amount; });
-      const isResolved = mBets.some(b => b.status === 'won' || b.status === 'lost');
+      activeBets.forEach(b => { bySide[b.pick] = (bySide[b.pick] || 0) + b.amount; });
+      const isResolved = activeBets.some(b => b.status === 'won' || b.status === 'lost');
       pools[mid] = {
         matchId: mid,
-        total,
+        total: isRefunded ? mBets.reduce((s, b) => s + b.amount, 0) : total,
         bettorCount: new Set(mBets.map(b => b.user_id)).size,
-        bySide,
-        resolved: isResolved,
+        bySide: isRefunded ? (() => { const s = { home: 0, away: 0, draw: 0 }; mBets.forEach(b => { s[b.pick] = (s[b.pick] || 0) + b.amount; }); return s; })() : bySide,
+        resolved: isResolved || isRefunded,
+        refunded: isRefunded,
         bets: mBets.map(b => ({
           user_id: b.user_id,
           display_name: b.profiles?.display_name || 'Unknown',
@@ -50,9 +70,11 @@ export async function GET(request) {
           amount: b.amount,
           status: b.status,
           payout: b.payout || null,
-          possible_win: isResolved
-            ? (b.status === 'won' ? (b.payout || 0) : 0)
-            : Math.floor((b.amount / (bySide[b.pick] || 1)) * total),
+          possible_win: isRefunded
+            ? 0
+            : isResolved
+              ? (b.status === 'won' ? (b.payout || 0) : 0)
+              : Math.floor((b.amount / (bySide[b.pick] || 1)) * total),
         })),
       };
     }

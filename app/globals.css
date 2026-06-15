@@ -206,11 +206,14 @@ body {
 }
 .stats-bar {
   display: flex; align-items: center; justify-content: center;
-  margin: 0 16px 8px;
-  padding: 8px 0;
+  margin: 0 0 8px;
+  padding: 10px 0;
   background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-left: none;
+  border-right: none;
+  border-radius: 0;
   cursor: pointer;
 }
 .stats-bar__cell {
@@ -350,6 +353,10 @@ body {
 @keyframes pulseDot {
   0%, 100% { box-shadow: 0 0 0 0 var(--live); }
   60% { box-shadow: 0 0 0 6px rgba(255,59,59,0); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
 }
 
 /* ── Flag ──────────────────────────────────────────────────── */
@@ -1193,3 +1200,71 @@ body {
 }
 .search-dropdown .search-overlay__inner { height: auto; max-height: 420px; }
 .search-dropdown .search-overlay__results { max-height: 340px; }
+
+/* Reset password page — matches login page theme */
+.reset-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #051912;
+  font-family: system-ui, sans-serif;
+}
+.reset-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 40px 36px;
+  border-radius: 16px;
+  background: #0a2e22;
+  border: 1px solid #1a4a3a;
+}
+.reset-card h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f5f5f5;
+  margin: 0 0 8px;
+}
+.reset-card p {
+  font-size: 13px;
+  color: #8ba898;
+  margin: 0 0 20px;
+}
+.reset-input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 1px solid #1a4a3a;
+  background: #051912;
+  color: #f5f5f5;
+  outline: none;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+.reset-input:focus {
+  border-color: #2ecc71;
+}
+.reset-error {
+  font-size: 12px;
+  color: #f87171;
+  margin-bottom: 12px;
+}
+.reset-btn {
+  display: block;
+  width: 100%;
+  padding: 13px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  background: #2ecc71;
+  color: #051912;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+}
+.reset-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

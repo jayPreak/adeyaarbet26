@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 
 const TABS = [
-  { id: 'total', label: 'Realised P&L' },
-  { id: 'wins', label: 'Biggest Wins' },
+  { id: 'total', label: 'Rankings' },
+  { id: 'wins', label: 'Top Payouts' },
   { id: 'losses', label: 'Biggest Losses' },
-  { id: 'bettor', label: 'Biggest Bettor' },
+  { id: 'bettor', label: 'High Rollers' },
 ];
 
 function timeAgo(dateStr) {
@@ -24,20 +24,83 @@ function timeAgo(dateStr) {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
+function MiniSparkline({ points, width = 80, height = 32, globalMin, globalMax }) {
+  if (!points || points.length < 2) {
+    return <svg width={width} height={height}><line x1={4} y1={height / 2} x2={width - 4} y2={height / 2} stroke="rgba(255,255,255,0.1)" strokeDasharray="2,2" /></svg>;
+  }
+  const min = globalMin != null ? globalMin : Math.min(...points, 0);
+  const max = globalMax != null ? globalMax : Math.max(...points, 0);
+  const range = max - min || 1;
+  const px = 4, py = 4;
+  const chartW = width - px * 2, chartH = height - py * 2;
+  const zeroY = py + (1 - (0 - min) / range) * chartH;
+  const d = points.map((v, i) => {
+    const x = px + (i / (points.length - 1)) * chartW;
+    const y = py + (1 - (v - min) / range) * chartH;
+    return `${i === 0 ? 'M' : 'L'}${x},${y}`;
+  }).join(' ');
+  const last = points[points.length - 1];
+  const color = last >= 0 ? '#4ade80' : '#f87171';
+  return (
+    <svg width={width} height={height}>
+      <line x1={px} y1={zeroY} x2={width - px} y2={zeroY} stroke="rgba(255,255,255,0.08)" strokeDasharray="2,2" />
+      <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function NetWorthCarousel({ rankings }) {
+  const sorted = [...rankings].sort((a, b) => (b.realisedBalance || 0) - (a.realisedBalance || 0));
+  if (!sorted.some(r => r.chartPoints?.length >= 2)) return null;
+  // Shared scale across all charts
+  const allValues = sorted.flatMap(r => r.chartPoints || []).concat(0);
+  const globalMin = Math.min(...allValues);
+  const globalMax = Math.max(...allValues);
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '0 16px 8px' }}>
+        Net Worth
+      </div>
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '0 16px 8px', scrollbarWidth: 'none' }}>
+        {sorted.map(r => {
+          const val = r.realisedBalance || 0;
+          return (
+            <div key={r.id} style={{
+              minWidth: 120, padding: '10px 12px', borderRadius: 12,
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+              flexShrink: 0,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div className="lb-avatar" style={{
+                  width: 20, height: 20, fontSize: 9,
+                  ...(r.avatar_url ? { backgroundImage: `url(${r.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
+                }}>
+                  {!r.avatar_url && (r.display_name || r.username || '?')[0]}
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {(r.display_name || r.username || '?').split(' ')[0]}
+                </span>
+              </div>
+              <MiniSparkline points={r.chartPoints} width={96} height={28} globalMin={globalMin} globalMax={globalMax} />
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700, color: val >= 0 ? 'var(--win)' : 'var(--loss)', marginTop: 4 }}>
+                {val >= 0 ? '+' : ''}{fmtMoney(val)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SubTabs({ active, onChange }) {
   return (
-    <div style={{ display: 'flex', gap: 0, margin: '12px 16px 16px', borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+    <div className="material-tabs">
       {TABS.map(t => (
         <button
           key={t.id}
+          className={'material-tab' + (active === t.id ? ' active' : '')}
           onClick={() => onChange(t.id)}
-          style={{
-            flex: 1, padding: '10px 4px', border: 'none', cursor: 'pointer',
-            fontSize: 11, fontWeight: 600,
-            background: active === t.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-            color: active === t.id ? 'var(--ink)' : 'var(--ink-3)',
-            transition: 'all 0.15s',
-          }}
         >
           {t.label}
         </button>
@@ -79,7 +142,9 @@ function TotalWinsTab({ rankings, user }) {
   const hasAnyResolved = sorted.some(r => r.realisedBalance !== 0);
 
   return (
-    <div style={{ margin: '0 16px' }}>
+    <div>
+      <NetWorthCarousel rankings={rankings} />
+      <div style={{ margin: '0 16px' }}>
       {!hasAnyResolved && (
         <div style={{ padding: '20px 16px 24px', textAlign: 'center' }}>
           <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>No matches settled yet — everyone starts at 0</div>
@@ -100,6 +165,7 @@ function TotalWinsTab({ rankings, user }) {
           />
         );
       })}
+      </div>
     </div>
   );
 }

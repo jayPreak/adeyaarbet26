@@ -77,7 +77,7 @@ function LoginContent() {
     setLoading(true);
     setError('');
     const { error: err } = await supabaseBrowser.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/`,
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     });
     if (err) {
       setError(err.message);
