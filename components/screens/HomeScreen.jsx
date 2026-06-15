@@ -204,6 +204,25 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
 
   return (
     <div>
+      {live.length > 0 && (
+        <div
+          onClick={() => onNav('fixtures')}
+          style={{
+            margin: '0 16px 10px', padding: '8px 14px',
+            borderRadius: 10, cursor: 'pointer',
+            background: 'rgba(255,59,59,0.08)',
+            border: '1px solid rgba(255,59,59,0.25)',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}
+        >
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff3b3b', animation: 'pulseDot 1.4s infinite', flexShrink: 0 }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#ff3b3b', flex: 1 }}>
+            {live.length === 1 ? `${getTeam(live[0].home).name} vs ${getTeam(live[0].away).name}` : `${live.length} matches`} LIVE
+          </span>
+          <span style={{ fontSize: 11, color: 'rgba(255,59,59,0.7)' }}>View →</span>
+        </div>
+      )}
+
       {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending')} onCancelBet={onCancelBet} userId={user?.id} />}
 
       {/* Live matches */}
