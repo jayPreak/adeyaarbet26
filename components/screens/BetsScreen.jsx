@@ -524,15 +524,15 @@ function SettlementCard({ user, bets = [] }) {
   );
 }
 
-export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, scheduleMap = {}, cupWinnerDeadlineTs = null, bestCaseWin = 0, poolMap = {} }) {
+export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, scheduleMap = {}, cupWinnerDeadlineTs = null, bestCaseWin = 0, poolMap = {}, allUsers = [] }) {
   const [view, setView] = useState('overview');
-  const [betFilter, setBetFilter] = useState('pending');
+  const [betFilter, setBetFilter] = useState('open');
 
   const realBets = useMemo(() => bets.filter(b => b.match_id !== '_topup' && b.status !== 'cancelled'), [bets]);
 
   const filtered = useMemo(() => {
-    if (betFilter === 'all') return realBets;
-    return realBets.filter(b => b.status === betFilter);
+    if (betFilter === 'open') return realBets.filter(b => b.status === 'pending');
+    return realBets.filter(b => b.status === 'won' || b.status === 'lost');
   }, [realBets, betFilter]);
 
   const totalOpen = useMemo(
@@ -636,10 +636,8 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
 
           <div className="chip-row" style={{ marginBottom: 12, marginTop: 12 }}>
             {[
-              { id: 'pending', label: `Open · ${realBets.filter(b => b.status === 'pending').length}` },
-              { id: 'won',  label: `Won · ${realBets.filter(b => b.status === 'won').length}` },
-              { id: 'lost', label: `Lost · ${realBets.filter(b => b.status === 'lost').length}` },
-              { id: 'all',  label: `All · ${realBets.length}` },
+              { id: 'open', label: `Open · ${realBets.filter(b => b.status === 'pending').length}` },
+              { id: 'completed', label: `Completed · ${realBets.filter(b => b.status === 'won' || b.status === 'lost').length}` },
             ].map(t => (
               <button
                 key={t.id}
@@ -654,10 +652,10 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
           <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {filtered.length === 0 && (
               <div className="card" style={{ textAlign: 'center', padding: 28, color: 'var(--ink-3)' }}>
-                {realBets.length === 0 ? 'Place your first bet!' : `No ${betFilter} bets yet`}
+                {realBets.length === 0 ? 'Place your first bet!' : betFilter === 'open' ? 'No open bets' : 'No completed bets yet'}
               </div>
             )}
-            {filtered.map(b => <BetCard key={b.id} bet={b} onCancelBet={onCancelBet} kickoffTs={scheduleMap[b.match_id || b.matchId] || null} cupWinnerDeadlineTs={cupWinnerDeadlineTs} poolData={poolMap[b.match_id || b.matchId]} />)}
+            {filtered.map(b => <BetCard key={b.id} bet={b} onCancelBet={onCancelBet} kickoffTs={scheduleMap[b.match_id || b.matchId] || null} cupWinnerDeadlineTs={cupWinnerDeadlineTs} poolData={poolMap[b.match_id || b.matchId]} allUsers={allUsers} userId={user?.id} />)}
           </div>
         </>
       )}
