@@ -825,25 +825,24 @@ export function Toast({ message, onDone }) {
 }
 
 // ── Bet card pool info ───────────────────────────────────────
-function BetCardPool({ poolData, pick, amount, home, away }) {
+function BetCardPool({ poolData, pick, amount }) {
   const myOdds = sideOdds(poolData, pick);
   const potentialWin = myOdds ? Math.floor(amount * myOdds.decimal) : 0;
-  const homePct = poolData.total > 0 ? Math.round((poolData.bySide.home / poolData.total) * 100) : 0;
-  const drawPct = poolData.total > 0 ? Math.round((poolData.bySide.draw / poolData.total) * 100) : 0;
-  const awayPct = 100 - homePct - drawPct;
+  const mySideTotal = poolData.bySide?.[pick] || 0;
+  const againstMe = poolData.total - mySideTotal;
+  const bettorsOnMySide = poolData.bets?.filter(b => b.pick === pick).length || 0;
+  const totalBettors = poolData.bettorCount || 0;
+
+  let nudge = '';
+  if (bettorsOnMySide === 1) nudge = 'Only you on this side';
+  else if (bettorsOnMySide > 1) nudge = `${bettorsOnMySide - 1} other${bettorsOnMySide > 2 ? 's' : ''} with you`;
 
   return (
-    <div className="bet-card__pool">
-      <div className="bet-card__pool-bar">
-        {homePct > 0 && <div className="pool-seg home" style={{ width: `${homePct}%` }}>{home?.code} {homePct}%</div>}
-        {drawPct > 0 && <div className="pool-seg draw" style={{ width: `${drawPct}%` }}>X {drawPct}%</div>}
-        {awayPct > 0 && <div className="pool-seg away" style={{ width: `${awayPct}%` }}>{away?.code} {awayPct}%</div>}
-      </div>
-      <div className="bet-card__pool-stats">
-        <span>Pool {fmtMoney(poolData.total)}</span>
-        <span>Your odds <b>{fmtDecimalOdds(myOdds)}</b></span>
-        {potentialWin > amount && <span style={{ color: 'var(--win)' }}>Win {fmtMoney(potentialWin)}</span>}
-      </div>
+    <div className="bet-card__pool-stats">
+      <span><b>{fmtDecimalOdds(myOdds)}</b></span>
+      {potentialWin > amount && <span style={{ color: 'var(--win)' }}>→ {fmtMoney(potentialWin)}</span>}
+      {againstMe > 0 && <span>{fmtMoney(againstMe)} against</span>}
+      {nudge && <span style={{ color: 'var(--ink-3)' }}>{nudge}</span>}
     </div>
   );
 }
@@ -997,7 +996,7 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
       </div>
 
       {poolData && poolData.total > 0 && bet.status === 'pending' && (
-        <BetCardPool poolData={poolData} pick={bet.pick} amount={bet.amount} home={home} away={away} />
+        <BetCardPool poolData={poolData} pick={bet.pick} amount={bet.amount} />
       )}
 
       <div className="bet-card__amounts">
