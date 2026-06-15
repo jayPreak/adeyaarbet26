@@ -3,6 +3,7 @@
 import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, fmtCountdown, getMatchKickoffTs, MATCH_BET_CUTOFF_MS } from '@/lib/data';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { getSpecial } from '@/lib/specials';
+import { poolOdds, sideOdds, fmtDecimalOdds, fmtImpliedProb } from '@/lib/odds';
 import { useState, useEffect } from 'react';
 
 // ── Betting window ───────────────────────────────────────────
@@ -636,26 +637,53 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
           </div>
         </div>
 
-        {/* Side picker */}
-        <div className="eyebrow" style={{ marginBottom: 8 }}>Your pick</div>
-        <div className="match-card__odds" style={{ marginBottom: 18 }}>
+        {/* Side picker — live pool odds shown per side */}
+        <div className="row between center" style={{ marginBottom: 8 }}>
+          <div className="eyebrow">Your pick</div>
+          {pool.total > 0 && (
+            <span style={{ fontSize: 10, color: 'var(--ink-3)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--win)', display: 'inline-block' }} />
+              Live odds · updates until kickoff
+            </span>
+          )}
+        </div>
+        <div className="match-card__odds" style={{ marginBottom: pool.total > 0 ? 8 : 18 }}>
           {[
             { k: 'home', l: home.name },
             { k: 'draw', l: 'Draw' },
             { k: 'away', l: away.name },
-          ].map(o => (
-            <button
-              key={o.k}
-              className={'odds-btn ' + (side === o.k ? 'fav' : '')}
-              style={side === o.k ? { borderColor: 'var(--gold)', background: 'var(--gold-soft)' } : {}}
-              onClick={() => setSide(o.k)}
-            >
-              <span className="odds-btn__label">
-                {o.l.length > 8 ? (o.k === 'home' ? home.code : o.k === 'away' ? away.code : 'X') : o.l}
-              </span>
-            </button>
-          ))}
+          ].map(o => {
+            const odds = pool.total > 0 ? sideOdds(pool, o.k) : null;
+            return (
+              <button
+                key={o.k}
+                className={'odds-btn ' + (side === o.k ? 'fav' : '')}
+                style={side === o.k ? { borderColor: 'var(--gold)', background: 'var(--gold-soft)' } : {}}
+                onClick={() => setSide(o.k)}
+              >
+                <span className="odds-btn__label">
+                  {o.l.length > 8 ? (o.k === 'home' ? home.code : o.k === 'away' ? away.code : 'X') : o.l}
+                </span>
+                {pool.total > 0 && (
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 13, fontWeight: 800, color: side === o.k ? 'var(--gold)' : 'var(--ink-2)' }}>
+                    {fmtDecimalOdds(odds)}
+                  </span>
+                )}
+                {pool.total > 0 && (
+                  <span style={{ display: 'block', fontSize: 10, color: 'var(--ink-3)' }}>
+                    {fmtImpliedProb(odds)} chance
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
+        {pool.total > 0 && (
+          <div style={{ fontSize: 10, color: 'var(--ink-3)', textAlign: 'center', marginBottom: 18, lineHeight: 1.4 }}>
+            Odds = payout multiplier from the current pool. Everyone settles at the final
+            split at kickoff, so this can still move.
+          </div>
+        )}
 
         {/* Switch warning */}
         {isSwitching && (
@@ -716,7 +744,10 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
             background: 'rgba(39, 174, 96, 0.08)',
             border: '1px solid rgba(39, 174, 96, 0.2)',
           }}>
-            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 2 }}>If {sideName} wins, you get</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 2 }}>
+              If {sideName} wins, you get
+              {(() => { const o = sideOdds(pool, side, amount); return o ? ` · ~${fmtDecimalOdds(o)} at current pool` : ''; })()}
+            </div>
             <div style={{
               fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 28,
               color: 'var(--win)',
