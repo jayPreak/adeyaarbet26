@@ -1,32 +1,32 @@
 import { NextResponse } from 'next/server';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { buildMarketOddsMap } from '@/lib/market-odds';
 
-// Real-world MARKET odds from The Odds API (what the betting world thinks).
-// Gated behind ODDS_API_KEY — until that env var is set, this returns an empty
-// map and the UI simply shows pool odds only. No key, no behavior change.
+// Real-world MARKET odds (what the betting world thinks) — distinct from our
+// parimutuel pool odds. Source is now a static file scraped from a real book
+// (see scripts/scrape-stake-odds.mjs) instead of a live keyed API, because The
+// Odds API key never issued. The scraper writes public/market-odds.json with
+// events in The-Odds-API shape; we map them to our static fixture IDs (A1..L6)
+// here via the existing buildMarketOddsMap(). Non-World-Cup fixtures don't map
+// and are dropped.
 //
-// Safe-fetch per CLAUDE.md: NEVER hang the app. We use a hard AbortController
-// timeout and Next's revalidate cache so we hit the upstream at most ~once/10min.
-const ODDS_URL = 'https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds';
-const FETCH_TIMEOUT_MS = 6000;
-const REVALIDATE_S = 600; // cache 10 min — squad-change moves show up fine, quota stays tiny
+// No file / empty file -> { map: {}, enabled: false }, and the UI simply shows
+// pool odds only. Same response shape as before, so the frontend is unchanged.
+const DATA_PATH = path.join(process.cwd(), 'public', 'market-odds.json');
 
 export async function GET() {
-  const key = process.env.ODDS_API_KEY;
-  if (!key) return NextResponse.json({ map: {}, enabled: false });
-
-  const url = `${ODDS_URL}?regions=uk,eu&markets=h2h&oddsFormat=decimal&apiKey=${key}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(url, { signal: controller.signal, next: { revalidate: REVALIDATE_S } });
-    if (!res.ok) return NextResponse.json({ map: {}, enabled: true, error: `upstream ${res.status}` });
-    const events = await res.json();
-    return NextResponse.json({ map: buildMarketOddsMap(events), enabled: true });
-  } catch (e) {
-    // Timeout or network error — fail soft, UI falls back to pool odds.
-    return NextResponse.json({ map: {}, enabled: true, error: e.name === 'AbortError' ? 'timeout' : 'fetch_failed' });
-  } finally {
-    clearTimeout(timer);
+    const parsed = JSON.parse(await readFile(DATA_PATH, 'utf8'));
+    const events = Array.isArray(parsed.events) ? parsed.events : [];
+    const map = buildMarketOddsMap(events);
+    return NextResponse.json({
+      map,
+      enabled: Object.keys(map).length > 0,
+      updatedAt: parsed.updatedAt || null,
+    });
+  } catch {
+    // File missing/unreadable/malformed — fail soft, UI falls back to pool odds.
+    return NextResponse.json({ map: {}, enabled: false });
   }
 }

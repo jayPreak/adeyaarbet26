@@ -40,3 +40,7 @@ supabase/.temp/
 chat.txt
 .plan-new-specials.md
 SYSTEM_AUDIT.md
+
+# stake odds scraper local artifacts
+scripts/.stake-debug/
+scripts/.stake-profile/
