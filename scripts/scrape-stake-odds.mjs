@@ -1,3 +1,13 @@
+// SUPERSEDED — this script is blocked by Cloudflare and is no longer used.
+//
+// Odds are now fetched automatically via GitHub Actions:
+//   .github/workflows/sync-odds.yml  (runs every 6h, commits public/market-odds.json)
+//
+// The workflow calls The-Odds-API directly (no browser required). Set the repo secret
+// ODDS_API_KEY and the workflow handles everything. See the workflow file for details.
+//
+// ---- original notes (kept for reference) ------------------------------------
+//
 // Scrape FIFA World Cup match odds from stake-ind.com and write them where the
 // app's /api/market-odds route can read them (public/market-odds.json).
 //
@@ -8,23 +18,11 @@
 //
 // WHAT it outputs: events in The-Odds-API shape, so the route reuses the existing
 // lib/market-odds.js:buildMarketOddsMap() — which maps full team names to our
-// static fixture IDs (A1..L6) and strips bookmaker vig. Non-World-Cup soccer
-// fixtures simply don't map and are dropped by the route. So you don't need the
-// exact World Cup URL — scraping the general soccer page is enough.
-//
-// USAGE:
-//   node scripts/scrape-stake-odds.mjs
-//   STAKE_URL='https://stake-ind.com/sports/soccer/...'  # optional, a specific page
-//   WAIT_S=60                                            # optional, browse time
-//   HEADLESS=1                                           # optional, once it works
-//
-// Then: commit public/market-odds.json and push — Vercel redeploys with fresh odds.
-//
-// DEBUG: every JSON response is also dumped to scripts/.stake-debug/. If the parser
-// finds 0 fixtures, send those dumps back and the parser can be finalized to match
-// Stake's exact payload shape.
+// static fixture IDs (A1..L6) and strips bookmaker vig.
 
-import { chromium } from 'playwright';
+import { chromium } from 'playwright-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+chromium.use(StealthPlugin());
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const BASE = process.env.STAKE_URL || 'https://stake-ind.com/sports/soccer';
