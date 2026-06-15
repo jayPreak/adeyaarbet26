@@ -667,11 +667,36 @@ body {
 .bet-card__status.won { background: rgba(54,211,153,0.14); color: var(--win); }
 .bet-card__status.lost { background: rgba(248,113,113,0.14); color: var(--loss); }
 
-.bet-card__pool-stats {
-  display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 2px;
-  font-size: 10px; color: var(--ink-3);
+.bet-card__time {
+  font-size: 10px; font-family: var(--font-mono); font-weight: 600;
+  color: var(--ink-2); letter-spacing: 0.02em;
 }
-.bet-card__pool-stats b { color: var(--ink-2); font-family: var(--font-mono); }
+.bet-card__stake-row {
+  display: flex; align-items: baseline; gap: 6px; margin: 4px 0 6px;
+}
+.bet-card__stake { font-family: var(--font-mono); font-weight: 700; font-size: 16px; color: var(--ink); }
+.bet-card__arrow { color: var(--ink-3); font-size: 13px; }
+.bet-card__payout { font-family: var(--font-mono); font-weight: 700; font-size: 14px; }
+.bet-card__payout.win { color: var(--win); }
+.bet-card__payout.loss { color: var(--loss); }
+.bet-card__odds-tag { font-size: 10px; font-weight: 600; opacity: 0.7; }
+.bet-card__cancel {
+  width: 100%; margin-top: 10px; padding: 9px 0;
+  background: rgba(231, 76, 60, 0.08); border: 1px solid rgba(231, 76, 60, 0.25);
+  border-radius: 8px; color: var(--loss); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.bet-card__mini-pool {
+  display: flex; gap: 1px; margin: 8px 0 4px;
+  background: rgba(255,255,255,0.06); border-radius: 8px; overflow: hidden;
+}
+.mini-pool__side { flex: 1; padding: 6px 8px; }
+.mini-pool__label {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--ink-3); margin-bottom: 4px;
+}
+.mini-pool__row { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; }
+.mini-pool__user { font-size: 11px; color: var(--ink-2); }
+.mini-pool__amt { font-size: 10px; font-family: var(--font-mono); color: var(--ink-3); }
 
 /* ── Date group ────────────────────────────────────────────── */
 .date-group { display: flex; flex-direction: column; gap: 10px; padding: 0 16px; margin-bottom: 20px; }

@@ -824,25 +824,28 @@ export function Toast({ message, onDone }) {
   );
 }
 
-// ── Bet card pool info ───────────────────────────────────────
-function BetCardPool({ poolData, pick, amount }) {
-  const myOdds = sideOdds(poolData, pick);
-  const potentialWin = myOdds ? Math.floor(amount * myOdds.decimal) : 0;
-  const mySideTotal = poolData.bySide?.[pick] || 0;
-  const againstMe = poolData.total - mySideTotal;
-  const bettorsOnMySide = poolData.bets?.filter(b => b.pick === pick).length || 0;
-  const totalBettors = poolData.bettorCount || 0;
-
-  let nudge = '';
-  if (bettorsOnMySide === 1) nudge = 'Only you on this side';
-  else if (bettorsOnMySide > 1) nudge = `${bettorsOnMySide - 1} other${bettorsOnMySide > 2 ? 's' : ''} with you`;
+// ── Bet card mini pool table ─────────────────────────────────
+function BetCardMiniPool({ poolData, home, away }) {
+  if (!poolData?.bets?.length) return null;
+  const sides = [
+    { key: 'home', label: home.code, bets: poolData.bets.filter(b => b.pick === 'home') },
+    { key: 'away', label: away.code, bets: poolData.bets.filter(b => b.pick === 'away') },
+    { key: 'draw', label: 'Draw', bets: poolData.bets.filter(b => b.pick === 'draw') },
+  ].filter(s => s.bets.length > 0);
 
   return (
-    <div className="bet-card__pool-stats">
-      <span><b>{fmtDecimalOdds(myOdds)}</b></span>
-      {potentialWin > amount && <span style={{ color: 'var(--win)' }}>→ {fmtMoney(potentialWin)}</span>}
-      {againstMe > 0 && <span>{fmtMoney(againstMe)} against</span>}
-      {nudge && <span style={{ color: 'var(--ink-3)' }}>{nudge}</span>}
+    <div className="bet-card__mini-pool">
+      {sides.map(s => (
+        <div key={s.key} className="mini-pool__side">
+          <div className="mini-pool__label">{s.label}</div>
+          {s.bets.map((b, i) => (
+            <div key={i} className="mini-pool__row">
+              <span className="mini-pool__user">{(b.display_name || '?').split(' ')[0]}</span>
+              <span className="mini-pool__amt">{CURRENCY_SYMBOL}{b.amount}</span>
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
@@ -899,12 +902,17 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
     const isTeamPick = specialDef?.optionType === 'team';
     const specialDeadlinePassed = cupWinnerDeadlineTs && Date.now() >= cupWinnerDeadlineTs;
     const canCancel = bet.status === 'pending' && onCancelBet && !specialDeadlinePassed;
+    const specialStyle = bet.status === 'won'
+      ? { borderColor: 'rgba(74,222,128,0.3)', background: 'rgba(74,222,128,0.04)' }
+      : bet.status === 'lost'
+      ? { borderColor: 'rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.04)' }
+      : undefined;
     return (
-      <div className="bet-card">
+      <div className="bet-card" style={specialStyle}>
         <div className="bet-card__head">
-          <span style={{ color: 'var(--gold)' }}>⭐ Special · {
+          <span style={{ color: 'var(--gold)' }}>⭐ {
             bet.kind === 'cup_winner' ? 'Cup Winner' :
-            bet.kind === 'continent' ? 'Winning Continent' :
+            bet.kind === 'continent' ? 'Continent' :
             bet.kind === 'h2h' ? 'Messi vs Ronaldo' :
             bet.kind === 'golden_boot' ? 'Golden Boot' :
             bet.kind === 'goalscorer' ? 'Goalscorer' :
@@ -920,39 +928,22 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
           </span>
         </div>
 
-        {poolData && poolData.total > 0 && bet.status === 'pending' && (
-          <div className="bet-card__pool-stats" style={{ margin: '6px 0' }}>
-            <span>Pool {fmtMoney(poolData.total)}</span>
-            <span>{poolData.bettorCount} bettor{poolData.bettorCount !== 1 ? 's' : ''}</span>
-          </div>
-        )}
-
-        <div className="bet-card__amounts">
-          <div>
-            <span>Stake</span>
-            <span>{fmtMoney(bet.amount)}</span>
-          </div>
-          <div>
-            <span>{bet.status === 'won' ? 'Payout' : bet.status === 'lost' ? 'Lost' : 'Status'}</span>
-            <span className={bet.status === 'won' ? 'win' : bet.status === 'lost' ? 'loss' : 'gold'}>
-              {bet.status === 'won' ? fmtMoney(bet.payout) :
-               bet.status === 'lost' ? '−' + fmtMoney(bet.amount) :
-               'Pending'}
-            </span>
-          </div>
+        <div className="bet-card__stake-row">
+          <span className="bet-card__stake">{fmtMoney(bet.amount)}</span>
+          {bet.status === 'won' && (
+            <><span className="bet-card__arrow">→</span><span className="bet-card__payout win">+{fmtMoney((bet.payout || 0) - bet.amount)}</span></>
+          )}
+          {bet.status === 'lost' && (
+            <><span className="bet-card__arrow">→</span><span className="bet-card__payout loss">−{fmtMoney(bet.amount)}</span></>
+          )}
+          {poolData && poolData.total > 0 && bet.status === 'pending' && (
+            <span style={{ fontSize: 10, color: 'var(--ink-3)', marginLeft: 'auto' }}>{poolData.bettorCount} in pool · {fmtMoney(poolData.total)}</span>
+          )}
         </div>
 
         {canCancel && (
-          <button
-            onClick={() => onCancelBet(matchId)}
-            style={{
-              width: '100%', marginTop: 10, padding: '9px 0',
-              background: 'rgba(231, 76, 60, 0.08)', border: '1px solid rgba(231, 76, 60, 0.25)',
-              borderRadius: 8, color: 'var(--loss)', fontSize: 12, fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Cancel bet · Refund {fmtMoney(bet.amount)}
+          <button onClick={() => onCancelBet(matchId)} className="bet-card__cancel">
+            Cancel · Refund {fmtMoney(bet.amount)}
           </button>
         )}
       </div>
@@ -963,15 +954,38 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
   const away = getTeam(match.away);
   const pickedTeam = bet.pick === 'home' ? home : bet.pick === 'away' ? away : null;
   const isLive = match.status === 'live';
-  // Betting closes 30s before kickoff (time-based, not status-based) so cancel
-  // disappears even before FIFA marks the match live/finished.
+  const isFinished = match.status === 'finished';
   const canCancel = bet.status === 'pending' && bettingOpen && onCancelBet;
 
+  const myOdds = poolData?.total > 0 ? sideOdds(poolData, bet.pick) : null;
+  const potentialWin = myOdds ? Math.floor(bet.amount * myOdds.decimal) : 0;
+
+  // Time to kickoff
+  const kickoffMs = kickoffTs ? new Date(kickoffTs).getTime() : null;
+  const msLeft = kickoffMs ? kickoffMs - Date.now() : null;
+  let timeLabel = null;
+  if (bet.status === 'pending' && msLeft && msLeft > 0) {
+    const h = Math.floor(msLeft / 3600000);
+    const m = Math.floor((msLeft % 3600000) / 60000);
+    timeLabel = h > 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+
+  // Card border color for resolved
+  const cardStyle = bet.status === 'won'
+    ? { borderColor: 'rgba(74,222,128,0.3)', background: 'rgba(74,222,128,0.04)' }
+    : bet.status === 'lost'
+    ? { borderColor: 'rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.04)' }
+    : undefined;
+
   return (
-    <div className="bet-card">
+    <div className="bet-card" style={cardStyle}>
       <div className="bet-card__head">
         <span>{match.group ? `Group ${match.group}` : 'Knockout'}{match.date ? ` · ${fmtDay(match.date)}` : ''}</span>
-        <span className={'bet-card__status ' + bet.status}>{bet.status}</span>
+        {bet.status === 'pending' && timeLabel ? (
+          <span className="bet-card__time">{timeLabel}</span>
+        ) : (
+          <span className={'bet-card__status ' + bet.status}>{bet.status}</span>
+        )}
       </div>
 
       <div className="row between center">
@@ -979,7 +993,7 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
           <Flag code={match.home} size="sm" />
           <span style={{ fontWeight: 500, fontSize: 13 }}>{home.code}</span>
           <span className="mono" style={{ color: 'var(--ink-3)', fontSize: 11 }}>
-            {match.score ? `${match.score[0]}-${match.score[1]}` : 'v'}
+            {match.score ? `${match.score[0]}–${match.score[1]}` : 'v'}
           </span>
           <span style={{ fontWeight: 500, fontSize: 13 }}>{away.code}</span>
           <Flag code={match.away} size="sm" />
@@ -992,39 +1006,31 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
         <span style={{ fontWeight: 600, fontSize: 13 }}>
           {pickedTeam ? pickedTeam.name : 'Draw'}
         </span>
-        <span className="mono dim" style={{ fontSize: 12 }}>parimutuel</span>
       </div>
 
-      {poolData && poolData.total > 0 && bet.status === 'pending' && (
-        <BetCardPool poolData={poolData} pick={bet.pick} amount={bet.amount} />
+      {/* Stake → potential win */}
+      <div className="bet-card__stake-row">
+        <span className="bet-card__stake">{fmtMoney(bet.amount)}</span>
+        {bet.status === 'won' ? (
+          <><span className="bet-card__arrow">→</span><span className="bet-card__payout win">+{fmtMoney((bet.payout || 0) - bet.amount)}</span></>
+        ) : bet.status === 'lost' ? (
+          <><span className="bet-card__arrow">→</span><span className="bet-card__payout loss">−{fmtMoney(bet.amount)}</span></>
+        ) : potentialWin > bet.amount ? (
+          <><span className="bet-card__arrow">→</span><span className="bet-card__payout win">{fmtMoney(potentialWin)} <span className="bet-card__odds-tag">{fmtDecimalOdds(myOdds)}</span></span></>
+        ) : null}
+      </div>
+
+      {/* Mini pool table */}
+      {poolData && poolData.bets?.length > 0 && bet.status === 'pending' && (
+        <BetCardMiniPool poolData={poolData} home={home} away={away} />
       )}
-
-      <div className="bet-card__amounts">
-        <div>
-          <span>Stake</span>
-          <span>{fmtMoney(bet.amount)}</span>
-        </div>
-        <div>
-          <span>{bet.status === 'won' ? 'Payout' : bet.status === 'lost' ? 'Lost' : 'Status'}</span>
-          <span className={bet.status === 'won' ? 'win' : bet.status === 'lost' ? 'loss' : 'gold'}>
-            {bet.status === 'won' ? fmtMoney(bet.payout) :
-             bet.status === 'lost' ? '−' + fmtMoney(bet.amount) :
-             'Pending'}
-          </span>
-        </div>
-      </div>
 
       {canCancel && (
         <button
           onClick={() => onCancelBet(bet.match_id || bet.matchId)}
-          style={{
-            width: '100%', marginTop: 10, padding: '9px 0',
-            background: 'rgba(231, 76, 60, 0.08)', border: '1px solid rgba(231, 76, 60, 0.25)',
-            borderRadius: 8, color: 'var(--loss)', fontSize: 12, fontWeight: 600,
-            cursor: 'pointer',
-          }}
+          className="bet-card__cancel"
         >
-          Cancel bet · Refund {fmtMoney(bet.amount)}
+          Cancel · Refund {fmtMoney(bet.amount)}
         </button>
       )}
     </div>
