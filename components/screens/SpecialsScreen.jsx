@@ -34,11 +34,16 @@ function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs,
   const potentialWin = canComputeWin ? Math.floor((myBet.amount / myPool) * total) : 0;
   const roi = canComputeWin && myBet.amount > 0 ? Math.round(((potentialWin - myBet.amount) / myBet.amount) * 100) : 0;
 
+  const headerGradient = special.id === 'cup_winner' ? 'linear-gradient(135deg, rgba(255,215,0,0.12) 0%, rgba(255,215,0,0.03) 100%)'
+    : special.id === 'continent' ? 'linear-gradient(135deg, rgba(74,222,128,0.12) 0%, rgba(74,222,128,0.03) 100%)'
+    : special.id === 'h2h' ? 'linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(147,51,234,0.08) 100%)'
+    : special.id === 'golden_boot' ? 'linear-gradient(135deg, rgba(251,191,36,0.12) 0%, rgba(245,158,11,0.03) 100%)'
+    : 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)';
+
   return (
     <div
       onClick={onOpen}
       style={{
-        padding: '14px 16px',
         borderRadius: 14,
         background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.1)',
@@ -46,87 +51,92 @@ function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs,
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        gap: 10,
         minHeight: 160,
+        overflow: 'hidden',
       }}
     >
-      {/* Top section */}
-      <div>
-        {/* Title row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4, marginBottom: 6 }}>
+      {/* Header strip */}
+      <div style={{
+        padding: '12px 14px 10px',
+        background: headerGradient,
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.3 }}>
-            {special.emoji} {special.title}
+            <span style={{ fontSize: 18, marginRight: 4 }}>{special.emoji}</span>
+            {special.title}
           </div>
           <span style={{
             fontSize: 9, fontWeight: 700, padding: '3px 6px', borderRadius: 4, whiteSpace: 'nowrap', flexShrink: 0,
-            background: special.multiPick ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.04)',
+            background: special.multiPick ? 'rgba(255,215,0,0.12)' : 'rgba(255,255,255,0.06)',
             color: special.multiPick ? 'var(--gold)' : 'var(--ink-3)',
-            border: special.multiPick ? '1px solid rgba(255,215,0,0.15)' : '1px solid var(--line)',
+            border: special.multiPick ? '1px solid rgba(255,215,0,0.2)' : '1px solid rgba(255,255,255,0.1)',
           }}>
             {special.multiPick ? 'Multi' : 'Single'}
           </span>
         </div>
-
-        {/* Highlight: one unique data point per card */}
         {highlight && (
-          <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 2 }}>
+          <div style={{ fontSize: 11, color: 'var(--ink-2)', marginTop: 4 }}>
             {highlight}
           </div>
         )}
       </div>
 
-      {/* Stats rows — labeled key/value pairs */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>Pool</span>
-          <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{fmtMoney(total)}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>Bettors</span>
-          <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>{bettorCount || 0}{totalFriends ? `/${totalFriends}` : ''}</span>
-        </div>
-        {myBet && (
+      {/* Card body */}
+      <div style={{ padding: '10px 14px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flex: 1, gap: 10 }}>
+        {/* Stats rows */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>Your Stake</span>
-            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>{fmtMoney(myBet.amount)}</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>Pool</span>
+            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{fmtMoney(total)}</span>
           </div>
-        )}
-        {!myBet && (
-          <div style={{ marginTop: 2, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,180,50,0.08)', border: '1px dashed rgba(255,180,50,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ffb432', animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#ffb432' }}>You're not in yet!</span>
-          </div>
-        )}
-        {canComputeWin && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>Potential Win</span>
-            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>{fmtMoney(potentialWin)} <span style={{ fontSize: 11, opacity: 0.8 }}>+{roi}%</span></span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>Bettors</span>
+            <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>{bettorCount || 0}{totalFriends ? `/${totalFriends}` : ''}</span>
           </div>
-        )}
-      </div>
+          {myBet && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>Your Stake</span>
+              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>{fmtMoney(myBet.amount)}</span>
+            </div>
+          )}
+          {!myBet && (
+            <div style={{ marginTop: 2, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,180,50,0.08)', border: '1px dashed rgba(255,180,50,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ffb432', animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#ffb432' }}>You're not in yet!</span>
+            </div>
+          )}
+          {canComputeWin && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>Potential Win</span>
+              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>{fmtMoney(potentialWin)} <span style={{ fontSize: 11, opacity: 0.8 }}>+{roi}%</span></span>
+            </div>
+          )}
+        </div>
 
-      {/* Bottom: timer — show only one at a time */}
-      <div style={{ display: 'flex', gap: 4 }}>
-        {countdown && countdown !== 'closed' && (
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(74,222,128,0.1)', color: 'var(--win)' }}>
-            ⏱ {countdown}
-          </span>
-        )}
-        {countdown === 'closed' && resolvesIn && resolvesIn !== 'closed' && (
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(255,215,0,0.08)', color: 'var(--gold)' }}>
-            🏁 {resolvesIn}
-          </span>
-        )}
-        {countdown === 'closed' && (!resolvesIn || resolvesIn === 'closed') && (
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(248,113,113,0.12)', color: 'var(--loss)' }}>
-            Closed
-          </span>
-        )}
-        {!countdown && resolvesIn && resolvesIn !== 'closed' && (
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(255,215,0,0.08)', color: 'var(--gold)' }}>
-            🏁 {resolvesIn}
-          </span>
-        )}
+        {/* Bottom: timer */}
+        <div style={{ display: 'flex', gap: 4 }}>
+          {countdown && countdown !== 'closed' && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(74,222,128,0.1)', color: 'var(--win)' }}>
+              ⏱ {countdown}
+            </span>
+          )}
+          {countdown === 'closed' && resolvesIn && resolvesIn !== 'closed' && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(255,215,0,0.08)', color: 'var(--gold)' }}>
+              🏁 {resolvesIn}
+            </span>
+          )}
+          {countdown === 'closed' && (!resolvesIn || resolvesIn === 'closed') && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(248,113,113,0.12)', color: 'var(--loss)' }}>
+              Closed
+            </span>
+          )}
+          {!countdown && resolvesIn && resolvesIn !== 'closed' && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(255,215,0,0.08)', color: 'var(--gold)' }}>
+              🏁 {resolvesIn}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
