@@ -204,14 +204,14 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
 
   return (
     <div>
-      {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending')} onCancelBet={onCancelBet} />}
+      {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending')} onCancelBet={onCancelBet} userId={user?.id} />}
 
       {/* Live matches */}
       {live.length > 0 && (
         <>
           <SectionHead title="Live now" more="All matches" onMore={() => onNav('fixtures')} />
           <div className="date-group" style={{ marginBottom: 8 }}>
-            {live.map(m => <MatchCard key={m.id} match={m} onBet={onBet} myBets={bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending')} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} />)}
+            {live.map(m => <MatchCard key={m.id} match={m} onBet={onBet} myBets={bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending')} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} userId={user?.id} />)}
           </div>
         </>
       )}

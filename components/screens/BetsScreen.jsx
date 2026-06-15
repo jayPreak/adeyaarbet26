@@ -531,9 +531,16 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
   const realBets = useMemo(() => bets.filter(b => b.match_id !== '_topup' && b.status !== 'cancelled'), [bets]);
 
   const filtered = useMemo(() => {
-    if (betFilter === 'open') return realBets.filter(b => b.status === 'pending');
-    return realBets.filter(b => b.status === 'won' || b.status === 'lost');
-  }, [realBets, betFilter]);
+    if (betFilter === 'open') {
+      return realBets.filter(b => b.status === 'pending').sort((a, b) => {
+        const tsA = new Date(scheduleMap[a.match_id || a.matchId] || '2099-01-01').getTime();
+        const tsB = new Date(scheduleMap[b.match_id || b.matchId] || '2099-01-01').getTime();
+        return tsA - tsB;
+      });
+    }
+    return realBets.filter(b => b.status === 'won' || b.status === 'lost')
+      .sort((a, b) => new Date(b.resolved_at || b.created_at) - new Date(a.resolved_at || a.created_at));
+  }, [realBets, betFilter, scheduleMap]);
 
   const totalOpen = useMemo(
     () => realBets.filter(b => b.status === 'pending').reduce((s, b) => s + b.amount, 0),

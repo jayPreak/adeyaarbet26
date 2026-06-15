@@ -229,7 +229,7 @@ export function SectionHead({ title, more, onMore }) {
 }
 
 // ── Match card ───────────────────────────────────────────────
-export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, allUsers = [] }) {
+export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, allUsers = [], userId }) {
   const home = getTeam(match.home);
   const away = getTeam(match.away);
   const isLive = match.status === 'live';
@@ -310,7 +310,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
       )}
 
       {poolData && poolData.bets && poolData.bets.length > 0 && (
-        <MatchPoolTable poolData={poolData} home={home} away={away} allUsers={allUsers} />
+        <MatchPoolTable poolData={poolData} home={home} away={away} allUsers={allUsers} userId={userId} />
       )}
 
       {hasBet && (
@@ -485,7 +485,7 @@ function useCountdown(targetTs) {
   return left;
 }
 
-export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], onCancelBet }) {
+export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], onCancelBet, userId }) {
   const home = getTeam(match.home);
   const away = getTeam(match.away);
   const isLive = match.status === 'live';
@@ -570,7 +570,7 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
       )}
 
       {poolData && poolData.bets && poolData.bets.length > 0 && (
-        <MatchPoolTable poolData={poolData} home={home} away={away} allUsers={allUsers} />
+        <MatchPoolTable poolData={poolData} home={home} away={away} allUsers={allUsers} userId={userId} />
       )}
     </div>
   );

@@ -5,7 +5,7 @@ import Fuse from 'fuse.js';
 import { fmtDay, fmtDate, getTeam } from '@/lib/data';
 import { MatchCard } from '@/components';
 
-export default function FixturesScreen({ matches = [], onBet, bets = [], onCancelBet, poolMap = {}, allUsers = [] }) {
+export default function FixturesScreen({ matches = [], onBet, bets = [], onCancelBet, poolMap = {}, allUsers = [], userId }) {
   const [tab, setTab] = useState('upcoming');
   const [query, setQuery] = useState('');
   const inputRef = useRef(null);
@@ -134,7 +134,7 @@ export default function FixturesScreen({ matches = [], onBet, bets = [], onCance
           </div>
           {byDate[date].map(m => {
             const myBets = bets.filter(b => (b.match_id || b.matchId) === m.id && (b.status !== 'cancelled' || m.status === 'finished'));
-            return <MatchCard key={m.id} match={m} onBet={onBet} myBets={myBets} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} />;
+            return <MatchCard key={m.id} match={m} onBet={onBet} myBets={myBets} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} userId={userId} />;
           })}
         </div>
       ))}
