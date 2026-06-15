@@ -7,6 +7,7 @@ import {
   fmtCompact, fmtDay, fmtDate, fmtTimeIST,
 } from '@/lib/data';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
+import { sideOdds, fmtDecimalOdds } from '@/lib/odds';
 
 import { Flag, LiveDot } from '@/components';
 import MiniCountdown from '@/components/MiniCountdown';
@@ -197,19 +198,22 @@ function DeskFix({ match, onBet, myBets = [], poolData }) {
       {!IS_FINISHED && (
         <div className="desk-fix__odds">
           {[
-            { k: 'home', l: home.code, v: match.odds?.home },
-            { k: 'draw', l: 'X',       v: match.odds?.draw },
-            { k: 'away', l: away.code, v: match.odds?.away },
-          ].map(o => (
-            <button
-              key={o.k}
-              className={'odds-btn ' + (myBets.some(b => b.pick === o.k) ? 'fav' : '')}
-              onClick={() => onBet(match, o.k)}
-            >
-              <span className="odds-btn__label">{o.l}</span>
-              {o.v != null && <span className="odds-btn__val">{o.v.toFixed(2)}</span>}
-            </button>
-          ))}
+            { k: 'home', l: home.code },
+            { k: 'draw', l: 'X' },
+            { k: 'away', l: away.code },
+          ].map(o => {
+            const odds = poolData?.total > 0 ? sideOdds(poolData, o.k) : null;
+            return (
+              <button
+                key={o.k}
+                className={'odds-btn ' + (myBets.some(b => b.pick === o.k) ? 'fav' : '')}
+                onClick={() => onBet(match, o.k)}
+              >
+                <span className="odds-btn__label">{o.l}</span>
+                {odds && <span className="odds-btn__val">{fmtDecimalOdds(odds)}</span>}
+              </button>
+            );
+          })}
         </div>
       )}
       </div>
@@ -319,7 +323,12 @@ function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap 
   const home = getTeam(featured.home);
   const away = getTeam(featured.away);
   const IS_LIVE = featured.status === 'live';
-  const favOdds = featured.odds ? Math.min(featured.odds.home, featured.odds.draw, featured.odds.away) : null;
+  const featuredPool = poolMap[featured.id];
+  const featuredOdds = featuredPool?.total > 0 ? {
+    home: sideOdds(featuredPool, 'home'),
+    draw: sideOdds(featuredPool, 'draw'),
+    away: sideOdds(featuredPool, 'away'),
+  } : null;
 
   return (
     <>
@@ -368,19 +377,22 @@ function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap 
         {featured.status !== 'finished' && (
           <div className="dhero__odds">
             {[
-              { k: 'home', l: `${home.code} to win`, v: featured.odds?.home },
-              { k: 'draw', l: 'Draw',                v: featured.odds?.draw },
-              { k: 'away', l: `${away.code} to win`, v: featured.odds?.away },
-            ].map(o => (
-              <button
-                key={o.k}
-                className={'odds-btn ' + (o.v != null && o.v === favOdds ? 'fav' : '')}
-                onClick={() => onBet(featured, o.k)}
-              >
-                <span className="odds-btn__label">{o.l}</span>
-                {o.v != null && <span className="odds-btn__val">{o.v.toFixed(2)}</span>}
-              </button>
-            ))}
+              { k: 'home', l: `${home.code} to win` },
+              { k: 'draw', l: 'Draw' },
+              { k: 'away', l: `${away.code} to win` },
+            ].map(o => {
+              const odds = featuredOdds?.[o.k];
+              return (
+                <button
+                  key={o.k}
+                  className={'odds-btn ' + (odds && featuredOdds && odds.decimal === Math.min(...Object.values(featuredOdds).filter(Boolean).map(x => x.decimal)) ? 'fav' : '')}
+                  onClick={() => onBet(featured, o.k)}
+                >
+                  <span className="odds-btn__label">{o.l}</span>
+                  {odds && <span className="odds-btn__val">{fmtDecimalOdds(odds)}</span>}
+                </button>
+              );
+            })}
           </div>
         )}
         {(() => {

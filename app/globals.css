@@ -436,6 +436,8 @@ body {
 }
 .odds-btn:active { transform: scale(0.97); }
 .odds-btn__label { font-size: 10px; color: var(--ink-3); font-weight: 600; }
+.odds-btn__value { font-family: var(--font-mono); font-weight: 600; font-size: 11px; color: var(--ink-2); margin-top: 2px; }
+.odds-btn--active .odds-btn__value { color: var(--gold); }
 .odds-btn__val { font-family: var(--font-mono); font-weight: 700; font-size: 14px; }
 .odds-btn.fav .odds-btn__val { color: var(--gold); }
 
@@ -664,6 +666,24 @@ body {
 .bet-card__status.open { background: var(--gold-soft); color: var(--gold); }
 .bet-card__status.won { background: rgba(54,211,153,0.14); color: var(--win); }
 .bet-card__status.lost { background: rgba(248,113,113,0.14); color: var(--loss); }
+
+.bet-card__pool { margin: 8px 0 4px; }
+.bet-card__pool-bar {
+  display: flex; border-radius: 6px; overflow: hidden; height: 20px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.02em;
+}
+.pool-seg {
+  display: flex; align-items: center; justify-content: center;
+  min-width: 24px; white-space: nowrap; padding: 0 4px;
+}
+.pool-seg.home { background: rgba(74, 222, 128, 0.18); color: rgba(74, 222, 128, 0.9); }
+.pool-seg.draw { background: rgba(255, 255, 255, 0.08); color: var(--ink-3); }
+.pool-seg.away { background: rgba(96, 165, 250, 0.18); color: rgba(96, 165, 250, 0.9); }
+.bet-card__pool-stats {
+  display: flex; gap: 12px; margin-top: 6px;
+  font-size: 11px; color: var(--ink-3); font-family: var(--font-mono);
+}
+.bet-card__pool-stats b { color: var(--ink-2); }
 
 /* ── Date group ────────────────────────────────────────────── */
 .date-group { display: flex; flex-direction: column; gap: 10px; padding: 0 16px; margin-bottom: 20px; }

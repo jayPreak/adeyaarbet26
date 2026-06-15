@@ -283,15 +283,19 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
             { key: 'home', label: home.code },
             { key: 'draw', label: 'X' },
             { key: 'away', label: away.code },
-          ].map(o => (
-            <button
-              key={o.key}
-              className={'odds-btn' + (hasBet && myPick === o.key ? ' odds-btn--active' : '')}
-              onClick={(e) => { e.stopPropagation(); onBet?.(match, o.key); }}
-            >
-              <span className="odds-btn__label">{o.label}</span>
-            </button>
-          ))}
+          ].map(o => {
+            const odds = poolData?.total > 0 ? sideOdds(poolData, o.key) : null;
+            return (
+              <button
+                key={o.key}
+                className={'odds-btn' + (hasBet && myPick === o.key ? ' odds-btn--active' : '')}
+                onClick={(e) => { e.stopPropagation(); onBet?.(match, o.key); }}
+              >
+                <span className="odds-btn__label">{o.label}</span>
+                {odds && <span className="odds-btn__value">{fmtDecimalOdds(odds)}</span>}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -534,10 +538,10 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
       {bettingOpen ? (
         <div className="hero__cta-row">
           <button className="btn primary lg" onClick={() => onBet(match, 'home')}>
-            Bet {home.code}
+            Bet {home.code}{poolData?.total > 0 && sideOdds(poolData, 'home') ? ` · ${fmtDecimalOdds(sideOdds(poolData, 'home'))}` : ''}
           </button>
           <button className="btn lg" onClick={() => onBet(match, 'away')}>
-            Bet {away.code}
+            Bet {away.code}{poolData?.total > 0 && sideOdds(poolData, 'away') ? ` · ${fmtDecimalOdds(sideOdds(poolData, 'away'))}` : ''}
           </button>
         </div>
       ) : !isFinished && (
@@ -820,8 +824,32 @@ export function Toast({ message, onDone }) {
   );
 }
 
+// ── Bet card pool info ───────────────────────────────────────
+function BetCardPool({ poolData, pick, amount, home, away }) {
+  const myOdds = sideOdds(poolData, pick);
+  const potentialWin = myOdds ? Math.floor(amount * myOdds.decimal) : 0;
+  const homePct = poolData.total > 0 ? Math.round((poolData.bySide.home / poolData.total) * 100) : 0;
+  const drawPct = poolData.total > 0 ? Math.round((poolData.bySide.draw / poolData.total) * 100) : 0;
+  const awayPct = 100 - homePct - drawPct;
+
+  return (
+    <div className="bet-card__pool">
+      <div className="bet-card__pool-bar">
+        {homePct > 0 && <div className="pool-seg home" style={{ width: `${homePct}%` }}>{home?.code} {homePct}%</div>}
+        {drawPct > 0 && <div className="pool-seg draw" style={{ width: `${drawPct}%` }}>X {drawPct}%</div>}
+        {awayPct > 0 && <div className="pool-seg away" style={{ width: `${awayPct}%` }}>{away?.code} {awayPct}%</div>}
+      </div>
+      <div className="bet-card__pool-stats">
+        <span>Pool {fmtMoney(poolData.total)}</span>
+        <span>Your odds <b>{fmtDecimalOdds(myOdds)}</b></span>
+        {potentialWin > amount && <span style={{ color: 'var(--win)' }}>Win {fmtMoney(potentialWin)}</span>}
+      </div>
+    </div>
+  );
+}
+
 // ── Bet card (My Bets screen) ────────────────────────────────
-export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs }) {
+export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, poolData }) {
   const matchId = bet.match_id || bet.matchId;
   const isSpecial = bet.kind && bet.kind !== 'match';
   const match = !isSpecial ? getMatch(matchId) : null;
@@ -893,6 +921,13 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs }) {
           </span>
         </div>
 
+        {poolData && poolData.total > 0 && bet.status === 'pending' && (
+          <div className="bet-card__pool-stats" style={{ margin: '6px 0' }}>
+            <span>Pool {fmtMoney(poolData.total)}</span>
+            <span>{poolData.bettorCount} bettor{poolData.bettorCount !== 1 ? 's' : ''}</span>
+          </div>
+        )}
+
         <div className="bet-card__amounts">
           <div>
             <span>Stake</span>
@@ -960,6 +995,10 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs }) {
         </span>
         <span className="mono dim" style={{ fontSize: 12 }}>parimutuel</span>
       </div>
+
+      {poolData && poolData.total > 0 && bet.status === 'pending' && (
+        <BetCardPool poolData={poolData} pick={bet.pick} amount={bet.amount} home={home} away={away} />
+      )}
 
       <div className="bet-card__amounts">
         <div>

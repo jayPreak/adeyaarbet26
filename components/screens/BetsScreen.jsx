@@ -524,7 +524,7 @@ function SettlementCard({ user, bets = [] }) {
   );
 }
 
-export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, scheduleMap = {}, cupWinnerDeadlineTs = null, bestCaseWin = 0 }) {
+export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, scheduleMap = {}, cupWinnerDeadlineTs = null, bestCaseWin = 0, poolMap = {} }) {
   const [view, setView] = useState('overview');
   const [betFilter, setBetFilter] = useState('pending');
 
@@ -657,7 +657,7 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
                 {realBets.length === 0 ? 'Place your first bet!' : `No ${betFilter} bets yet`}
               </div>
             )}
-            {filtered.map(b => <BetCard key={b.id} bet={b} onCancelBet={onCancelBet} kickoffTs={scheduleMap[b.match_id || b.matchId] || null} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />)}
+            {filtered.map(b => <BetCard key={b.id} bet={b} onCancelBet={onCancelBet} kickoffTs={scheduleMap[b.match_id || b.matchId] || null} cupWinnerDeadlineTs={cupWinnerDeadlineTs} poolData={poolMap[b.match_id || b.matchId]} />)}
           </div>
         </>
       )}

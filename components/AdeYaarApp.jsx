@@ -297,7 +297,7 @@ export default function AdeYaarApp() {
                 />
               )}
               {tab === 'leaders'  && <LeaderboardScreen user={user} />}
-              {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} scheduleMap={scheduleMap} cupWinnerDeadlineTs={cupWinnerDeadlineTs} bestCaseWin={bestCaseWin} />}
+              {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} scheduleMap={scheduleMap} cupWinnerDeadlineTs={cupWinnerDeadlineTs} bestCaseWin={bestCaseWin} poolMap={poolMap} />}
             </ErrorBoundary>
           </div>
 

@@ -23,6 +23,11 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
     .slice(0, 3);
   const featured = live[0] || upcoming[0];
 
+  const fifaIdMap = {};
+  for (const m of matches) {
+    if (m.fifaId) fifaIdMap[m.fifaId] = m;
+  }
+
   const [activity, setActivity] = useState([]);
   const [showAllActivity, setShowAllActivity] = useState(false);
   const [fullActivity, setFullActivity] = useState([]);
@@ -38,7 +43,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
             id: a.id,
             username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
             avatar_url: a.profiles?.avatar_url || null,
-            text: formatActivityText(a),
+            text: formatActivityText(a, fifaIdMap),
             createdAt: a.created_at,
           })));
         }
@@ -57,7 +62,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
             id: a.id,
             username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
             avatar_url: a.profiles?.avatar_url || null,
-            text: formatActivityText(a),
+            text: formatActivityText(a, fifaIdMap),
             createdAt: a.created_at,
           }));
           setFullActivity(mapped);
@@ -79,7 +84,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
             id: a.id,
             username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
             avatar_url: a.profiles?.avatar_url || null,
-            text: formatActivityText(a),
+            text: formatActivityText(a, fifaIdMap),
             createdAt: a.created_at,
           }));
           setFullActivity(prev => [...prev, ...mapped]);
@@ -274,11 +279,13 @@ function formatSpecialMatchLabel(matchId) {
   return null;
 }
 
-function formatActivityText(a) {
+function formatActivityText(a, fifaIdMap) {
   const matchId = a.payload?.match_id;
   const specialLabel = formatSpecialMatchLabel(matchId);
   const isSpecial = !!specialLabel;
-  const match = (!isSpecial && matchId) ? getMatch(matchId) : null;
+  const match = (!isSpecial && matchId)
+    ? (getMatch(matchId) || fifaIdMap?.[matchId] || null)
+    : null;
   const matchLabel = specialLabel
     || (match ? `${getTeam(match.home).name} vs ${getTeam(match.away).name}` : matchId || '');
 
