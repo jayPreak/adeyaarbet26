@@ -9,8 +9,8 @@ name: Sync Odds
 
 on:
   schedule:
-    # Every hour (~34 days remaining × 24h = ~816 runs; fits 500 req/month free tier for WC end July 19)
-    - cron: '0 * * * *'
+    # Every 30 minutes (~48 req/day; see CLAUDE.md "Odds Sync — API Key Rotation" for key lifetime)
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 jobs:
