@@ -43,6 +43,7 @@ class ErrorBoundary extends Component {
 }
 import LeaderboardScreen from '@/components/screens/LeaderboardScreen';
 import BetsScreen from '@/components/screens/BetsScreen';
+import DesktopApp from '@/components/desktop/DesktopApp';
 
 function getFifaStatus(fifa) {
   if (fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
@@ -91,6 +92,7 @@ export default function AdeYaarApp() {
   const [h2hOpen, setH2hOpen] = useState(false);
   const [goldenBootOpen, setGoldenBootOpen] = useState(false);
   const [poolMap, setPoolMap] = useState({});
+  const [isDesktop, setIsDesktop] = useState(false);
 
   const balance = computeBalance(bets);
   const realisedBalance = computeRealisedBalance(bets.filter(b => b.match_id !== '_topup'));
@@ -180,6 +182,13 @@ export default function AdeYaarApp() {
 
   useEffect(() => { refreshPools(); }, [refreshPools]);
 
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 1024);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   const matches = MATCHES.map(m => {
     const merged = mergeWithFifa(m, fifaData);
     const kickoffTs = scheduleMap[m.id] || null;
@@ -262,6 +271,57 @@ export default function AdeYaarApp() {
 
   if (loading || !user) return null;
 
+  const handleOpenSpecialBet = (id, ctx) => {
+    if (id === 'goalscorer' && ctx?.matchId) {
+      setGoalScorerMatchId(ctx.matchId);
+      setGoalScorerOpen(true);
+    } else if (id === 'continent') {
+      setContinentOpen(true);
+    } else if (id === 'h2h') {
+      setH2hOpen(true);
+    } else if (id === 'golden_boot') {
+      setGoldenBootOpen(true);
+    } else {
+      setCupWinnerOpen(true);
+    }
+  };
+
+  if (isDesktop) {
+    return (
+      <div data-theme={theme}>
+        <DesktopApp
+          tab={tab} setTab={setTab}
+          balance={balance} openBet={openBet}
+          matches={matches} user={user}
+          onLogout={handleLogout}
+          bets={bets} onCancelBet={cancelBet}
+          poolMap={poolMap} allUsers={allUsers}
+          myCupWinnerBet={myCupWinnerBet}
+          onOpenCupWinner={() => setCupWinnerOpen(true)}
+          cupWinnerDeadlineTs={cupWinnerDeadlineTs}
+          onOpenSpecialBet={handleOpenSpecialBet}
+          onToast={setToast}
+        />
+        {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+        {betSheet && (
+          <PlaceBetSheet
+            match={betSheet.match}
+            pick={betSheet.pick}
+            poolInfo={poolMap[betSheet.match.id] || null}
+            existingBets={bets.filter(b => (b.match_id || b.matchId) === betSheet.match.id && b.status === 'pending')}
+            onClose={closeBet}
+            onConfirm={confirmBet}
+          />
+        )}
+        <CupWinnerBetModal open={cupWinnerOpen} onClose={() => setCupWinnerOpen(false)} user={user} myCupWinnerBet={myCupWinnerBet} onPlaced={() => { refreshCupWinnerBet(); refreshData(); }} deadlineTs={cupWinnerDeadlineTs} />
+        <GoalScorerBetModal open={goalScorerOpen} onClose={() => setGoalScorerOpen(false)} matchId={goalScorerMatchId} user={user} onPlaced={() => { refreshData(); refreshPools(); }} />
+        <ContinentBetModal open={continentOpen} onClose={() => setContinentOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
+        <H2HBetModal open={h2hOpen} onClose={() => setH2hOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
+        <GoldenBootBetModal open={goldenBootOpen} onClose={() => setGoldenBootOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
+      </div>
+    );
+  }
+
   return (
     <div className="stage">
       <div className="phone-frame">
@@ -280,20 +340,7 @@ export default function AdeYaarApp() {
                   matches={matches}
                   allUsers={allUsers}
                   onToast={setToast}
-                  onOpenSpecialBet={(id, ctx) => {
-                    if (id === 'goalscorer' && ctx?.matchId) {
-                      setGoalScorerMatchId(ctx.matchId);
-                      setGoalScorerOpen(true);
-                    } else if (id === 'continent') {
-                      setContinentOpen(true);
-                    } else if (id === 'h2h') {
-                      setH2hOpen(true);
-                    } else if (id === 'golden_boot') {
-                      setGoldenBootOpen(true);
-                    } else {
-                      setCupWinnerOpen(true);
-                    }
-                  }}
+                  onOpenSpecialBet={handleOpenSpecialBet}
                 />
               )}
               {tab === 'leaders'  && <LeaderboardScreen user={user} />}
