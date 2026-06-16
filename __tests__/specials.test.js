@@ -1,9 +1,9 @@
 import { SPECIALS, getSpecial, getSpecialByMatchId, getConfederation, isSpecialBet, CONFEDERATION_OPTIONS } from '@/lib/specials';
 
 describe('SPECIALS registry', () => {
-  test('has all 5 specials defined', () => {
-    expect(SPECIALS).toHaveLength(5);
-    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'h2h', 'golden_boot', 'goalscorer']);
+  test('has all 4 specials defined', () => {
+    expect(SPECIALS).toHaveLength(4);
+    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'h2h', 'goalscorer']);
   });
 
   test('each special has required fields', () => {
@@ -41,13 +41,6 @@ describe('SPECIALS registry', () => {
     expect(h2h.resolutionRules.length).toBeGreaterThan(0);
   });
 
-  test('golden_boot has 44 candidates, multi-pick', () => {
-    const gb = getSpecial('golden_boot');
-    expect(gb.multiPick).toBe(true);
-    expect(gb.matchId).toBe('GOLDEN_BOOT');
-    expect(gb.options.length).toBe(44);
-    expect(gb.options.every(o => o.value && o.label && o.country)).toBe(true);
-  });
 });
 
 describe('getSpecial / getSpecialByMatchId', () => {
@@ -101,7 +94,6 @@ describe('isSpecialBet', () => {
     expect(isSpecialBet({ kind: 'goalscorer' })).toBe(true);
     expect(isSpecialBet({ kind: 'continent' })).toBe(true);
     expect(isSpecialBet({ kind: 'h2h' })).toBe(true);
-    expect(isSpecialBet({ kind: 'golden_boot' })).toBe(true);
     expect(isSpecialBet({ kind: 'match' })).toBe(false);
   });
 });
@@ -127,11 +119,4 @@ describe('formatPick', () => {
     expect(h2h.formatPick('unknown')).toBe('unknown');
   });
 
-  test('golden_boot formats player slugs to full names', () => {
-    const gb = getSpecial('golden_boot');
-    expect(gb.formatPick('kylian_mbappe')).toBe('Kylian Mbappe');
-    expect(gb.formatPick('lionel_messi')).toBe('Lionel Messi');
-    expect(gb.formatPick('harry_kane')).toBe('Harry Kane');
-    expect(gb.formatPick('nonexistent')).toBe('nonexistent');
-  });
 });

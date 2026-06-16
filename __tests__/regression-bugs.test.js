@@ -174,12 +174,6 @@ describe('formatPick never returns raw slugs for known picks', () => {
     expect(s.formatPick('ronaldo')).toContain('Ronaldo');
   });
 
-  test('golden_boot: player slugs return full names', () => {
-    const s = getSpecial('golden_boot');
-    expect(s.formatPick('kylian_mbappe')).toBe('Kylian Mbappe');
-    expect(s.formatPick('harry_kane')).toBe('Harry Kane');
-    expect(s.formatPick('lionel_messi')).toBe('Lionel Messi');
-  });
 });
 
 // =============================================================================
@@ -187,13 +181,10 @@ describe('formatPick never returns raw slugs for known picks', () => {
 // =============================================================================
 
 describe('special bet deadlines and resolution times', () => {
-  test('h2h and golden_boot have deadlineTs (betting closes before tournament starts)', () => {
+  test('h2h has deadlineTs (betting closes before tournament starts)', () => {
     const h2h = getSpecial('h2h');
-    const gb = getSpecial('golden_boot');
     expect(h2h.deadlineTs).toBeTruthy();
-    expect(gb.deadlineTs).toBeTruthy();
     expect(new Date(h2h.deadlineTs).getTime()).toBeGreaterThan(0);
-    expect(new Date(gb.deadlineTs).getTime()).toBeGreaterThan(0);
   });
 
   test('continent has deadlineTs (within 7 days of tournament start June 11)', () => {

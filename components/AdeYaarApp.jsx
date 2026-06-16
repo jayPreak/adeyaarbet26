@@ -12,7 +12,6 @@ import CupWinnerBetModal from '@/components/CupWinnerBetModal';
 import GoalScorerBetModal from '@/components/GoalScorerBetModal';
 import ContinentBetModal from '@/components/ContinentBetModal';
 import H2HBetModal from '@/components/H2HBetModal';
-import GoldenBootBetModal from '@/components/GoldenBootBetModal';
 import SpecialsScreen from '@/components/screens/SpecialsScreen';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
 
@@ -105,7 +104,6 @@ export default function AdeYaarApp() {
   const [goalScorerMatchId, setGoalScorerMatchId] = useState(null);
   const [continentOpen, setContinentOpen] = useState(false);
   const [h2hOpen, setH2hOpen] = useState(false);
-  const [goldenBootOpen, setGoldenBootOpen] = useState(false);
   const [poolMap, setPoolMap] = useState({});
 
   const balance = computeBalance(bets);
@@ -304,8 +302,6 @@ export default function AdeYaarApp() {
                       setContinentOpen(true);
                     } else if (id === 'h2h') {
                       setH2hOpen(true);
-                    } else if (id === 'golden_boot') {
-                      setGoldenBootOpen(true);
                     } else {
                       setCupWinnerOpen(true);
                     }
@@ -375,14 +371,6 @@ export default function AdeYaarApp() {
         />
       </div>
 
-      <div data-theme={theme}>
-        <GoldenBootBetModal
-          open={goldenBootOpen}
-          onClose={() => setGoldenBootOpen(false)}
-          user={user}
-          onPlaced={() => { refreshData(); }}
-        />
-      </div>
 
     </div>
   );
