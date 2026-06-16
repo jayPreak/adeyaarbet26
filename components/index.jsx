@@ -577,7 +577,7 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
 }
 
 // ── Place bet sheet ──────────────────────────────────────────
-export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, existingBets = [] }) {
+export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, marketOdds, existingBets = [] }) {
   const presets = [100, 250, 500, 1000];
   const [amount, setAmount] = useState(250);
   const [side, setSide] = useState(pick || 'home');
@@ -661,6 +661,8 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
             { k: 'away', l: away.name },
           ].map(o => {
             const odds = pool.total > 0 ? sideOdds(pool, o.k) : null;
+            const mDec = marketOdds ? marketOdds[o.k] : null;             // market decimal odds
+            const mProb = marketOdds && marketOdds.probs ? marketOdds.probs[o.k] : null;
             return (
               <button
                 key={o.k}
@@ -681,14 +683,19 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
                     {fmtImpliedProb(odds)} chance
                   </span>
                 )}
+                {mDec != null && (
+                  <span style={{ display: 'block', marginTop: 4, paddingTop: 4, borderTop: '1px solid var(--line)', fontSize: 10, color: 'var(--ink-3)' }}>
+                    🌍 {mDec.toFixed(2)}x{mProb != null ? ` · ${Math.round(mProb * 100)}%` : ''}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
-        {pool.total > 0 && (
+        {(pool.total > 0 || marketOdds) && (
           <div style={{ fontSize: 10, color: 'var(--ink-3)', textAlign: 'center', marginBottom: 18, lineHeight: 1.4 }}>
-            Odds = payout multiplier from the current pool. Everyone settles at the final
-            split at kickoff, so this can still move.
+            <b style={{ color: 'var(--ink-2)' }}>Top</b> = your pool (what you actually win, settles at kickoff).
+            {marketOdds && <> <b>🌍</b> = real-world market odds (what the betting world thinks).</>}
           </div>
         )}
 

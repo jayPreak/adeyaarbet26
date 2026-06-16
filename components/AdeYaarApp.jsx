@@ -91,6 +91,7 @@ export default function AdeYaarApp() {
   const [h2hOpen, setH2hOpen] = useState(false);
   const [goldenBootOpen, setGoldenBootOpen] = useState(false);
   const [poolMap, setPoolMap] = useState({});
+  const [marketOddsMap, setMarketOddsMap] = useState({});
 
   const balance = computeBalance(bets);
   const realisedBalance = computeRealisedBalance(bets.filter(b => b.match_id !== '_topup'));
@@ -179,6 +180,15 @@ export default function AdeYaarApp() {
   }, [user]);
 
   useEffect(() => { refreshPools(); }, [refreshPools]);
+
+  // Real-world market odds (The Odds API). Dormant until ODDS_API_KEY is set —
+  // the route returns {} and the UI just shows pool odds. Fire-and-forget.
+  useEffect(() => {
+    fetch('/api/market-odds')
+      .then(r => r.json())
+      .then(data => { if (data && data.map) setMarketOddsMap(data.map); })
+      .catch(() => {});
+  }, []);
 
   const matches = MATCHES.map(m => {
     const merged = mergeWithFifa(m, fifaData);
@@ -313,6 +323,7 @@ export default function AdeYaarApp() {
             match={betSheet.match}
             pick={betSheet.pick}
             poolInfo={poolMap[betSheet.match.id] || null}
+            marketOdds={marketOddsMap[betSheet.match.id] || null}
             existingBets={bets.filter(b => (b.match_id || b.matchId) === betSheet.match.id && b.status === 'pending')}
             onClose={closeBet}
             onConfirm={confirmBet}
