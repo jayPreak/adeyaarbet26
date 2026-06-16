@@ -45,16 +45,21 @@ import LeaderboardScreen from '@/components/screens/LeaderboardScreen';
 import BetsScreen from '@/components/screens/BetsScreen';
 
 function getFifaStatus(fifa) {
-  if (fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
   if (fifa.MatchStatus === 3) return 'live';
+  if (fifa.MatchStatus === 0 && fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
+  if (fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
   return 'upcoming';
 }
+
+// FIFA uses different codes for some teams (e.g. KSA instead of SAU)
+const FIFA_ALIAS = { KSA: 'SAU' };
+function normCode(c) { return FIFA_ALIAS[c] || c; }
 
 function mergeWithFifa(staticMatch, fifaResults) {
   if (!fifaResults?.length) return { ...staticMatch, status: inferStatus(staticMatch) };
   const fifa = fifaResults.find(m =>
-    m.Home?.Abbreviation === staticMatch.home &&
-    m.Away?.Abbreviation === staticMatch.away
+    normCode(m.Home?.Abbreviation) === staticMatch.home &&
+    normCode(m.Away?.Abbreviation) === staticMatch.away
   );
   if (!fifa) return { ...staticMatch, status: inferStatus(staticMatch) };
   const stadiumName = fifa.Stadium?.Name?.[0]?.Description;
