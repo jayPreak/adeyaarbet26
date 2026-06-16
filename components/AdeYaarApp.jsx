@@ -51,12 +51,12 @@ function getFifaStatus(fifa) {
 }
 
 function mergeWithFifa(staticMatch, fifaResults) {
-  if (!fifaResults?.length) return { ...staticMatch, status: 'upcoming' };
+  if (!fifaResults?.length) return { ...staticMatch, status: inferStatus(staticMatch) };
   const fifa = fifaResults.find(m =>
     m.Home?.Abbreviation === staticMatch.home &&
     m.Away?.Abbreviation === staticMatch.away
   );
-  if (!fifa) return { ...staticMatch, status: 'upcoming' };
+  if (!fifa) return { ...staticMatch, status: inferStatus(staticMatch) };
   const stadiumName = fifa.Stadium?.Name?.[0]?.Description;
   const cityName = fifa.Stadium?.CityName?.[0]?.Description;
   const venue = stadiumName
@@ -68,6 +68,17 @@ function mergeWithFifa(staticMatch, fifaResults) {
     : null;
   const minute = fifa.MatchMinute ?? null;
   return { ...staticMatch, venue, fifaId: fifa.IdMatch, status, score, minute };
+}
+
+// Fallback when FIFA data is unavailable: if kickoff was 3+ hours ago, treat as finished
+function inferStatus(match) {
+  if (!match.kickoffTs) return 'upcoming';
+  const kickoff = new Date(match.kickoffTs).getTime();
+  if (isNaN(kickoff)) return 'upcoming';
+  const elapsed = Date.now() - kickoff;
+  if (elapsed > 3 * 60 * 60 * 1000) return 'finished';
+  if (elapsed > 0) return 'live';
+  return 'upcoming';
 }
 
 export default function AdeYaarApp() {

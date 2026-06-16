@@ -1,7 +1,7 @@
 'use client';
 
 import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, fmtCountdown, getMatchKickoffTs, MATCH_BET_CUTOFF_MS } from '@/lib/data';
-import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
+import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET, getMinBet } from '@/lib/currency';
 import { getSpecial } from '@/lib/specials';
 import { poolOdds, sideOdds, fmtDecimalOdds, fmtImpliedProb } from '@/lib/odds';
 import { useState, useEffect } from 'react';
@@ -578,8 +578,9 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
 
 // ── Place bet sheet ──────────────────────────────────────────
 export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, existingBets = [] }) {
-  const presets = [100, 250, 500, 1000];
-  const [amount, setAmount] = useState(250);
+  const minBet = getMinBet(match?.id);
+  const presets = [100, 250, 500, 1000].filter(p => p >= minBet);
+  const [amount, setAmount] = useState(Math.max(250, minBet));
   const [side, setSide] = useState(pick || 'home');
   const [submitting, setSubmitting] = useState(false);
   const bettingOpen = useBettingOpen(match);
@@ -728,9 +729,9 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
 
         <input
           type="range" className="slider"
-          min={50} max={MAX_BET} step={50}
+          min={minBet} max={MAX_BET} step={50}
           value={amount}
-          onChange={e => setAmount(Number(e.target.value))}
+          onChange={e => setAmount(Math.max(minBet, Number(e.target.value)))}
           style={{ marginBottom: 14 }}
         />
 
@@ -794,7 +795,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
         <button
           className="btn primary block lg"
           style={{ flexShrink: 0, marginTop: 12 }}
-          disabled={submitting || !bettingOpen || (existingPick === side)}
+          disabled={submitting || !bettingOpen || (existingPick === side) || amount < minBet}
           onClick={async () => {
             setSubmitting(true);
             try { await onConfirm({ matchId: match.id, pick: side, amount }); }
@@ -802,7 +803,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
             finally { setSubmitting(false); }
           }}
         >
-          {submitting ? 'Placing...' : !bettingOpen ? 'Betting closed' : (existingPick === side) ? 'Already placed — cancel to change' : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
+          {submitting ? 'Placing...' : !bettingOpen ? 'Betting closed' : (existingPick === side) ? 'Already placed — cancel to change' : amount < minBet ? `Min bet ${CURRENCY_SYMBOL}${minBet}` : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
         </button>
       </div>
     </div>
