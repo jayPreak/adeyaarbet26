@@ -291,3 +291,28 @@ npx supabase db query --linked "SQL"  # Run queries on prod DB
 - `SUPABASE_SERVICE_ROLE_KEY` — Service role key (server-only, bypasses RLS)
 - Local `.env.local` has all three. Vercel has them in env vars.
 - **Local dev connects to PROD database.** There is no local DB. Be careful with destructive queries.
+
+---
+
+## Odds Sync — API Key Rotation
+
+Odds are fetched by `.github/workflows/sync-odds.yml` (every 30 min) via The-Odds-API, keyed by the
+`ODDS_API_KEY` GitHub Actions secret.
+
+**Free tier: 500 req/month.** At 48 req/day that's ~10 days per key.
+
+If the sync workflow starts failing with **401 or 429** errors, the key is exhausted — rotate it.
+
+### Key rotation schedule for World Cup 2026 (tournament ends July 19)
+
+| Date | Action |
+|------|--------|
+| **June 25** | Swap `ODDS_API_KEY` to a fresh key (new The-Odds-API account) |
+| **July 5** | Swap again for the final stretch to July 19 |
+
+### How to rotate
+1. Create a new free account at [the-odds-api.com](https://the-odds-api.com)
+2. Copy the new API key
+3. Go to GitHub repo → **Settings → Secrets and variables → Actions**
+4. Update `ODDS_API_KEY` with the new key
+5. Trigger the **Sync Odds** workflow manually (Actions tab → Run workflow) to confirm it works

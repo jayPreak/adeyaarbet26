@@ -1,0 +1,76 @@
+# Fetches FIFA World Cup odds from The-Odds-API and commits public/market-odds.json.
+#
+# REQUIRED SECRET: Set ODDS_API_KEY in the repo's Settings → Secrets and variables → Actions.
+# Key value: 779cee1035dbac434c8138fd9e73436d
+#
+# Replaces scripts/scrape-stake-odds.mjs (blocked by Cloudflare).
+
+name: Sync Odds
+
+on:
+  schedule:
+    # Every 30 minutes (~48 req/day; see CLAUDE.md "Odds Sync — API Key Rotation" for key lifetime)
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Fetch odds and write market-odds.json
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: |
+          node - <<'EOF'
+          const https = require('https');
+          const fs = require('fs');
+
+          const apiKey = process.env.ODDS_API_KEY;
+          if (!apiKey) { console.error('ODDS_API_KEY secret not set'); process.exit(1); }
+
+          const url =
+            `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds/` +
+            `?apiKey=${apiKey}&regions=eu&markets=h2h`;
+
+          https.get(url, (res) => {
+            let body = '';
+            res.on('data', (chunk) => { body += chunk; });
+            res.on('end', () => {
+              if (res.statusCode !== 200) {
+                console.error(`Odds API returned ${res.statusCode}: ${body}`);
+                process.exit(1);
+              }
+              const events = JSON.parse(body);
+              const out = {
+                events,
+                updatedAt: new Date().toISOString(),
+                source: 'the-odds-api',
+              };
+              fs.writeFileSync('public/market-odds.json', JSON.stringify(out, null, 2));
+              console.log(`Wrote ${events.length} events to public/market-odds.json`);
+            });
+          }).on('error', (err) => {
+            console.error('Fetch failed:', err.message);
+            process.exit(1);
+          });
+          EOF
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/market-odds.json
+          if git diff --cached --quiet; then
+            echo "No changes to market-odds.json — skipping commit."
+          else
+            git commit -m "chore: sync market odds [skip ci]"
+            git push
+          fi
