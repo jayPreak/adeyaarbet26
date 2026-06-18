@@ -299,7 +299,7 @@ function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap 
 
   useEffect(() => {
     if (!user) return;
-    fetch('/api/leaderboard').then(r => r.json()).then(d => { if (Array.isArray(d)) setLeaderboard(d); }).catch(() => {});
+    fetch('/api/leaderboard').then(r => r.json()).then(d => { if (Array.isArray(d?.rankings)) setLeaderboard(d.rankings); }).catch(() => {});
   }, [user]);
 
   useEffect(() => {
@@ -699,7 +699,7 @@ function DLeaderboardScreen({ user }) {
   const [settlementBasis, setSettlementBasis] = useState('resolved');
 
   useEffect(() => {
-    fetch('/api/leaderboard').then(r => r.json()).then(d => { if (Array.isArray(d)) setSorted(d); }).catch(() => {});
+    fetch('/api/leaderboard').then(r => r.json()).then(d => { if (Array.isArray(d?.rankings)) setSorted(d.rankings); }).catch(() => {});
     fetch('/api/settlement')
       .then(r => r.json())
       .then(d => {
