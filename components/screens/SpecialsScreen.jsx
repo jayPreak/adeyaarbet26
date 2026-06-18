@@ -37,7 +37,6 @@ function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs,
   const headerGradient = special.id === 'cup_winner' ? 'linear-gradient(135deg, rgba(255,215,0,0.12) 0%, rgba(255,215,0,0.03) 100%)'
     : special.id === 'continent' ? 'linear-gradient(135deg, rgba(74,222,128,0.12) 0%, rgba(74,222,128,0.03) 100%)'
     : special.id === 'h2h' ? 'linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(147,51,234,0.08) 100%)'
-    : special.id === 'golden_boot' ? 'linear-gradient(135deg, rgba(251,191,36,0.12) 0%, rgba(245,158,11,0.03) 100%)'
     : 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)';
 
   return (
@@ -610,150 +609,6 @@ function H2HDetail({ special, poolData, picks, myBet, user, allUsers, onBack, on
   );
 }
 
-// Golden Boot expanded view
-function GoldenBootDetail({ special, poolData, picks, myBets, user, allUsers, onBack, onPlace, onCancel, onCancelPick }) {
-  const [cancellingId, setCancellingId] = useState(null);
-  const countdown = useDeadlineCountdown(new Date(special.deadlineTs).getTime());
-  const total = poolData?.total || 0;
-  const byTeam = poolData?.byTeam || {};
-  const closed = countdown === 'closed';
-
-  const sorted = Object.entries(byTeam)
-    .map(([pick, amount]) => ({ pick, amount }))
-    .sort((a, b) => b.amount - a.amount);
-
-  const myTotalStake = (myBets || []).reduce((s, b) => s + b.amount, 0);
-
-  return (
-    <div>
-      <div style={{ margin: '0 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--ink-2)', fontSize: 14, cursor: 'pointer', padding: '6px 10px', borderRadius: 8, fontWeight: 600 }}>← Back</button>
-        <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>👟 {special.title}</span>
-        {countdown && (
-          <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, background: closed ? 'rgba(248,113,113,0.12)' : 'rgba(74,222,128,0.1)', color: closed ? 'var(--loss)' : 'var(--win)' }}>
-            {closed ? 'Closed' : `⏱ ${countdown}`}
-          </span>
-        )}
-      </div>
-
-      <div style={{ padding: '0 16px' }}>
-        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 4 }}>{special.description}</div>
-        <div style={{ fontSize: 11, color: 'var(--gold)', marginBottom: 16 }}>Multi-pick allowed — bet on multiple players</div>
-
-        {/* Pool stats */}
-        <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>POOL</div>
-            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{fmtMoney(total)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>YOUR STAKES</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink)' }}>{myBets?.length || 0} picks · {fmtMoney(myTotalStake)}</div>
-          </div>
-        </div>
-
-        {/* My bets */}
-        {myBets && myBets.length > 0 && (
-          <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 12, background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.12)' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>YOUR PICKS</div>
-            {myBets.map((b, i) => {
-              const playerPool = byTeam[b.pick] || 0;
-              const potentialWin = playerPool > 0 ? Math.floor((b.amount / playerPool) * total) : 0;
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: i < myBets.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{special.formatPick(b.pick)}</span>
-                  <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>{fmtMoney(b.amount)}</span>
-                  {potentialWin > 0 && <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>→ {fmtMoney(potentialWin)}</span>}
-                  {!closed && onCancelPick && (
-                    <button
-                      disabled={cancellingId === b.id}
-                      onClick={async () => {
-                        setCancellingId(b.id);
-                        await onCancelPick(b.id);
-                        setCancellingId(null);
-                      }}
-                      style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.08)', color: 'var(--loss)', cursor: 'pointer', opacity: cancellingId === b.id ? 0.5 : 1 }}
-                    >
-                      {cancellingId === b.id ? '...' : '✕'}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {!closed && (
-          <button onClick={onPlace} style={{ width: '100%', padding: '14px', marginBottom: 16, borderRadius: 12, background: 'var(--gold)', color: '#0a0a0a', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-            {myBets?.length > 0 ? 'Add another pick' : 'Place bet'}
-          </button>
-        )}
-
-        {/* Pool by player */}
-        {sorted.length > 0 && (
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>POOL BY PLAYER</div>
-            {sorted.map(({ pick, amount }) => {
-              const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
-              const isMyPick = myBets?.some(b => b.pick === pick);
-              return (
-                <div key={pick} style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 12px', marginBottom: 6, borderRadius: 10,
-                  background: isMyPick ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.04)',
-                  border: isMyPick ? '1px solid rgba(74,222,128,0.15)' : '1px solid rgba(255,255,255,0.08)',
-                }}>
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{special.formatPick(pick)}</span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--gold)' }}>{fmtMoney(amount)}</span>
-                  <span style={{ fontSize: 11, color: 'var(--ink-3)', minWidth: 32, textAlign: 'right' }}>{pct}%</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Everyone's picks */}
-        {picks.length > 0 && (
-          <div style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>EVERYONE'S PICKS</div>
-            {picks.map((p, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                <div style={{ width: 22, height: 22, borderRadius: '50%', background: p.avatarUrl ? `url(${p.avatarUrl}) center/cover` : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: 'var(--ink-3)' }}>
-                  {!p.avatarUrl && (p.displayName?.[0] || '?')}
-                </div>
-                <span style={{ flex: 1, fontSize: 12, color: 'var(--ink-2)' }}>{p.displayName}</span>
-                <span style={{ fontSize: 12, color: 'var(--ink)' }}>{special.formatPick(p.pick)}</span>
-                <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--ink-3)' }}>{fmtMoney(p.amount)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Haven't bet yet */}
-        {allUsers.length > 0 && (() => {
-          const bettorIds = new Set(picks.map(p => p.userId || p.user_id));
-          const notBet = allUsers.filter(u => !bettorIds.has(u.id));
-          if (notBet.length === 0) return null;
-          return (
-            <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>HAVEN'T BET YET ({notBet.length})</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {notBet.map(u => (
-                  <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ width: 18, height: 18, borderRadius: '50%', background: u.avatar_url ? `url(${u.avatar_url}) center/cover` : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: 'var(--ink-3)' }}>
-                      {!u.avatar_url && (u.display_name?.[0] || '?')}
-                    </div>
-                    <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{u.display_name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
-      </div>
-    </div>
-  );
-}
 
 // Goalscorer expanded view: list of upcoming group-stage matches
 function GoalScorerMatchList({ matches, bets, onBet, onBack, gsSummary }) {
@@ -883,17 +738,6 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       })
       .catch(() => {});
 
-    // Golden Boot data
-    fetch(`/api/special-bet?match_id=GOLDEN_BOOT&kind=golden_boot${user?.id ? `&user_id=${user.id}` : ''}`)
-      .then(r => r.json())
-      .then(data => {
-        const byOpt = data.pool?.byOption || {};
-        const topPicks = Object.entries(byOpt).map(([pick, amount]) => ({ pick, amount })).sort((a, b) => b.amount - a.amount).slice(0, 5);
-        setPoolsData(prev => ({ ...prev, golden_boot: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, topPicks, byTeam: byOpt } }));
-        setPicksData(prev => ({ ...prev, golden_boot: data.picks || [] }));
-        setMyBetsData(prev => ({ ...prev, golden_boot: data.myBets || [] }));
-      })
-      .catch(() => {});
 
     // Goalscorer summary
     const gsUrl = user?.id
@@ -951,48 +795,6 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
             onBack={() => setExpanded(null)}
             onPlace={() => onOpenSpecialBet('h2h')}
             onCancel={() => onOpenSpecialBet('h2h')}
-          />
-        </div>
-      );
-    }
-    if (expandedSpecial.id === 'golden_boot') {
-      return (
-        <div>
-          <GoldenBootDetail
-            special={expandedSpecial}
-            poolData={poolsData.golden_boot}
-            picks={picksData.golden_boot || []}
-            myBets={myBetsData.golden_boot || []}
-            user={user}
-            allUsers={allUsers}
-            onBack={() => setExpanded(null)}
-            onPlace={() => onOpenSpecialBet('golden_boot')}
-            onCancel={() => onOpenSpecialBet('golden_boot')}
-            onCancelPick={async (betId) => {
-              try {
-                const res = await fetch('/api/special-bet', {
-                  method: 'DELETE',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ userId: user.id, betId }),
-                });
-                if (!res.ok) {
-                  const data = await res.json();
-                  throw new Error(data.error || 'Cancel failed');
-                }
-                setMyBetsData(prev => ({ ...prev, golden_boot: (prev.golden_boot || []).filter(b => b.id !== betId) }));
-                onToast?.('Bet cancelled');
-                fetch(`/api/special-bet?match_id=GOLDEN_BOOT&kind=golden_boot&user_id=${user.id}`)
-                  .then(r => r.json())
-                  .then(data => {
-                    const byOpt = data.pool?.byOption || {};
-                    setPoolsData(prev => ({ ...prev, golden_boot: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, topPicks: Object.entries(byOpt).map(([pick, amount]) => ({ pick, amount })).sort((a, b) => b.amount - a.amount).slice(0, 5), byTeam: byOpt } }));
-                    setPicksData(prev => ({ ...prev, golden_boot: data.picks || [] }));
-                  })
-                  .catch(() => {});
-              } catch (err) {
-                onToast?.(`Error: ${err.message}`);
-              }
-            }}
           />
         </div>
       );
@@ -1095,27 +897,6 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
           );
         }
 
-        // Golden Boot card
-        if (special.id === 'golden_boot') {
-          const gbPool = poolsData.golden_boot;
-          const gbMyBets = myBetsData.golden_boot || [];
-          const gbMyBet = gbMyBets.length > 0 ? { amount: gbMyBets.reduce((s, b) => s + b.amount, 0), pick: null } : null;
-          const topPlayer = gbPool?.topPicks?.[0];
-          return (
-            <SpecialCard
-              key={special.id}
-              special={special}
-              poolData={{ total: gbPool?.total || 0, byTeam: gbPool?.byTeam || {} }}
-              onOpen={() => setExpanded(special.id)}
-              deadlineTs={new Date(special.deadlineTs).getTime()}
-              myBet={gbMyBet}
-              resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
-              highlight={topPlayer ? `Favourite: ${special.formatPick(topPlayer.pick)}` : null}
-              bettorCount={gbPool?.bettorCount || 0}
-              totalFriends={allUsers.length}
-            />
-          );
-        }
 
         // Cup winner card (default)
         const pool = poolsData[special.id];

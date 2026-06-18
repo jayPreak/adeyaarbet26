@@ -1,7 +1,7 @@
 'use client';
 
 import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, fmtCountdown, getMatchKickoffTs, MATCH_BET_CUTOFF_MS } from '@/lib/data';
-import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
+import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET, getMinBet } from '@/lib/currency';
 import { getSpecial } from '@/lib/specials';
 import { poolOdds, sideOdds, fmtDecimalOdds, fmtImpliedProb } from '@/lib/odds';
 import { useState, useEffect } from 'react';
@@ -362,7 +362,7 @@ export function MatchPoolTable({ poolData, home, away, allUsers = [], userId }) 
   const notBet = allUsers.filter(u => !bettorIds.has(u.id));
 
   const renderSideTable = (bets, label, isWinningSide) => (
-    <div style={{ flex: 1, minWidth: 0, padding: isWinningSide ? '8px 6px' : undefined, borderRadius: isWinningSide ? 8 : undefined, border: isWinningSide ? '1px solid rgba(74,222,128,0.25)' : undefined, background: isWinningSide ? 'rgba(74,222,128,0.04)' : undefined }}>
+    <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', padding: isWinningSide ? '6px 4px' : undefined, borderRadius: isWinningSide ? 8 : undefined, border: isWinningSide ? '1px solid rgba(74,222,128,0.25)' : undefined, background: isWinningSide ? 'rgba(74,222,128,0.04)' : undefined }}>
       <div style={{
         fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
         letterSpacing: '0.5px', color: isWinningSide ? '#4ade80' : '#fff', marginBottom: 6,
@@ -373,12 +373,17 @@ export function MatchPoolTable({ poolData, home, away, allUsers = [], userId }) 
           —
         </div>
       ) : (
-        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '40%' }} />
+            <col style={{ width: '30%' }} />
+            <col style={{ width: '30%' }} />
+          </colgroup>
           <thead>
             <tr>
-              <th style={{ padding: '3px 6px', textAlign: 'left', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>User</th>
-              <th style={{ padding: '3px 6px', textAlign: 'right', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Bet</th>
-              <th style={{ padding: '3px 6px', textAlign: 'right', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{isRefunded ? 'Status' : isResolved ? 'Result' : 'Win'}</th>
+              <th style={{ padding: '3px 4px', textAlign: 'left', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>User</th>
+              <th style={{ padding: '3px 4px', textAlign: 'right', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>Bet</th>
+              <th style={{ padding: '3px 4px', textAlign: 'right', fontSize: 9, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>{isRefunded ? 'Status' : isResolved ? 'Result' : 'Win'}</th>
             </tr>
           </thead>
           <tbody>
@@ -388,12 +393,12 @@ export function MatchPoolTable({ poolData, home, away, allUsers = [], userId }) 
               const refunded = b.status === 'cancelled';
               return (
                 <tr key={i} style={won ? { background: 'rgba(74,222,128,0.06)' } : lost ? { background: 'rgba(248,113,113,0.04)' } : refunded ? { background: 'rgba(255,255,255,0.02)' } : undefined}>
-                  <td style={{ padding: '4px 6px', color: 'rgba(255,255,255,0.9)', fontSize: 12 }}>
+                  <td style={{ padding: '4px 4px', color: 'rgba(255,255,255,0.9)', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {(b.display_name || b.username || '?').split(' ')[0]}
-                    {userId && b.user_id === userId && <span style={{ marginLeft: 4, fontSize: 9, padding: '1px 4px', borderRadius: 3, background: 'rgba(147,197,253,0.15)', color: 'rgba(147,197,253,0.9)', fontWeight: 700 }}>YOU</span>}
+                    {userId && b.user_id === userId && <span style={{ marginLeft: 3, fontSize: 8, padding: '1px 3px', borderRadius: 3, background: 'rgba(147,197,253,0.15)', color: 'rgba(147,197,253,0.9)', fontWeight: 700 }}>YOU</span>}
                   </td>
-                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>{CURRENCY_SYMBOL}{b.amount}</td>
-                  <td style={{ padding: '4px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11, color: won ? '#4ade80' : lost ? '#f87171' : refunded ? 'var(--ink-3)' : '#4ade80' }}>
+                  <td style={{ padding: '4px 4px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'rgba(255,255,255,0.8)', fontSize: 11 }}>{CURRENCY_SYMBOL}{b.amount}</td>
+                  <td style={{ padding: '4px 4px', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 11, color: won ? '#4ade80' : lost ? '#f87171' : refunded ? 'var(--ink-3)' : '#4ade80', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {refunded ? '↩ ₹0' : won ? `+${CURRENCY_SYMBOL}${(b.payout || 0) - b.amount}` : lost ? `-${CURRENCY_SYMBOL}${b.amount}` : (
                       <>{CURRENCY_SYMBOL}{b.possible_win}{b.possible_win > b.amount && <span style={{ fontSize: 9, opacity: 0.7 }}> +{Math.round(((b.possible_win - b.amount) / b.amount) * 100)}%</span>}</>
                     )}
@@ -410,7 +415,7 @@ export function MatchPoolTable({ poolData, home, away, allUsers = [], userId }) 
   return (
     <div style={{
       margin: '10px 0 6px',
-      padding: '12px',
+      padding: '10px 8px',
       background: 'rgba(0,0,0,0.3)',
       borderRadius: 10,
       border: '1px solid rgba(255,255,255,0.1)',
@@ -425,9 +430,9 @@ export function MatchPoolTable({ poolData, home, away, allUsers = [], userId }) 
           : <>Pool: {CURRENCY_SYMBOL}{poolData.total} · {poolData.bettorCount} bettor{poolData.bettorCount !== 1 ? 's' : ''}</>
         }
       </div>
-      <div style={{ display: 'flex', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
         {renderSideTable(homeBets, home.name, isResolved && homeBets.some(b => b.status === 'won'))}
-        <div style={{ width: 1, background: 'rgba(255,255,255,0.1)' }} />
+        <div style={{ width: 1, flexShrink: 0, background: 'rgba(255,255,255,0.1)' }} />
         {renderSideTable(awayBets, away.name, isResolved && awayBets.some(b => b.status === 'won'))}
       </div>
       {drawBets.length > 0 && (
@@ -578,8 +583,9 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
 
 // ── Place bet sheet ──────────────────────────────────────────
 export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, existingBets = [] }) {
-  const presets = [100, 250, 500, 1000];
-  const [amount, setAmount] = useState(250);
+  const minBet = getMinBet(match?.id);
+  const presets = [100, 250, 500, 1000].filter(p => p >= minBet);
+  const [amount, setAmount] = useState(Math.max(250, minBet));
   const [side, setSide] = useState(pick || 'home');
   const [submitting, setSubmitting] = useState(false);
   const bettingOpen = useBettingOpen(match);
@@ -728,9 +734,9 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
 
         <input
           type="range" className="slider"
-          min={50} max={MAX_BET} step={50}
+          min={minBet} max={MAX_BET} step={50}
           value={amount}
-          onChange={e => setAmount(Number(e.target.value))}
+          onChange={e => setAmount(Math.max(minBet, Number(e.target.value)))}
           style={{ marginBottom: 14 }}
         />
 
@@ -794,7 +800,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
         <button
           className="btn primary block lg"
           style={{ flexShrink: 0, marginTop: 12 }}
-          disabled={submitting || !bettingOpen || (existingPick === side)}
+          disabled={submitting || !bettingOpen || (existingPick === side) || amount < minBet}
           onClick={async () => {
             setSubmitting(true);
             try { await onConfirm({ matchId: match.id, pick: side, amount }); }
@@ -802,7 +808,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
             finally { setSubmitting(false); }
           }}
         >
-          {submitting ? 'Placing...' : !bettingOpen ? 'Betting closed' : (existingPick === side) ? 'Already placed — cancel to change' : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
+          {submitting ? 'Placing...' : !bettingOpen ? 'Betting closed' : (existingPick === side) ? 'Already placed — cancel to change' : amount < minBet ? `Min bet ${CURRENCY_SYMBOL}${minBet}` : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
         </button>
       </div>
     </div>

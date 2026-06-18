@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MATCHES, getTeam, getMatch } from '@/lib/data';
-import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
+import { fmtMoney, CURRENCY_SYMBOL, MAX_BET, getMinBet } from '@/lib/currency';
 import { Flag, Icon } from './index';
 
 const POSITION_COLORS = { GK: '#6b7280', DEF: '#3b82f6', MID: '#22c55e', FWD: '#f97316' };
@@ -107,7 +107,7 @@ export default function GoalScorerBetModal({ open, onClose, matchId, user, onPla
   const [loadingPl,  setLoadingPl]  = useState(false);
   const [playerErr,  setPlayerErr]  = useState(null);
   const [selected,   setSelected]   = useState(null);
-  const [amount,     setAmount]     = useState(500);
+  const [amount,     setAmount]     = useState(Math.max(500, getMinBet(matchId)));
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState(null);
   const [view,       setView]       = useState('pick'); // 'pick' | 'picks'
@@ -213,13 +213,15 @@ export default function GoalScorerBetModal({ open, onClose, matchId, user, onPla
 
   if (!open || !match) return null;
 
-  const presets    = [250, 500, 1000, 2000].filter(p => p <= MAX_BET);
+  const minBet     = getMinBet(matchId);
+  const presets    = [250, 500, 1000, 2000].filter(p => p <= MAX_BET && p >= minBet);
   const sliderMax  = Math.max(100, MAX_BET);
   const hasBet     = !!myBet;
   const isChange   = hasBet && (selected !== myBet.pick || amount !== myBet.amount);
-  const canSubmit  = !submitting && !!selected && amount > 0 && amount <= MAX_BET && (!hasBet || isChange);
+  const canSubmit  = !submitting && !!selected && amount >= minBet && amount <= MAX_BET && (!hasBet || isChange);
   const submitLabel = submitting
     ? 'Placing…'
+    : amount < minBet ? `Min ${CURRENCY_SYMBOL}${minBet}`
     : amount > MAX_BET ? `Max ${CURRENCY_SYMBOL}${MAX_BET.toLocaleString('en-IN')}`
     : !selected ? 'Pick a player'
     : hasBet ? (isChange ? 'Update pick' : 'Done') : `Bet ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')}`;
@@ -379,7 +381,7 @@ export default function GoalScorerBetModal({ open, onClose, matchId, user, onPla
                   </div>
                   <input
                     type="range" className="gs-modal__slider"
-                    min={100} max={sliderMax} step={50}
+                    min={minBet} max={sliderMax} step={50}
                     value={Math.min(amount, sliderMax)}
                     onChange={e => setAmount(Number(e.target.value))}
                   />

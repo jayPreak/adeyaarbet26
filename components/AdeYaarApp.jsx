@@ -12,7 +12,6 @@ import CupWinnerBetModal from '@/components/CupWinnerBetModal';
 import GoalScorerBetModal from '@/components/GoalScorerBetModal';
 import ContinentBetModal from '@/components/ContinentBetModal';
 import H2HBetModal from '@/components/H2HBetModal';
-import GoldenBootBetModal from '@/components/GoldenBootBetModal';
 import SpecialsScreen from '@/components/screens/SpecialsScreen';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
 
@@ -46,18 +45,23 @@ import BetsScreen from '@/components/screens/BetsScreen';
 import DesktopApp from '@/components/desktop/DesktopApp';
 
 function getFifaStatus(fifa) {
-  if (fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
   if (fifa.MatchStatus === 3) return 'live';
+  if (fifa.MatchStatus === 0 && fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
+  if (fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
   return 'upcoming';
 }
 
+// FIFA uses different codes for some teams (e.g. KSA instead of SAU)
+const FIFA_ALIAS = { KSA: 'SAU' };
+function normCode(c) { return FIFA_ALIAS[c] || c; }
+
 function mergeWithFifa(staticMatch, fifaResults) {
-  if (!fifaResults?.length) return { ...staticMatch, status: 'upcoming' };
+  if (!fifaResults?.length) return { ...staticMatch, status: inferStatus(staticMatch) };
   const fifa = fifaResults.find(m =>
-    m.Home?.Abbreviation === staticMatch.home &&
-    m.Away?.Abbreviation === staticMatch.away
+    normCode(m.Home?.Abbreviation) === staticMatch.home &&
+    normCode(m.Away?.Abbreviation) === staticMatch.away
   );
-  if (!fifa) return { ...staticMatch, status: 'upcoming' };
+  if (!fifa) return { ...staticMatch, status: inferStatus(staticMatch) };
   const stadiumName = fifa.Stadium?.Name?.[0]?.Description;
   const cityName = fifa.Stadium?.CityName?.[0]?.Description;
   const venue = stadiumName
@@ -69,6 +73,17 @@ function mergeWithFifa(staticMatch, fifaResults) {
     : null;
   const minute = fifa.MatchMinute ?? null;
   return { ...staticMatch, venue, fifaId: fifa.IdMatch, status, score, minute };
+}
+
+// Fallback when FIFA data is unavailable: if kickoff was 3+ hours ago, treat as finished
+function inferStatus(match) {
+  if (!match.kickoffTs) return 'upcoming';
+  const kickoff = new Date(match.kickoffTs).getTime();
+  if (isNaN(kickoff)) return 'upcoming';
+  const elapsed = Date.now() - kickoff;
+  if (elapsed > 3 * 60 * 60 * 1000) return 'finished';
+  if (elapsed > 0) return 'live';
+  return 'upcoming';
 }
 
 export default function AdeYaarApp() {
@@ -90,7 +105,6 @@ export default function AdeYaarApp() {
   const [goalScorerMatchId, setGoalScorerMatchId] = useState(null);
   const [continentOpen, setContinentOpen] = useState(false);
   const [h2hOpen, setH2hOpen] = useState(false);
-  const [goldenBootOpen, setGoldenBootOpen] = useState(false);
   const [poolMap, setPoolMap] = useState({});
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -341,6 +355,18 @@ export default function AdeYaarApp() {
                   allUsers={allUsers}
                   onToast={setToast}
                   onOpenSpecialBet={handleOpenSpecialBet}
+                  onOpenSpecialBet={(id, ctx) => {
+                    if (id === 'goalscorer' && ctx?.matchId) {
+                      setGoalScorerMatchId(ctx.matchId);
+                      setGoalScorerOpen(true);
+                    } else if (id === 'continent') {
+                      setContinentOpen(true);
+                    } else if (id === 'h2h') {
+                      setH2hOpen(true);
+                    } else {
+                      setCupWinnerOpen(true);
+                    }
+                  }}
                 />
               )}
               {tab === 'leaders'  && <LeaderboardScreen user={user} />}
@@ -406,14 +432,6 @@ export default function AdeYaarApp() {
         />
       </div>
 
-      <div data-theme={theme}>
-        <GoldenBootBetModal
-          open={goldenBootOpen}
-          onClose={() => setGoldenBootOpen(false)}
-          user={user}
-          onPlaced={() => { refreshData(); }}
-        />
-      </div>
 
     </div>
   );
