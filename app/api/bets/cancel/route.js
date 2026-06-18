@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
 
 export async function POST(request) {
-  
+
   if (!supabase) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
@@ -12,6 +12,23 @@ export async function POST(request) {
 
     if (!userId || !matchId) {
       return NextResponse.json({ error: 'Missing userId or matchId' }, { status: 400 });
+    }
+
+    // Block cancellation if match has already started (kickoff - 30s has passed)
+    const { data: schedule } = await supabase
+      .from('match_schedule')
+      .select('kickoff_ts')
+      .eq('id', matchId)
+      .single();
+
+    if (schedule?.kickoff_ts) {
+      const kickoff = new Date(schedule.kickoff_ts).getTime();
+      if (Date.now() >= kickoff - 30000) {
+        return NextResponse.json(
+          { error: 'Cannot cancel — match has already started' },
+          { status: 403 }
+        );
+      }
     }
 
     const { data, error } = await supabase.rpc('cancel_bets', {
