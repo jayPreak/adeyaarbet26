@@ -112,7 +112,7 @@ export default function AdeYaarApp() {
 
   const balance = computeBalance(bets);
   const realisedBalance = computeRealisedBalance(bets.filter(b => b.match_id !== '_topup'));
-  const pendingBets = bets.filter(b => b.match_id !== '_topup' && b.status === 'pending');
+  const pendingBets = bets.filter(b => b.match_id !== '_topup' && b.kind !== 'penalty' && b.status === 'pending');
   const pendingStake = pendingBets.reduce((s, b) => s + b.amount, 0);
   const pendingCount = pendingBets.length;
   const bestCaseWin = pendingBets.reduce((s, b) => {
