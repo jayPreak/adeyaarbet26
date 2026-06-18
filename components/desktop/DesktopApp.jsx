@@ -12,6 +12,7 @@ import { sideOdds, fmtDecimalOdds } from '@/lib/odds';
 import { Flag, LiveDot } from '@/components';
 import MiniCountdown from '@/components/MiniCountdown';
 import CupWinnerCTA from '@/components/CupWinnerCTA';
+import SpecialsScreen from '@/components/screens/SpecialsScreen';
 
 function formatDeskActivity(a) {
   const isCupWinner = a.payload?.kind === 'cup_winner';
@@ -45,6 +46,7 @@ const DIcon = {
   bracket: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h5l3 3M3 18h5l3-3M21 12h-4l-3-3M14 15l3-3"/></svg>,
   trophy: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 4h10v6a5 5 0 01-10 0V4z"/><path d="M7 7H4v3a3 3 0 003 3M17 7h3v3a3 3 0 01-3 3"/><path d="M9 21h6M12 18v3"/></svg>,
   receipt: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2V3z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>,
+  star: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
   search: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>,
   bell: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9M14 21a2 2 0 01-4 0"/></svg>,
   settings: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 005 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 005 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 5h.09A1.65 1.65 0 0010.5 4V3a2 2 0 114 0v.09A1.65 1.65 0 0016 4.5a1.65 1.65 0 001.82.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0020 9h.09a2 2 0 110 4H20a1.65 1.65 0 00-1.51 1z"/></svg>,
@@ -56,10 +58,11 @@ function DesktopShell({ tab, onNav, balance, children, title, sub, hideSearch, u
   const [showMenu, setShowMenu] = useState(false);
 
   const navItems = [
-    { id: 'home',    label: 'Dashboard', icon: DIcon.home },
-    { id: 'matches', label: 'Fixtures',  icon: DIcon.ball,    badge: '12' },
-    { id: 'leaders', label: 'Leaderboard', icon: DIcon.trophy },
-    { id: 'bets',    label: 'My Bets',   icon: DIcon.receipt },
+    { id: 'home',     label: 'Dashboard',   icon: DIcon.home },
+    { id: 'matches',  label: 'Fixtures',    icon: DIcon.ball },
+    { id: 'specials', label: 'Specials',    icon: DIcon.star },
+    { id: 'leaders',  label: 'Leaderboard', icon: DIcon.trophy },
+    { id: 'bets',     label: 'My Bets',     icon: DIcon.receipt },
   ];
 
   return (
@@ -975,13 +978,13 @@ function DBetsScreen({ user, onCancelBet, bets = [] }) {
 }
 
 // ── Desktop App (root) ────────────────────────────────────────
-export default function DesktopApp({ tab, setTab, balance, openBet, matches, user, onLogout, bets = [], onCancelBet, poolMap = {}, myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs }) {
+export default function DesktopApp({ tab, setTab, balance, openBet, matches, user, onLogout, bets = [], onCancelBet, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenSpecialBet, onToast }) {
   const titles = {
-    home:    { title: 'Dashboard',    sub: 'FIFA World Cup 2026 · Group stage underway' },
-    matches: { title: 'Fixtures',     sub: 'All matches · group stage + knockout' },
-    bracket: { title: 'Tournament',   sub: '48 teams · 12 groups · single elimination' },
-    leaders: { title: 'Leaderboard',  sub: 'Friends · friend betting pool' },
-    bets:    { title: 'My Bets',      sub: 'Your stakes across the tournament' },
+    home:     { title: 'Dashboard',    sub: 'FIFA World Cup 2026 · Group stage underway' },
+    matches:  { title: 'Fixtures',     sub: 'All matches · group stage + knockout' },
+    specials: { title: 'Special Bets', sub: 'Cup winner, Golden Boot, H2H and more' },
+    leaders:  { title: 'Leaderboard',  sub: 'Friends · friend betting pool' },
+    bets:     { title: 'My Bets',      sub: 'Your stakes across the tournament' },
   };
   const t = titles[tab] || titles.home;
 
@@ -991,10 +994,20 @@ export default function DesktopApp({ tab, setTab, balance, openBet, matches, use
       title={t.title} sub={t.sub}
       hideSearch={false} user={user} onLogout={onLogout}
     >
-      {tab === 'home'    && <DHomeScreen matches={matches} balance={balance} onBet={openBet} onNav={setTab} user={user} bets={bets} poolMap={poolMap} onCancelBet={onCancelBet} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={onOpenCupWinner} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />}
-      {tab === 'matches' && <DMatchesScreen matches={matches} onBet={openBet} bets={bets} poolMap={poolMap} />}
-      {tab === 'leaders' && <DLeaderboardScreen user={user} />}
-      {tab === 'bets'    && <DBetsScreen user={user} onCancelBet={onCancelBet} bets={bets} />}
+      {tab === 'home'     && <DHomeScreen matches={matches} balance={balance} onBet={openBet} onNav={setTab} user={user} bets={bets} poolMap={poolMap} onCancelBet={onCancelBet} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={onOpenCupWinner} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />}
+      {tab === 'matches'  && <DMatchesScreen matches={matches} onBet={openBet} bets={bets} poolMap={poolMap} />}
+      {tab === 'specials' && (
+        <SpecialsScreen
+          user={user}
+          bets={bets}
+          matches={matches}
+          allUsers={allUsers}
+          onToast={onToast}
+          onOpenSpecialBet={onOpenSpecialBet}
+        />
+      )}
+      {tab === 'leaders'  && <DLeaderboardScreen user={user} />}
+      {tab === 'bets'     && <DBetsScreen user={user} onCancelBet={onCancelBet} bets={bets} />}
     </DesktopShell>
   );
 }
