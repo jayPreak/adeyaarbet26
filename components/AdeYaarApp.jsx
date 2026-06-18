@@ -117,8 +117,8 @@ export default function AdeYaarApp() {
   const pendingCount = pendingBets.length;
   const bestCaseWin = pendingBets.reduce((s, b) => {
     const pool = poolMap[b.match_id];
-    if (!pool) return s + b.amount;
-    const total = pool.total || 0;
+    if (!pool || !pool.total) return s + b.amount;
+    const total = pool.total;
     const sidePool = pool.bySide?.[b.pick] || b.amount;
     return s + Math.floor((b.amount / sidePool) * total) - b.amount;
   }, 0);
