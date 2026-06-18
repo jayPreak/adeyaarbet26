@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
+import { verifyUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -117,6 +118,8 @@ export async function POST(request) {
     if (!userId || !matchId || !playerId || !amount) {
       return NextResponse.json({ error: 'Missing required fields: userId, matchId, playerId, amount' }, { status: 400 });
     }
+    const { error: authError } = await verifyUser(userId);
+    if (authError) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { data, error } = await supabase.rpc('place_goalscorer_bet', {
       p_user_id:   userId,
@@ -148,6 +151,8 @@ export async function DELETE(request) {
   try {
     const { userId, matchId } = await request.json();
     if (!userId || !matchId) return NextResponse.json({ error: 'Missing userId, matchId' }, { status: 400 });
+    const { error: authError } = await verifyUser(userId);
+    if (authError) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { data, error } = await supabase.rpc('cancel_goalscorer_bet', {
       p_user_id:  userId,

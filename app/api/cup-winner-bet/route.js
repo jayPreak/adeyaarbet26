@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
+import { verifyUser } from '@/lib/auth';
 import { CUP_WINNER_DEADLINE_TS, cupWinnerDeadlineFromKickoffs } from '@/lib/cup-winner';
 
 export async function GET(request) {
@@ -68,6 +69,8 @@ export async function POST(request) {
     if (!userId || !teamCode || !amount) {
       return NextResponse.json({ error: 'Missing required fields: userId, teamCode, amount' }, { status: 400 });
     }
+    const { error: authError } = await verifyUser(userId);
+    if (authError) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { data, error } = await supabase.rpc('place_cup_winner_bet', {
       p_user_id: userId,
@@ -97,6 +100,8 @@ export async function DELETE(request) {
   try {
     const { userId } = await request.json();
     if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+    const { error: authError } = await verifyUser(userId);
+    if (authError) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { data, error } = await supabase.rpc('cancel_cup_winner_bet', { p_user_id: userId });
     if (error) {
       const msg = error.message || '';

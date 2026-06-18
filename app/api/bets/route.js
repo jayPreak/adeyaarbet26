@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
+import { verifyUser } from '@/lib/auth';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -30,6 +31,11 @@ export async function POST(request) {
 
     if (!userId || !matchId || !pick || !amount) {
       return NextResponse.json({ error: 'Missing required fields: userId, matchId, pick, amount' }, { status: 400 });
+    }
+
+    const { error: authError } = await verifyUser(userId);
+    if (authError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { data, error } = await supabase.rpc('place_bet', {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
+import { verifyUser } from '@/lib/auth';
 
 export async function POST(request) {
 
@@ -12,6 +13,11 @@ export async function POST(request) {
 
     if (!userId || !matchId) {
       return NextResponse.json({ error: 'Missing userId or matchId' }, { status: 400 });
+    }
+
+    const { error: authError } = await verifyUser(userId);
+    if (authError) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Block cancellation if match has already started (kickoff - 30s has passed)

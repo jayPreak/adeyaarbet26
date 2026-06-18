@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
+import { verifyUser } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +97,9 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
+  const { error: authError } = await verifyUser(userId);
+  if (authError) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { data, error } = await supabase.rpc('place_special_bet', {
     p_user_id: userId,
     p_match_id: matchId,
@@ -118,6 +122,9 @@ export async function DELETE(request) {
   if (!userId || !betId) {
     return NextResponse.json({ error: 'userId and betId required' }, { status: 400 });
   }
+
+  const { error: authError } = await verifyUser(userId);
+  if (authError) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { data, error } = await supabase.rpc('cancel_special_bet_by_id', {
     p_user_id: userId,
