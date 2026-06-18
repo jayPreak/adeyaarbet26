@@ -331,6 +331,9 @@ function formatActivityText(a, fifaIdMap) {
     }
     return `cancelled bet${a.payload.refunded ? ` · refund ${CURRENCY_SYMBOL}${a.payload.refunded}` : ''} · ${matchLabel}`;
   }
+  if (a.type === 'penalty_applied' && a.payload) {
+    return `penalised ${CURRENCY_SYMBOL}${a.payload.amount} · did not bet · ${matchLabel}`;
+  }
   if (a.type === 'bet_won' && a.payload) {
     return `won ${CURRENCY_SYMBOL}${a.payload.payout} · ${matchLabel}`;
   }

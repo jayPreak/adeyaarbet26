@@ -13,7 +13,7 @@ export async function GET(request) {
   // If no match_id, return all pools (pending + resolved) + all profiles
   if (!matchId) {
     const [betsRes, profilesRes, schedRes] = await Promise.all([
-      supabase.from('bets').select('match_id, user_id, pick, amount, status, payout, created_at, profiles(display_name, avatar_url)'),
+      supabase.from('bets').select('match_id, user_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)'),
       supabase.from('profiles').select('id, display_name, avatar_url'),
       supabase.from('match_schedule').select('id, kickoff_ts'),
     ]);
@@ -35,31 +35,50 @@ export async function GET(request) {
 
     const pools = {};
     for (const [mid, allBets] of Object.entries(grouped)) {
-      const activeBets = allBets.filter(b => b.status !== 'cancelled');
-      // Only mark as "refunded" if the match is finished (kickoff > 2h ago) AND all bets are cancelled.
-      // Manual cancellations on upcoming matches should show as empty pool, not "refunded".
-      const isRefunded = activeBets.length === 0 && allBets.length > 0 && finishedMatches.has(mid);
-      // For refunded matches, only show the last bet per user+pick (the one active at resolution)
+      // Separate real match bets from penalty bets
+      const matchBets   = allBets.filter(b => b.kind === 'match');
+      const penaltyBets = allBets.filter(b => b.kind === 'penalty');
+
+      const activeMatchBets   = matchBets.filter(b => b.status !== 'cancelled');
+      const activePenaltyBets = penaltyBets.filter(b => b.status !== 'cancelled');
+
+      // Only mark as "refunded" if the match is finished (kickoff > 2h ago) AND all match bets are cancelled.
+      const isRefunded = activeMatchBets.length === 0 && matchBets.length > 0 && finishedMatches.has(mid);
+
       let mBets;
       if (isRefunded) {
         const latest = {};
-        for (const b of allBets) {
+        for (const b of matchBets) {
           const key = `${b.user_id}|${b.pick}`;
           if (!latest[key] || (b.created_at || '') > (latest[key].created_at || '')) latest[key] = b;
         }
         mBets = Object.values(latest);
       } else {
-        mBets = activeBets;
+        mBets = activeMatchBets;
       }
-      const total = activeBets.reduce((s, b) => s + b.amount, 0);
+
+      const matchTotal   = activeMatchBets.reduce((s, b) => s + b.amount, 0);
+      const penaltyTotal = activePenaltyBets.reduce((s, b) => s + b.amount, 0);
+      // Total pool includes penalties — they inflate winner payouts
+      const total = isRefunded
+        ? mBets.reduce((s, b) => s + b.amount, 0)
+        : matchTotal + penaltyTotal;
+
       const bySide = { home: 0, away: 0, draw: 0 };
-      activeBets.forEach(b => { bySide[b.pick] = (bySide[b.pick] || 0) + b.amount; });
-      const isResolved = activeBets.some(b => b.status === 'won' || b.status === 'lost');
+      activeMatchBets.forEach(b => { bySide[b.pick] = (bySide[b.pick] || 0) + b.amount; });
+
+      const isResolved = activeMatchBets.some(b => b.status === 'won' || b.status === 'lost')
+                      || activePenaltyBets.some(b => b.status === 'won' || b.status === 'lost');
+
       pools[mid] = {
         matchId: mid,
-        total: isRefunded ? mBets.reduce((s, b) => s + b.amount, 0) : total,
+        total,
+        penaltyTotal: isRefunded ? 0 : penaltyTotal,
+        // bettorCount and bets[] only reflect real match bets (not penalties)
         bettorCount: new Set(mBets.map(b => b.user_id)).size,
-        bySide: isRefunded ? (() => { const s = { home: 0, away: 0, draw: 0 }; mBets.forEach(b => { s[b.pick] = (s[b.pick] || 0) + b.amount; }); return s; })() : bySide,
+        bySide: isRefunded
+          ? (() => { const s = { home: 0, away: 0, draw: 0 }; mBets.forEach(b => { s[b.pick] = (s[b.pick] || 0) + b.amount; }); return s; })()
+          : bySide,
         resolved: isResolved || isRefunded,
         refunded: isRefunded,
         bets: mBets.map(b => ({
@@ -81,20 +100,28 @@ export async function GET(request) {
     return NextResponse.json({ pools, allUsers });
   }
 
+  // Single match pool — include penalty totals but exclude penalty bets from display
   const { data: bets, error } = await supabase
     .from('bets')
-    .select('user_id, pick, amount, profiles(display_name)')
+    .select('user_id, pick, amount, kind, profiles(display_name)')
     .eq('match_id', matchId)
     .eq('status', 'pending');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const total = bets.reduce((s, b) => s + b.amount, 0);
-  const bettorCount = new Set(bets.map(b => b.user_id)).size;
-  const bySide = { home: 0, away: 0, draw: 0 };
-  bets.forEach(b => { bySide[b.pick] = (bySide[b.pick] || 0) + b.amount; });
+  const matchBets   = (bets || []).filter(b => b.kind !== 'penalty');
+  const penaltyBets = (bets || []).filter(b => b.kind === 'penalty');
 
-  const enriched = bets.map(b => {
+  const penaltyTotal = penaltyBets.reduce((s, b) => s + b.amount, 0);
+  const matchTotal   = matchBets.reduce((s, b) => s + b.amount, 0);
+  // Total pool = match stakes + penalty amounts
+  const total = matchTotal + penaltyTotal;
+
+  const bettorCount = new Set(matchBets.map(b => b.user_id)).size;
+  const bySide = { home: 0, away: 0, draw: 0 };
+  matchBets.forEach(b => { bySide[b.pick] = (bySide[b.pick] || 0) + b.amount; });
+
+  const enriched = matchBets.map(b => {
     const sidePool = bySide[b.pick] || 1;
     const possibleWin = Math.floor((b.amount / sidePool) * total);
     return {
@@ -106,5 +133,5 @@ export async function GET(request) {
     };
   });
 
-  return NextResponse.json({ matchId, total, bettorCount, bySide, bets: enriched });
+  return NextResponse.json({ matchId, total, penaltyTotal, bettorCount, bySide, bets: enriched });
 }
