@@ -588,7 +588,35 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
   const [amount, setAmount] = useState(Math.max(250, minBet));
   const [side, setSide] = useState(pick || 'home');
   const [submitting, setSubmitting] = useState(false);
+  const [randomizing, setRandomizing] = useState(false);
+  const [justRandomized, setJustRandomized] = useState(false);
   const bettingOpen = useBettingOpen(match);
+
+  function handleRandomize() {
+    setRandomizing(true);
+    setJustRandomized(false);
+    // Spin for 600ms then reveal
+    const funAmounts = [50, 100, 150, 200, 250, 300, 500, 750, 1000, 1500, 2000];
+    const sides = ['home', 'draw', 'away'];
+    let ticks = 0;
+    const totalTicks = 8;
+    const interval = setInterval(() => {
+      setSide(sides[Math.floor(Math.random() * sides.length)]);
+      setAmount(funAmounts[Math.floor(Math.random() * funAmounts.length)]);
+      ticks++;
+      if (ticks >= totalTicks) {
+        clearInterval(interval);
+        // Final pick
+        const finalSide = sides[Math.floor(Math.random() * sides.length)];
+        const finalAmount = funAmounts[Math.floor(Math.random() * funAmounts.length)];
+        setSide(finalSide);
+        setAmount(finalAmount);
+        setRandomizing(false);
+        setJustRandomized(true);
+        setTimeout(() => setJustRandomized(false), 2500);
+      }
+    }, 70);
+  }
 
   const home = getTeam(match.home);
   const away = getTeam(match.away);
@@ -611,7 +639,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
       <div className="sheet" onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column' }}>
         <div className="sheet-handle" />
 
-        <div className="row between center" style={{ marginBottom: 14 }}>
+        <div className="row between center" style={{ marginBottom: 10 }}>
           <div className="eyebrow">Place your bet</div>
           <button
             onClick={onClose}
@@ -620,6 +648,57 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
             {Icon.close}
           </button>
         </div>
+
+        {/* 🎲 Randomize button */}
+        <button
+          onClick={handleRandomize}
+          disabled={randomizing || !bettingOpen}
+          style={{
+            width: '100%',
+            marginBottom: 14,
+            padding: '11px 0',
+            borderRadius: 12,
+            border: '2px dashed',
+            borderColor: randomizing ? 'var(--gold)' : justRandomized ? '#a855f7' : '#e879f9',
+            background: randomizing
+              ? 'rgba(212,175,55,0.10)'
+              : justRandomized
+                ? 'rgba(168,85,247,0.13)'
+                : 'rgba(232,121,249,0.08)',
+            color: randomizing ? 'var(--gold)' : justRandomized ? '#c084fc' : '#e879f9',
+            fontFamily: 'var(--font-display)',
+            fontWeight: 800,
+            fontSize: 14,
+            letterSpacing: '0.04em',
+            cursor: randomizing ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            transition: 'all 0.2s ease',
+            boxShadow: justRandomized ? '0 0 16px rgba(168,85,247,0.35)' : randomizing ? '0 0 12px rgba(212,175,55,0.25)' : 'none',
+          }}
+        >
+          <span style={{
+            fontSize: 20,
+            display: 'inline-block',
+            animation: randomizing ? 'spin 0.4s linear infinite' : 'none',
+          }}>🎲</span>
+          <span>{randomizing ? 'Randomizing…' : justRandomized ? '✨ Fate has spoken!' : 'I\'m Feeling Lucky'}</span>
+        </button>
+        {justRandomized && (
+          <div style={{
+            textAlign: 'center',
+            fontSize: 12,
+            color: '#c084fc',
+            marginTop: -10,
+            marginBottom: 10,
+            fontWeight: 600,
+            letterSpacing: '0.03em',
+          }}>
+            The dice chose for you — confirm below ↓
+          </div>
+        )}
 
         {/* Scrollable content */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0 }}>
