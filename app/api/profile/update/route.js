@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
+import { verifyUser } from '@/lib/auth';
 
 export async function POST(request) {
   if (!supabase) {
@@ -8,6 +9,9 @@ export async function POST(request) {
 
   try {
     const { userId, username, displayName, avatarUrl } = await request.json();
+
+    const { error: authError } = await verifyUser(userId);
+    if (authError) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     if (!userId) {
       return NextResponse.json({ error: 'userId required' }, { status: 400 });

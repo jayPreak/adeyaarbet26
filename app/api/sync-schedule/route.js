@@ -15,7 +15,10 @@ export async function POST(request) {
   } catch {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
-  const adminSecret = process.env.ADMIN_SECRET || 'adeyaar-topup-2026';
+  const adminSecret = process.env.ADMIN_SECRET;
+  if (!adminSecret) {
+    return NextResponse.json({ error: 'Admin endpoint not configured' }, { status: 503 });
+  }
   if (body.secret !== adminSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

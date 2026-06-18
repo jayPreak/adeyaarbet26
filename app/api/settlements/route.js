@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
+import { verifyUser } from '@/lib/auth';
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -23,13 +24,15 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  
   if (!supabase) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
 
   try {
     const { fromUser, toUser, amount, note } = await request.json();
+
+    const { error: authError } = await verifyUser(fromUser);
+    if (authError) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     if (!fromUser || !toUser || !amount) {
       return NextResponse.json({ error: 'Missing fromUser, toUser, or amount' }, { status: 400 });
