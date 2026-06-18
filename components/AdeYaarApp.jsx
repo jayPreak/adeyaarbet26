@@ -422,6 +422,14 @@ export default function AdeYaarApp() {
         />
       </div>
 
+      <div data-theme={theme}>
+        <GoldenBootBetModal
+          open={goldenBootOpen}
+          onClose={() => setGoldenBootOpen(false)}
+          user={user}
+          onPlaced={() => { refreshData(); }}
+        />
+      </div>
 
     </div>
   );
