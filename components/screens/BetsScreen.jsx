@@ -6,7 +6,7 @@ import { getMatch, getTeam } from '@/lib/data';
 import { getSpecial } from '@/lib/specials';
 import { BetCard } from '@/components';
 
-function NetWorthGraph({ bets }) {
+export function NetWorthGraph({ bets }) {
   const [tooltip, setTooltip] = useState(null);
   const svgRef = useRef(null);
 
@@ -176,7 +176,7 @@ function NetWorthGraph({ bets }) {
   );
 }
 
-function AccountSection({ user, onProfileUpdate }) {
+export function AccountSection({ user, onProfileUpdate }) {
   const [editing, setEditing] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
   const [displayName, setDisplayName] = useState(user?.display_name || '');
@@ -301,7 +301,7 @@ function AccountSection({ user, onProfileUpdate }) {
 }
 
 
-function AchievementBadges({ user }) {
+export function AchievementBadges({ user }) {
   const [badges, setBadges] = useState([]);
   const [myStreak, setMyStreak] = useState(0);
   const [tooltip, setTooltip] = useState(null);
@@ -417,7 +417,7 @@ function AchievementBadges({ user }) {
   );
 }
 
-function SettlementCard({ user, bets = [] }) {
+export function SettlementCard({ user, bets = [] }) {
   const [myPosition, setMyPosition] = useState(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
 
@@ -524,7 +524,7 @@ function SettlementCard({ user, bets = [] }) {
   );
 }
 
-function PenaltiesCard({ penaltyBets, scheduleMap }) {
+export function PenaltiesCard({ penaltyBets, scheduleMap }) {
   const totalPaid = penaltyBets.filter(b => b.status === 'lost').reduce((s, b) => s + b.amount, 0);
   const totalPending = penaltyBets.filter(b => b.status === 'pending').reduce((s, b) => s + b.amount, 0);
 

@@ -5,6 +5,8 @@ import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET, getMinBet } from '@/lib/cur
 import { getSpecial } from '@/lib/specials';
 import { poolOdds, sideOdds, fmtDecimalOdds, fmtImpliedProb } from '@/lib/odds';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 // ── Betting window ───────────────────────────────────────────
 // Betting closes MATCH_BET_CUTOFF_MS (30s) before kickoff — mirrors the
@@ -137,7 +139,7 @@ export function SpecialNotification({ onNavigate }) {
     }}>
       <span style={{ fontSize: 14 }}>🎉</span>
       <span
-        onClick={() => { onNavigate(); dismiss(); }}
+        onClick={() => { typeof onNavigate === 'string' ? (window.location.href = onNavigate) : onNavigate(); dismiss(); }}
         style={{ flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--gold)', cursor: 'pointer' }}
       >
         NEW SPECIAL BET: {visible.label}! <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>Go bet →</span>
@@ -168,7 +170,7 @@ export function AppHeader({ balance, realisedBalance, pendingStake, pendingCount
           )}
         </div>
       </div>
-      <button className="stats-bar" onClick={onTap}>
+      <button className="stats-bar" onClick={typeof onTap === 'string' ? () => { window.location.href = onTap; } : onTap}>
         <div className="stats-bar__cell">
           <span className="stats-bar__label">Net Win/Loss</span>
           {betsLoaded === false
@@ -191,24 +193,45 @@ export function AppHeader({ balance, realisedBalance, pendingStake, pendingCount
 
 // ── Tab bar ──────────────────────────────────────────────────
 export function TabBar({ active, onChange }) {
+  const pathname = usePathname();
   const tabs = [
-    { id: 'home',     label: 'Home',       icon: Icon.home },
-    { id: 'fixtures', label: 'Match Bets', icon: Icon.ball },
-    { id: 'specials', label: 'Special Bets', icon: Icon.star },
-    { id: 'leaders',  label: 'Leaderboards', icon: Icon.trophy },
-    { id: 'bets',     label: 'Account',    icon: Icon.receipt },
+    { id: 'home',     path: '/home',              label: 'Home',       icon: Icon.home },
+    { id: 'fixtures', path: '/fixtures/upcoming', label: 'Match Bets', icon: Icon.ball },
+    { id: 'specials', path: '/specials',          label: 'Special Bets', icon: Icon.star },
+    { id: 'leaders',  path: '/leaders/rankings',  label: 'Leaderboards', icon: Icon.trophy },
+    { id: 'account',  path: '/account/overview',  label: 'Account',    icon: Icon.receipt },
   ];
+
+  // Support both old prop-based and new route-based usage
+  if (onChange) {
+    return (
+      <div className="tabbar">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            className={'tabbar__btn ' + (active === t.id ? 'active' : '')}
+            onClick={() => onChange(t.id)}
+          >
+            {t.icon}
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  const activeTab = tabs.find(t => pathname.startsWith(t.path.split('/').slice(0, 2).join('/')));
   return (
     <div className="tabbar">
       {tabs.map(t => (
-        <button
+        <Link
           key={t.id}
-          className={'tabbar__btn ' + (active === t.id ? 'active' : '')}
-          onClick={() => onChange(t.id)}
+          href={t.path}
+          className={'tabbar__btn ' + (activeTab?.id === t.id ? 'active' : '')}
         >
           {t.icon}
           <span>{t.label}</span>
-        </button>
+        </Link>
       ))}
     </div>
   );

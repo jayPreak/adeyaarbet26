@@ -1,10 +1,5 @@
-import CountdownGate from '@/components/CountdownGate';
-import AdeYaarApp from '@/components/AdeYaarApp';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return (
-    <CountdownGate>
-      <AdeYaarApp />
-    </CountdownGate>
-  );
+  redirect('/home');
 }

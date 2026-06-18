@@ -978,7 +978,10 @@ function DBetsScreen({ user, onCancelBet, bets = [] }) {
 }
 
 // ── Desktop App (root) ────────────────────────────────────────
-export default function DesktopApp({ tab, setTab, balance, openBet, matches, user, onLogout, bets = [], onCancelBet, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenSpecialBet, onToast }) {
+export default function DesktopApp({ tab: tabProp, setTab: setTabProp, balance, openBet, matches, user, onLogout, bets = [], onCancelBet, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenSpecialBet, onToast }) {
+  const [tabInternal, setTabInternal] = useState('home');
+  const tab = tabProp ?? tabInternal;
+  const setTab = setTabProp ?? setTabInternal;
   const titles = {
     home:     { title: 'Dashboard',    sub: 'FIFA World Cup 2026 · Group stage underway' },
     matches:  { title: 'Fixtures',     sub: 'All matches · group stage + knockout' },

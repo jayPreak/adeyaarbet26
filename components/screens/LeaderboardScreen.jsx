@@ -137,7 +137,7 @@ function LeaderRow({ rank, user, entry, isMe, valueMain, valueSub, valueColor })
   );
 }
 
-function TotalWinsTab({ rankings, user }) {
+export function TotalWinsTab({ rankings, user }) {
   const sorted = [...rankings].sort((a, b) => (b.realisedBalance || 0) - (a.realisedBalance || 0));
   const hasAnyResolved = sorted.some(r => r.realisedBalance !== 0);
 
@@ -170,7 +170,7 @@ function TotalWinsTab({ rankings, user }) {
   );
 }
 
-function BiggestWinsTab({ biggestWins }) {
+export function BiggestWinsTab({ biggestWins }) {
   return (
     <div style={{ margin: '0 16px' }}>
       {biggestWins.length === 0 ? (
@@ -210,7 +210,7 @@ function BiggestWinsTab({ biggestWins }) {
   );
 }
 
-function BiggestLossesTab({ biggestLosses }) {
+export function BiggestLossesTab({ biggestLosses }) {
   return (
     <div style={{ margin: '0 16px' }}>
       {biggestLosses.length === 0 ? (
@@ -276,7 +276,7 @@ function BetDropdown({ topBets }) {
   );
 }
 
-function BiggestBettorTab({ rankings, user }) {
+export function BiggestBettorTab({ rankings, user }) {
   const [expandedId, setExpandedId] = useState(null);
   const sorted = [...rankings].sort((a, b) => (b.totalStaked || 0) - (a.totalStaked || 0));
   const groupTotal = rankings.reduce((s, r) => s + (r.totalStaked || 0), 0);
