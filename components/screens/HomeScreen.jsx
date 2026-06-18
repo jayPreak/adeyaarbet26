@@ -39,13 +39,15 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
-          setActivity(data.map(a => ({
-            id: a.id,
-            username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
-            avatar_url: a.profiles?.avatar_url || null,
-            text: formatActivityText(a, fifaIdMap),
-            createdAt: a.created_at,
-          })));
+          setActivity(data
+            .filter(a => a.type !== 'penalty_applied')
+            .map(a => ({
+              id: a.id,
+              username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
+              avatar_url: a.profiles?.avatar_url || null,
+              text: formatActivityText(a, fifaIdMap),
+              createdAt: a.created_at,
+            })));
         }
       })
       .catch(() => {});
@@ -58,13 +60,15 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
-          const mapped = data.map(a => ({
-            id: a.id,
-            username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
-            avatar_url: a.profiles?.avatar_url || null,
-            text: formatActivityText(a, fifaIdMap),
-            createdAt: a.created_at,
-          }));
+          const mapped = data
+            .filter(a => a.type !== 'penalty_applied')
+            .map(a => ({
+              id: a.id,
+              username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
+              avatar_url: a.profiles?.avatar_url || null,
+              text: formatActivityText(a, fifaIdMap),
+              createdAt: a.created_at,
+            }));
           setFullActivity(mapped);
           if (data.length < 30) setHasMore(false);
         }
@@ -80,13 +84,15 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
       .then(r => r.json())
       .then(data => {
         if (Array.isArray(data)) {
-          const mapped = data.map(a => ({
-            id: a.id,
-            username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
-            avatar_url: a.profiles?.avatar_url || null,
-            text: formatActivityText(a, fifaIdMap),
-            createdAt: a.created_at,
-          }));
+          const mapped = data
+            .filter(a => a.type !== 'penalty_applied')
+            .map(a => ({
+              id: a.id,
+              username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
+              avatar_url: a.profiles?.avatar_url || null,
+              text: formatActivityText(a, fifaIdMap),
+              createdAt: a.created_at,
+            }));
           setFullActivity(prev => [...prev, ...mapped]);
           if (data.length < 30) setHasMore(false);
         }
@@ -330,6 +336,9 @@ function formatActivityText(a, fifaIdMap) {
       return `switched sides · ${matchLabel}`;
     }
     return `cancelled bet${a.payload.refunded ? ` · refund ${CURRENCY_SYMBOL}${a.payload.refunded}` : ''} · ${matchLabel}`;
+  }
+  if (a.type === 'penalty_applied' && a.payload) {
+    return `penalised ${CURRENCY_SYMBOL}${a.payload.amount} · did not bet · ${matchLabel}`;
   }
   if (a.type === 'bet_won' && a.payload) {
     return `won ${CURRENCY_SYMBOL}${a.payload.payout} · ${matchLabel}`;

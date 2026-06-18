@@ -104,14 +104,25 @@ async function settleGoalscorer(matchId, schedRow) {
 export async function GET() {
   if (!db) return NextResponse.json({ resolved: [] });
 
+  // Apply participation penalties for any matches where betting has just closed.
+  // Must run BEFORE resolve_match so penalty amounts are included in the pool.
+  // The RPC is idempotent — safe to call on every auto-resolve invocation.
+  let penaltiesResult = null;
+  try {
+    const { data } = await db.rpc('apply_all_pending_penalties');
+    penaltiesResult = data;
+  } catch {
+    // non-fatal — proceed with match resolution regardless
+  }
+
   let fifaResults;
   try {
     const res = await fetch(FIFA_MATCHES_URL, { cache: 'no-store' });
-    if (!res.ok) return NextResponse.json({ resolved: [], error: `FIFA ${res.status}` });
+    if (!res.ok) return NextResponse.json({ resolved: [], penalties: penaltiesResult, error: `FIFA ${res.status}` });
     const data = await res.json();
     fifaResults = data.Results || [];
   } catch (e) {
-    return NextResponse.json({ resolved: [], error: e.message });
+    return NextResponse.json({ resolved: [], penalties: penaltiesResult, error: e.message });
   }
 
   const lookup = buildLookup();
@@ -134,20 +145,23 @@ export async function GET() {
     });
   }
 
-  if (finished.length === 0) return NextResponse.json({ resolved: [] });
+  if (finished.length === 0) return NextResponse.json({ resolved: [], penalties: penaltiesResult });
 
   const matchIds = finished.map(f => f.matchId);
+  // Check for pending bets on match kind only — penalty bets will also be
+  // pending but we don't want them to re-trigger resolution of settled matches.
   const { data: pendingBets } = await db
     .from('bets')
     .select('match_id')
     .in('match_id', matchIds)
+    .eq('kind', 'match')
     .eq('status', 'pending')
-    .limit(1);
+    .limit(200);
 
   const unresolvedIds = new Set((pendingBets || []).map(b => b.match_id));
   const toResolve = finished.filter(f => unresolvedIds.has(f.matchId));
 
-  if (toResolve.length === 0) return NextResponse.json({ resolved: [] });
+  if (toResolve.length === 0) return NextResponse.json({ resolved: [], penalties: penaltiesResult });
 
   const resolved = [];
   const goalscorer = [];
@@ -174,5 +188,5 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({ resolved, goalscorer, ...(errors.length ? { errors } : {}) });
+  return NextResponse.json({ resolved, goalscorer, penalties: penaltiesResult, ...(errors.length ? { errors } : {}) });
 }

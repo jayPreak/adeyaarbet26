@@ -524,11 +524,88 @@ function SettlementCard({ user, bets = [] }) {
   );
 }
 
+function PenaltiesCard({ penaltyBets, scheduleMap }) {
+  const totalPaid = penaltyBets.filter(b => b.status === 'lost').reduce((s, b) => s + b.amount, 0);
+  const totalPending = penaltyBets.filter(b => b.status === 'pending').reduce((s, b) => s + b.amount, 0);
+
+  return (
+    <div style={{ margin: '0 16px 12px' }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+        Penalties · {penaltyBets.length} match{penaltyBets.length !== 1 ? 'es' : ''}
+      </div>
+      {penaltyBets.length === 0 ? (
+        <div style={{ borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 18 }}>✅</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-1)' }}>No penalties</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>Bet on 5+ person matches to stay clean</div>
+          </div>
+          <div style={{ marginLeft: 'auto', fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>{CURRENCY_SYMBOL}0</div>
+        </div>
+      ) : (
+      <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,80,80,0.18)', background: 'rgba(255,60,60,0.05)' }}>
+        {/* summary row */}
+        <div style={{ display: 'flex', padding: '12px 14px', gap: 0, borderBottom: penaltyBets.length > 0 ? '1px solid rgba(255,80,80,0.1)' : 'none' }}>
+          {totalPaid > 0 && (
+            <>
+              <div style={{ flex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: 'var(--ink-3)', marginBottom: 2 }}>Paid</div>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--loss)' }}>−{CURRENCY_SYMBOL}{totalPaid}</div>
+              </div>
+              {totalPending > 0 && <div style={{ width: 1, background: 'rgba(255,80,80,0.15)' }} />}
+            </>
+          )}
+          {totalPending > 0 && (
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: 'var(--ink-3)', marginBottom: 2 }}>Pending</div>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>−{CURRENCY_SYMBOL}{totalPending}</div>
+            </div>
+          )}
+        </div>
+        {/* per-match rows */}
+        {penaltyBets.map((b, i) => {
+          const m = getMatch(b.match_id);
+          const matchLabel = m
+            ? `${getTeam(m.home).name} vs ${getTeam(m.away).name}`
+            : b.match_id;
+          const kickoffTs = scheduleMap[b.match_id];
+          const dateStr = kickoffTs
+            ? new Date(kickoffTs).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+            : null;
+          const isPending = b.status === 'pending';
+          return (
+            <div key={b.id || i} style={{
+              display: 'flex', alignItems: 'center', padding: '10px 14px', gap: 10,
+              borderTop: i > 0 ? '1px solid rgba(255,80,80,0.08)' : undefined,
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-1)' }}>{matchLabel}</div>
+                {dateStr && <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 1 }}>{dateStr}</div>}
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: isPending ? 'var(--gold)' : 'var(--loss)' }}>
+                  −{CURRENCY_SYMBOL}{b.amount}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 1 }}>
+                  {isPending ? 'awaiting result' : 'confirmed'}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      )}
+    </div>
+  );
+}
+
 export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpdate, onRefreshBets, scheduleMap = {}, cupWinnerDeadlineTs = null, bestCaseWin = 0, poolMap = {}, allUsers = [] }) {
   const [view, setView] = useState('overview');
   const [betFilter, setBetFilter] = useState('open');
 
-  const realBets = useMemo(() => bets.filter(b => b.match_id !== '_topup' && b.status !== 'cancelled'), [bets]);
+  // Exclude system bets (_topup, penalty) from regular bet stats and My Bets list
+  const realBets = useMemo(() => bets.filter(b => b.match_id !== '_topup' && b.kind !== 'penalty' && b.status !== 'cancelled'), [bets]);
+  const penaltyBets = useMemo(() => bets.filter(b => b.kind === 'penalty' && b.status !== 'cancelled'), [bets]);
 
   const filtered = useMemo(() => {
     if (betFilter === 'open') {
@@ -613,6 +690,7 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
             </div>
           )}
 
+          <PenaltiesCard penaltyBets={penaltyBets} scheduleMap={scheduleMap} />
           <AchievementBadges user={user} />
         </>
       )}
