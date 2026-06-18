@@ -12,6 +12,7 @@ import CupWinnerBetModal from '@/components/CupWinnerBetModal';
 import GoalScorerBetModal from '@/components/GoalScorerBetModal';
 import ContinentBetModal from '@/components/ContinentBetModal';
 import H2HBetModal from '@/components/H2HBetModal';
+import GoldenBootBetModal from '@/components/GoldenBootBetModal';
 import SpecialsScreen from '@/components/screens/SpecialsScreen';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
 
