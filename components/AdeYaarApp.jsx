@@ -106,6 +106,7 @@ export default function AdeYaarApp() {
   const [goalScorerMatchId, setGoalScorerMatchId] = useState(null);
   const [continentOpen, setContinentOpen] = useState(false);
   const [h2hOpen, setH2hOpen] = useState(false);
+  const [goldenBootOpen, setGoldenBootOpen] = useState(false);
   const [poolMap, setPoolMap] = useState({});
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -356,18 +357,6 @@ export default function AdeYaarApp() {
                   allUsers={allUsers}
                   onToast={setToast}
                   onOpenSpecialBet={handleOpenSpecialBet}
-                  onOpenSpecialBet={(id, ctx) => {
-                    if (id === 'goalscorer' && ctx?.matchId) {
-                      setGoalScorerMatchId(ctx.matchId);
-                      setGoalScorerOpen(true);
-                    } else if (id === 'continent') {
-                      setContinentOpen(true);
-                    } else if (id === 'h2h') {
-                      setH2hOpen(true);
-                    } else {
-                      setCupWinnerOpen(true);
-                    }
-                  }}
                 />
               )}
               {tab === 'leaders'  && <LeaderboardScreen user={user} />}
