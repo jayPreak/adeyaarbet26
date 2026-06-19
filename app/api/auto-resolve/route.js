@@ -155,8 +155,7 @@ export async function GET() {
     .select('match_id')
     .in('match_id', matchIds)
     .eq('kind', 'match')
-    .eq('status', 'pending')
-    .limit(200);
+    .eq('status', 'pending');
 
   const unresolvedIds = new Set((pendingBets || []).map(b => b.match_id));
   const toResolve = finished.filter(f => unresolvedIds.has(f.matchId));
