@@ -1,4 +1,4 @@
-.PHONY: test build dev clean
+.PHONY: test build dev clean setup
 
 # Run all tests (P0/P1 regression suite)
 test:
@@ -23,3 +23,7 @@ ci: test build
 # Clean all caches
 clean:
 	rm -rf .next node_modules/.cache
+
+# Activate repo-tracked git hooks (run once after cloning)
+setup:
+	git config core.hooksPath .githooks
