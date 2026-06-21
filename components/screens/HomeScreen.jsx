@@ -245,7 +245,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
       <div
         onClick={() => onNav('fixtures')}
         style={{
-          margin: '8px 16px 12px',
+          margin: '8px 16px 6px',
           padding: '16px 20px',
           borderRadius: 14,
           background: 'rgba(255,255,255,0.04)',
@@ -259,6 +259,27 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>Bet on upcoming matches</div>
           <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>{upcoming.length} matches coming up</div>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--ink-3)' }}>
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </div>
+
+      {/* Tournament standings shortcut */}
+      <div
+        onClick={() => onNav('tournament')}
+        style={{
+          margin: '0 16px 12px', padding: '14px 20px', borderRadius: 14,
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 20 }}>🏆</span>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>Tournament standings</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>12 groups · W/D/L · bracket</div>
+          </div>
         </div>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--ink-3)' }}>
           <path d="M9 18l6-6-6-6" />
