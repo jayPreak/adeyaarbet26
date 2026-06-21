@@ -43,6 +43,7 @@ class ErrorBoundary extends Component {
 }
 import LeaderboardScreen from '@/components/screens/LeaderboardScreen';
 import BetsScreen from '@/components/screens/BetsScreen';
+import BracketScreen from '@/components/screens/BracketScreen';
 import DesktopApp from '@/components/desktop/DesktopApp';
 
 function getFifaStatus(fifa) {
@@ -360,7 +361,8 @@ export default function AdeYaarApp() {
                 />
               )}
               {tab === 'leaders'  && <LeaderboardScreen user={user} />}
-              {tab === 'bets'     && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} scheduleMap={scheduleMap} cupWinnerDeadlineTs={cupWinnerDeadlineTs} bestCaseWin={bestCaseWin} poolMap={poolMap} allUsers={allUsers} />}
+              {tab === 'bets'       && <BetsScreen bets={bets} onCancelBet={cancelBet} user={user} onProfileUpdate={refreshUser} onRefreshBets={refreshData} scheduleMap={scheduleMap} cupWinnerDeadlineTs={cupWinnerDeadlineTs} bestCaseWin={bestCaseWin} poolMap={poolMap} allUsers={allUsers} />}
+              {tab === 'tournament' && <BracketScreen matches={matches} onBack={() => setTab('home')} />}
             </ErrorBoundary>
           </div>
 

@@ -58,11 +58,12 @@ function DesktopShell({ tab, onNav, balance, children, title, sub, hideSearch, u
   const [showMenu, setShowMenu] = useState(false);
 
   const navItems = [
-    { id: 'home',     label: 'Dashboard',   icon: DIcon.home },
-    { id: 'matches',  label: 'Fixtures',    icon: DIcon.ball },
-    { id: 'specials', label: 'Specials',    icon: DIcon.star },
-    { id: 'leaders',  label: 'Leaderboard', icon: DIcon.trophy },
-    { id: 'bets',     label: 'My Bets',     icon: DIcon.receipt },
+    { id: 'home',       label: 'Dashboard',   icon: DIcon.home },
+    { id: 'matches',    label: 'Fixtures',    icon: DIcon.ball },
+    { id: 'tournament', label: 'Standings',   icon: DIcon.bracket },
+    { id: 'specials',   label: 'Specials',    icon: DIcon.star },
+    { id: 'leaders',    label: 'Leaderboard', icon: DIcon.trophy },
+    { id: 'bets',       label: 'My Bets',     icon: DIcon.receipt },
   ];
 
   return (
@@ -556,16 +557,48 @@ function DMatchesScreen({ matches, onBet, bets = [], poolMap = {} }) {
 }
 
 // ── Desktop Bracket ───────────────────────────────────────────
+
+function dComputeGroupStandings(group, matches) {
+  const stats = {};
+  for (const t of group.teams) {
+    stats[t.code] = { code: t.code, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  }
+  for (const m of matches.filter(m => m.group === group.id && m.status === 'finished' && m.score)) {
+    const [hg, ag] = m.score;
+    const h = stats[m.home], a = stats[m.away];
+    if (!h || !a) continue;
+    h.p++; a.p++; h.gf += hg; h.ga += ag; a.gf += ag; a.ga += hg;
+    if (hg > ag)      { h.w++; h.pts += 3; a.l++; }
+    else if (hg < ag) { a.w++; a.pts += 3; h.l++; }
+    else              { h.d++; a.d++; h.pts++; a.pts++; }
+  }
+  return Object.values(stats).sort((a, b) =>
+    b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf
+  );
+}
+
+const DCOLS = '14px 18px 1fr 22px 22px 22px 26px 26px 26px';
+
 function DBracketScreen({ matches = MATCHES }) {
   const [view, setView] = useState('groups');
 
   const r32 = BRACKET.R32?.slice(0, 8) || [];
+
+  const thirds = GROUPS.map(g => {
+    const standings = dComputeGroupStandings(g, matches);
+    if (standings.length < 3) return null;
+    return { ...standings[2], group: g.id };
+  }).filter(Boolean);
+  thirds.sort((a, b) =>
+    b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || a.group.localeCompare(b.group)
+  );
 
   return (
     <>
       <div className="desk-chiprow">
         {[
           { id: 'groups',   label: 'Group stage' },
+          { id: 'thirds',   label: '3rd Place Race' },
           { id: 'knockout', label: 'Knockout bracket' },
         ].map(t => (
           <button
@@ -581,29 +614,98 @@ function DBracketScreen({ matches = MATCHES }) {
       {view === 'groups' && (
         <div className="desk-groups">
           {GROUPS.map(g => {
-            const groupMatches = matches.filter(m => m.group === g.id);
-            const cities = [...new Set(groupMatches.map(m => m.venue?.split(',').pop()?.trim()).filter(Boolean))];
+            const standings = dComputeGroupStandings(g, matches);
             return (
-              <div key={g.id} className="group-card">
+              <div key={g.id} className="group-card" style={{ overflow: 'hidden' }}>
                 <div className="group-card__title">Group <em>{g.id}</em></div>
-                {g.teams.map((t, i) => {
+                <div style={{
+                  display: 'grid', gridTemplateColumns: DCOLS, gap: 2,
+                  padding: '0 0 4px', fontSize: 9, color: 'var(--ink-3)',
+                  fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                  borderBottom: '1px solid var(--line)', marginBottom: 2,
+                }}>
+                  <span>#</span><span /><span />
+                  <span style={{ textAlign: 'center' }}>W</span>
+                  <span style={{ textAlign: 'center' }}>D</span>
+                  <span style={{ textAlign: 'center' }}>L</span>
+                  <span style={{ textAlign: 'center' }}>GF</span>
+                  <span style={{ textAlign: 'center' }}>GA</span>
+                  <span style={{ textAlign: 'right', color: 'var(--gold)' }}>Pts</span>
+                </div>
+                {standings.map((t, i) => {
                   const team = getTeam(t.code);
+                  const q = i < 2;
                   return (
-                    <div key={t.code} className={'group-row ' + (i < 2 ? 'q' : '')}>
-                      <span className="rk">{i + 1}</span>
-                      <span style={{ fontSize: 14 }}>{team.flag}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600 }}>{team.name}</span>
-                      <span className="pts">{t.pts}</span>
+                    <div
+                      key={t.code}
+                      style={{
+                        margin: '1px -12px',
+                        padding: q ? '4px 12px 4px 9px' : '4px 12px',
+                        borderLeft: q ? '3px solid var(--win)' : '3px solid transparent',
+                        background: q ? 'rgba(54,211,153,0.07)' : 'transparent',
+                      }}
+                    >
+                      <div style={{ display: 'grid', gridTemplateColumns: DCOLS, gap: 2, alignItems: 'center' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: q ? 'var(--win)' : 'var(--ink-3)' }}>{i + 1}</span>
+                        <span style={{ fontSize: 14, opacity: q ? 1 : 0.65 }}>{team.flag}</span>
+                        <span style={{ fontWeight: q ? 700 : 500, fontSize: 11, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', color: q ? 'var(--ink)' : 'var(--ink-3)' }}>{team.name}</span>
+                        {[t.w, t.d, t.l, t.gf, t.ga].map((v, j) => (
+                          <span key={j} style={{ fontFamily: 'var(--font-mono)', textAlign: 'center', fontSize: 11, color: q ? 'var(--ink-2)' : 'var(--ink-3)' }}>{v}</span>
+                        ))}
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, textAlign: 'right', fontSize: 12, color: q ? 'var(--gold)' : 'var(--ink-3)' }}>{t.pts}</span>
+                      </div>
                     </div>
                   );
                 })}
-                <div style={{
-                  fontSize: 9.5, color: 'var(--ink-3)', marginTop: 8, paddingTop: 6,
-                  borderTop: '1px solid var(--line)', letterSpacing: '0.06em',
-                }}>
+                <div style={{ fontSize: 9.5, color: 'var(--ink-3)', marginTop: 8, paddingTop: 6, borderTop: '1px solid var(--line)', letterSpacing: '0.06em' }}>
                   Top 2 + best 3rds advance
-                  {cities.length > 0 && (
-                    <span style={{ marginLeft: 6, opacity: 0.7 }}>· {cities.join(' · ')}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {view === 'thirds' && (
+        <div style={{ maxWidth: 640 }}>
+          <div style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 18, lineHeight: 1.5 }}>
+            Best 8 of 12 third-place finishers advance to the Round of 32. Sorted by Pts → GD → GF.
+          </div>
+          {thirds.map((t, i) => {
+            const team = getTeam(t.code);
+            const q = i < 8;
+            const gd = t.gf - t.ga;
+            return (
+              <div
+                key={t.code}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '12px 16px', borderRadius: 10, marginBottom: 6,
+                  background: q ? 'rgba(54,211,153,0.06)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${q ? 'rgba(54,211,153,0.18)' : 'rgba(255,255,255,0.06)'}`,
+                }}
+              >
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: q ? 'rgba(54,211,153,0.15)' : 'rgba(255,255,255,0.06)',
+                  fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700,
+                  color: q ? 'var(--win)' : 'var(--ink-3)',
+                }}>{i + 1}</div>
+                <span style={{ fontSize: 26, lineHeight: 1, flexShrink: 0, opacity: q ? 1 : 0.6 }}>{team.flag}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: q ? 'var(--ink)' : 'var(--ink-3)' }}>{team.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                    Grp {t.group} · {t.w}W {t.d}D {t.l}L · GD {gd > 0 ? '+' : ''}{gd} · GF {t.gf} GA {t.ga}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 22, lineHeight: 1, color: q ? 'var(--gold)' : 'var(--ink-3)' }}>{t.pts}</div>
+                  <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>pts</div>
+                </div>
+                <div style={{ width: 28, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+                  {q && (
+                    <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 5px', borderRadius: 4, background: 'rgba(54,211,153,0.2)', color: 'var(--win)', letterSpacing: '0.05em' }}>Q</span>
                   )}
                 </div>
               </div>
@@ -983,11 +1085,12 @@ export default function DesktopApp({ tab: tabProp, setTab: setTabProp, balance, 
   const tab = tabProp ?? tabInternal;
   const setTab = setTabProp ?? setTabInternal;
   const titles = {
-    home:     { title: 'Dashboard',    sub: 'FIFA World Cup 2026 · Group stage underway' },
-    matches:  { title: 'Fixtures',     sub: 'All matches · group stage + knockout' },
-    specials: { title: 'Special Bets', sub: 'Cup winner, Golden Boot, H2H and more' },
-    leaders:  { title: 'Leaderboard',  sub: 'Friends · friend betting pool' },
-    bets:     { title: 'My Bets',      sub: 'Your stakes across the tournament' },
+    home:       { title: 'Dashboard',    sub: 'FIFA World Cup 2026 · Group stage underway' },
+    matches:    { title: 'Fixtures',     sub: 'All matches · group stage + knockout' },
+    tournament: { title: 'Tournament',   sub: '12 groups · standings & knockout bracket' },
+    specials:   { title: 'Special Bets', sub: 'Cup winner, Golden Boot, H2H and more' },
+    leaders:    { title: 'Leaderboard',  sub: 'Friends · friend betting pool' },
+    bets:       { title: 'My Bets',      sub: 'Your stakes across the tournament' },
   };
   const t = titles[tab] || titles.home;
 
@@ -1010,7 +1113,8 @@ export default function DesktopApp({ tab: tabProp, setTab: setTabProp, balance, 
         />
       )}
       {tab === 'leaders'  && <DLeaderboardScreen user={user} />}
-      {tab === 'bets'     && <DBetsScreen user={user} onCancelBet={onCancelBet} bets={bets} />}
+      {tab === 'tournament' && <DBracketScreen matches={matches} />}
+      {tab === 'bets'       && <DBetsScreen user={user} onCancelBet={onCancelBet} bets={bets} />}
     </DesktopShell>
   );
 }
