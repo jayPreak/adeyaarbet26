@@ -40,3 +40,4 @@ supabase/.temp/
 chat.txt
 .plan-new-specials.md
 SYSTEM_AUDIT.md
+.env*.local
