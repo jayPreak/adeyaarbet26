@@ -261,12 +261,15 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
 
   const stageLabel = match.group ? `Group ${match.group}` : 'Knockout';
   const city = match.venue?.split(',').pop()?.trim();
-  const myTotal = myBets.reduce((s, b) => s + b.amount, 0);
-
-  const hasBet = myTotal > 0;
-  const myPick = myBets[0]?.pick;
+  const wonBet = myBets.find(b => b.status === 'won');
+  const lostBet = myBets.find(b => b.status === 'lost');
+  const pendingBet = myBets.find(b => b.status === 'pending');
+  // Use the resolved/active bet for pick label — not necessarily the first bet (could be a side-switch cancel)
+  const activeBet = wonBet || lostBet || pendingBet || myBets[myBets.length - 1];
+  const myPick = activeBet?.pick;
   const pickLabel = myPick === 'home' ? home.code : myPick === 'away' ? away.code : myPick === 'draw' ? 'Draw' : '';
-  const myResult = isFinished && hasBet ? (myBets.some(b => b.status === 'won') ? 'won' : myBets.some(b => b.status === 'lost') ? 'lost' : null) : null;
+  const hasBet = myBets.length > 0;
+  const myResult = isFinished && hasBet ? (wonBet ? 'won' : lostBet ? 'lost' : null) : null;
 
   return (
     <div className="match-card" style={myResult ? {
@@ -339,16 +342,14 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
       {hasBet && (
         <div className={`match-card__footer has-bet`}>
           {isFinished ? (() => {
-            const wonBet = myBets.find(b => b.status === 'won');
-            const lostBet = myBets.find(b => b.status === 'lost');
-            const refundedBet = myBets.find(b => b.status === 'cancelled');
+            const lastCancelledBet = [...myBets].reverse().find(b => b.status === 'cancelled');
             if (wonBet) return <span style={{ color: 'var(--win)' }}>Won {fmtMoney(wonBet.payout || 0)} on {pickLabel} (+{fmtMoney((wonBet.payout || 0) - wonBet.amount)})</span>;
-            if (lostBet) return <span style={{ color: 'var(--loss)' }}>Lost {fmtMoney(myTotal)} on {pickLabel}</span>;
-            if (refundedBet) return <span style={{ color: 'var(--ink-3)' }}>Refunded {fmtMoney(myTotal)} — no winner picked</span>;
-            return <span>Bet: {fmtMoney(myTotal)} on {pickLabel}</span>;
+            if (lostBet) { const totalLost = myBets.filter(b => b.status === 'lost').reduce((s, b) => s + b.amount, 0); return <span style={{ color: 'var(--loss)' }}>Lost {fmtMoney(totalLost)} on {pickLabel}</span>; }
+            if (lastCancelledBet) return <span style={{ color: 'var(--ink-3)' }}>Refunded {fmtMoney(lastCancelledBet.amount)} — no winner picked</span>;
+            return <span>Bet: {fmtMoney(pendingBet?.amount || 0)} on {pickLabel}</span>;
           })() : (
             <>
-              <span>Your bet: {fmtMoney(myTotal)} on {pickLabel}</span>
+              <span>Your bet: {fmtMoney(pendingBet?.amount || 0)} on {pickLabel}</span>
               {bettingOpen && onCancelBet && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onCancelBet(match.id); }}

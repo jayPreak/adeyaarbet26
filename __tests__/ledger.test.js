@@ -177,12 +177,16 @@ describe('place bet — side switching and additive logic', () => {
   function simulatePlaceBet(existingBets, newPick, newAmount) {
     let bets = [...existingBets];
 
-    const existingPick = bets.find(b => b.status === 'pending')?.pick;
+    // Reject if already pending on this exact pick (matches RPC behavior)
+    const alreadyOnSide = bets.some(b => b.status === 'pending' && b.pick === newPick);
+    if (alreadyOnSide) {
+      return { error: 'Already bet on this side', bets };
+    }
 
-    if (existingPick && existingPick !== newPick) {
-      bets = bets.map(b =>
-        b.status === 'pending' ? { ...b, status: 'cancelled' } : b
-      );
+    // Cancel ALL pending bets (handles both normal switch and prior multi-pending bug state)
+    const hadPending = bets.some(b => b.status === 'pending');
+    if (hadPending) {
+      bets = bets.map(b => b.status === 'pending' ? { ...b, status: 'cancelled' } : b);
     }
 
     const validation = validateBetPlacement({ pick: newPick, amount: newAmount });
@@ -202,11 +206,29 @@ describe('place bet — side switching and additive logic', () => {
     expect(result.net).toBe(-4000);
   });
 
-  test('same side is additive — both bets coexist', () => {
+  test('placing on same side is rejected — use cancel-and-rebet to change amount', () => {
     const existing = [{ amount: 1000, status: 'pending', payout: null, pick: 'home' }];
     const result = simulatePlaceBet(existing, 'home', 500);
+    expect(result.error).toMatch(/Already bet on this side/);
+  });
+
+  test('multiple pending bets from prior bug state — all cancelled when switching', () => {
+    // Simulates B4-style bug: user somehow has draw + home both pending
+    const existing = [
+      { amount: 250, status: 'pending', payout: null, pick: 'draw' },
+      { amount: 100, status: 'pending', payout: null, pick: 'home' },
+    ];
+    const result = simulatePlaceBet(existing, 'away', 150);
     expect(result.error).toBeNull();
-    expect(result.net).toBe(-1500);
+    // Both old pending bets cancelled, only new away bet active
+    const pending = result.bets.filter(b => b.status === 'pending');
+    expect(pending).toHaveLength(1);
+    expect(pending[0].pick).toBe('away');
+    expect(pending[0].amount).toBe(150);
+    const cancelled = result.bets.filter(b => b.status === 'cancelled');
+    expect(cancelled).toHaveLength(2);
+    // Net only reflects the new pending bet
+    expect(result.net).toBe(-150);
   });
 
   test('switching sides — multiple existing bets all get cancelled', () => {

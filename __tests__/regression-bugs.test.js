@@ -7,7 +7,7 @@
 
 import { mapFifaToSchedule, TEAM_CODE_ALIAS } from '@/lib/schedule-sync';
 import { getMatch, getMatchKickoffTs, MATCHES } from '@/lib/data';
-import { computeBalance, computeRealisedBalance } from '@/lib/ledger';
+import { computeBalance, computeRealisedBalance, resolveMatchBets } from '@/lib/ledger';
 import { SPECIALS, getSpecial, getSpecialByMatchId } from '@/lib/specials';
 
 // =============================================================================
@@ -256,5 +256,67 @@ describe('match ID system integrity', () => {
       expect(TEAM[m.home]).toBeDefined();
       expect(TEAM[m.away]).toBeDefined();
     }
+  });
+});
+
+// =============================================================================
+// 8. B4 DOUBLE-ACTIVE BETS BUG — multi-pending resettlement
+// =============================================================================
+
+describe('B4 resettlement — corrected parimutuel pool', () => {
+  // B4 had an erroneous draw ₹250 (id=247) included in the pool.
+  // Correct pool is 1200 (not 1450). Home won.
+
+  const b4BetsWithBug = [
+    { id: 247, user_id: 'jayesh',   amount: 250, pick: 'draw', status: 'pending' }, // erroneous
+    { id: 294, user_id: 'pratyush', amount: 250, pick: 'draw', status: 'pending' },
+    { id: 301, user_id: 'rahul',    amount: 50,  pick: 'home', status: 'pending' },
+    { id: 308, user_id: 'rohan',    amount: 250, pick: 'home', status: 'pending' },
+    { id: 315, user_id: 'vaper',    amount: 100, pick: 'home', status: 'pending' },
+    { id: 409, user_id: 'manan',    amount: 100, pick: 'draw', status: 'pending' },
+    { id: 412, user_id: 'boidu',    amount: 100, pick: 'home', status: 'pending' },
+    { id: 423, user_id: 'jayesh',   amount: 100, pick: 'away', status: 'pending' }, // valid final
+    { id: 450, user_id: 'ashin',    amount: 250, pick: 'home', status: 'pending' },
+  ];
+
+  const b4BetsCorrected = b4BetsWithBug.filter(b => b.id !== 247).map(b => ({ ...b }));
+
+  test('bugged pool (1450) inflates home winner payouts', () => {
+    const resolved = resolveMatchBets(b4BetsWithBug, 'home');
+    const rahul = resolved.find(b => b.id === 301);
+    expect(rahul.payout).toBe(96); // inflated — should be 80
+    expect(rahul.status).toBe('won');
+  });
+
+  test('corrected pool (1200) gives accurate payouts', () => {
+    const resolved = resolveMatchBets(b4BetsCorrected, 'home');
+    expect(resolved.find(b => b.id === 301).payout).toBe(80);   // rahul
+    expect(resolved.find(b => b.id === 308).payout).toBe(400);  // rohan
+    expect(resolved.find(b => b.id === 315).payout).toBe(160);  // vaper
+    expect(resolved.find(b => b.id === 412).payout).toBe(160);  // boidu
+    expect(resolved.find(b => b.id === 450).payout).toBe(400);  // ashin
+  });
+
+  test('corrected pool — losers (draw, away) are marked lost', () => {
+    const resolved = resolveMatchBets(b4BetsCorrected, 'home');
+    expect(resolved.find(b => b.id === 294).status).toBe('lost'); // pratyush draw
+    expect(resolved.find(b => b.id === 409).status).toBe('lost'); // manan draw
+    expect(resolved.find(b => b.id === 423).status).toBe('lost'); // jayesh away
+  });
+
+  test('cancelling erroneous bet restores balance (cancelled bets excluded from computeBalance)', () => {
+    // Jayesh has: draw ₹250 lost + away ₹100 lost (bug state)
+    const bugBets = [
+      { amount: 250, status: 'lost', payout: null },  // erroneous
+      { amount: 100, status: 'lost', payout: null },  // valid
+    ];
+    expect(computeBalance(bugBets)).toBe(-350); // overcharged by 250
+
+    // Fix: cancel the erroneous bet
+    const fixedBets = [
+      { amount: 250, status: 'cancelled', payout: null }, // repaired
+      { amount: 100, status: 'lost', payout: null },
+    ];
+    expect(computeBalance(fixedBets)).toBe(-100); // correct
   });
 });
