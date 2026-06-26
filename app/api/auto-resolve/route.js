@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import supabaseAnon from '@/lib/supabase';
 import supabaseAdmin from '@/lib/supabase-admin';
 import { FIFA_MATCHES_URL, TEAM_CODE_ALIAS } from '@/lib/schedule-sync';
-import { MATCHES, GROUPS } from '@/lib/data';
+import { MATCHES } from '@/lib/data';
+import { computeThirdPlaceQualifiers } from '@/lib/third-place-qualifiers';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -68,60 +69,6 @@ function extractScorerIds(liveData) {
   return [...scorers];
 }
 
-// Compute the top 8 third-place qualifiers from all finished FIFA match data.
-// Returns an array of 8 team codes, or null if not all 12 groups are complete.
-function computeThirdPlaceQualifiers(fifaResults) {
-  const groupStats = {};
-
-  for (const fm of fifaResults) {
-    if (fm.MatchStatus !== 0) continue;
-    const g = groupLetter(fm);
-    if (!g) continue;
-    const hc = teamCode(fm.Home);
-    const ac = teamCode(fm.Away);
-    if (!hc || !ac) continue;
-    const hg = fm.HomeTeamScore;
-    const ag = fm.AwayTeamScore;
-    if (hg == null || ag == null) continue;
-
-    if (!groupStats[g]) groupStats[g] = {};
-    if (!groupStats[g][hc]) groupStats[g][hc] = { code: hc, pts: 0, gf: 0, ga: 0 };
-    if (!groupStats[g][ac]) groupStats[g][ac] = { code: ac, pts: 0, gf: 0, ga: 0 };
-
-    groupStats[g][hc].gf += hg; groupStats[g][hc].ga += ag;
-    groupStats[g][ac].gf += ag; groupStats[g][ac].ga += hg;
-
-    if (hg > ag)      { groupStats[g][hc].pts += 3; }
-    else if (ag > hg) { groupStats[g][ac].pts += 3; }
-    else              { groupStats[g][hc].pts += 1; groupStats[g][ac].pts += 1; }
-  }
-
-  // Need all 12 groups computed with at least 3 teams
-  const groupIds = GROUPS.map(g => g.id);
-  for (const gid of groupIds) {
-    if (!groupStats[gid] || Object.keys(groupStats[gid]).length < 3) return null;
-  }
-
-  const thirds = [];
-  for (const gid of groupIds) {
-    const sorted = Object.values(groupStats[gid]).sort((a, b) =>
-      b.pts - a.pts ||
-      (b.gf - b.ga) - (a.gf - a.ga) ||
-      b.gf - a.gf ||
-      a.code.localeCompare(b.code)
-    );
-    thirds.push({ ...sorted[2], group: gid });
-  }
-
-  thirds.sort((a, b) =>
-    b.pts - a.pts ||
-    (b.gf - b.ga) - (a.gf - a.ga) ||
-    b.gf - a.gf ||
-    a.group.localeCompare(b.group)
-  );
-
-  return thirds.slice(0, 8).map(t => t.code);
-}
 
 async function settleGoalscorer(matchId, schedRow) {
   if (!schedRow?.fifa_id_stage || !schedRow?.fifa_id_match) return null;
@@ -242,19 +189,21 @@ export async function GET() {
     }
   }
 
-  // Settle third-place qualifier bets once J6 (last group game) is fully resolved.
-  // Triggered on every auto-resolve run where pending qualifier bets exist AND J6
-  // has no pending match bets (i.e. it has already been settled). This makes it
-  // idempotent — if computeThirdPlaceQualifiers() returns null on the first run
-  // (FIFA payload incomplete) it will retry on subsequent page loads.
+  // Settle third-place qualifier bets on every auto-resolve run.
+  // computeThirdPlaceQualifiers() gates itself: returns null unless J6 appears
+  // finished in fifaResults AND all 12 groups have every team with 3 games played.
+  // The pending-bets check prevents a redundant RPC call once already settled.
   let thirdPlaceResult = null;
   if (db) {
-    const [{ data: pendingQuals }, { data: pendingJ6 }] = await Promise.all([
-      db.from('bets').select('id').eq('match_id', 'THIRD_QUALIFIERS').eq('kind', 'third_place_qualifiers').eq('status', 'pending').limit(1),
-      db.from('bets').select('id').eq('match_id', 'J6').eq('kind', 'match').eq('status', 'pending').limit(1),
-    ]);
+    const { data: pendingQuals } = await db
+      .from('bets')
+      .select('id')
+      .eq('match_id', 'THIRD_QUALIFIERS')
+      .eq('kind', 'third_place_qualifiers')
+      .eq('status', 'pending')
+      .limit(1);
 
-    if (pendingQuals?.length && pendingJ6?.length === 0) {
+    if (pendingQuals?.length) {
       const winningTeams = computeThirdPlaceQualifiers(fifaResults);
       if (winningTeams) {
         const { data, error } = await db.rpc('settle_third_place_qualifiers', {

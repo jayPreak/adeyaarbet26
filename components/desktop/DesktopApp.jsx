@@ -290,7 +290,7 @@ function DeskPoolTable({ poolData, home, away }) {
 }
 
 // ── Desktop Home ──────────────────────────────────────────────
-function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap = {}, onCancelBet, myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs }) {
+function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap = {}, onCancelBet, myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenThirdPlaceQual }) {
   const live = matches.filter(m => m.status === 'live');
   const upcoming = matches.filter(m => m.status === 'upcoming').slice(0, 6);
   const featured = live[0] || upcoming[0];
@@ -423,6 +423,28 @@ function DHomeScreen({ matches, balance, onBet, onNav, user, bets = [], poolMap 
       </section>
 
       <CupWinnerCTA myCupWinnerBet={myCupWinnerBet} onOpen={onOpenCupWinner} deadlineTs={cupWinnerDeadlineTs} />
+
+      {onOpenThirdPlaceQual && (
+        <div
+          onClick={onOpenThirdPlaceQual}
+          style={{
+            marginTop: 12, padding: '14px 20px', borderRadius: 14,
+            background: 'rgba(54,211,153,0.06)', border: '1px solid rgba(54,211,153,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 20 }}>🥉</span>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>Pick 8 Third-Place Qualifiers</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>All 8 must be right · closes 12:29 AM IST</div>
+            </div>
+          </div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--ink-3)', flexShrink: 0 }}>
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </div>
+      )}
 
       {/* Stat tiles */}
       <div className="desk-stats" style={{ marginTop: 22 }}>
@@ -1080,7 +1102,7 @@ function DBetsScreen({ user, onCancelBet, bets = [] }) {
 }
 
 // ── Desktop App (root) ────────────────────────────────────────
-export default function DesktopApp({ tab: tabProp, setTab: setTabProp, balance, openBet, matches, user, onLogout, bets = [], onCancelBet, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenSpecialBet, onToast }) {
+export default function DesktopApp({ tab: tabProp, setTab: setTabProp, balance, openBet, matches, user, onLogout, bets = [], onCancelBet, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenSpecialBet, onToast, onOpenThirdPlaceQual }) {
   const [tabInternal, setTabInternal] = useState('home');
   const tab = tabProp ?? tabInternal;
   const setTab = setTabProp ?? setTabInternal;
@@ -1100,7 +1122,7 @@ export default function DesktopApp({ tab: tabProp, setTab: setTabProp, balance, 
       title={t.title} sub={t.sub}
       hideSearch={false} user={user} onLogout={onLogout}
     >
-      {tab === 'home'     && <DHomeScreen matches={matches} balance={balance} onBet={openBet} onNav={setTab} user={user} bets={bets} poolMap={poolMap} onCancelBet={onCancelBet} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={onOpenCupWinner} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />}
+      {tab === 'home'     && <DHomeScreen matches={matches} balance={balance} onBet={openBet} onNav={setTab} user={user} bets={bets} poolMap={poolMap} onCancelBet={onCancelBet} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={onOpenCupWinner} cupWinnerDeadlineTs={cupWinnerDeadlineTs} onOpenThirdPlaceQual={onOpenThirdPlaceQual} />}
       {tab === 'matches'  && <DMatchesScreen matches={matches} onBet={openBet} bets={bets} poolMap={poolMap} />}
       {tab === 'specials' && (
         <SpecialsScreen

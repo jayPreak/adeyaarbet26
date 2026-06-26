@@ -300,6 +300,8 @@ export default function AdeYaarApp() {
       setH2hOpen(true);
     } else if (id === 'golden_boot') {
       setGoldenBootOpen(true);
+    } else if (id === 'third_place_qualifiers') {
+      setThirdPlaceQualOpen(true);
     } else {
       setCupWinnerOpen(true);
     }
@@ -320,6 +322,7 @@ export default function AdeYaarApp() {
           cupWinnerDeadlineTs={cupWinnerDeadlineTs}
           onOpenSpecialBet={handleOpenSpecialBet}
           onToast={setToast}
+          onOpenThirdPlaceQual={() => setThirdPlaceQualOpen(true)}
         />
         {toast && <Toast message={toast} onDone={() => setToast(null)} />}
         {betSheet && (
