@@ -5,17 +5,22 @@ import { GROUPS, getTeam } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { Icon } from './index';
 
-// Compute the current 3rd-place team for each group from live match data.
-// Returns array of { code, group, pts, gf, ga } — one per group (12 total).
-// Groups with no finished matches still appear with the first team as placeholder.
-function computeCurrentThirds(matches) {
-  return GROUPS.map(g => {
+// Compute potential third-place teams per group.
+// If a group is fully finished (6 matches), return only the confirmed 3rd.
+// If a group still has remaining matches, return ALL teams that could end up 3rd
+// (any team not mathematically locked into top 2 or bottom — in practice, all
+// teams in an incomplete group since 3 matchdays isn't enough to eliminate anyone).
+function computePotentialThirds(matches) {
+  const result = [];
+  for (const g of GROUPS) {
     const stats = {};
     for (const t of g.teams) {
       stats[t.code] = { code: t.code, pts: 0, gf: 0, ga: 0 };
     }
+    let finishedCount = 0;
     for (const m of matches) {
       if (m.group !== g.id || m.status !== 'finished' || !m.score) continue;
+      finishedCount++;
       const [hg, ag] = m.score;
       const h = stats[m.home], a = stats[m.away];
       if (!h || !a) continue;
@@ -27,10 +32,16 @@ function computeCurrentThirds(matches) {
     const sorted = Object.values(stats).sort((a, b) =>
       b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf
     );
-    // Return 3rd-place team (index 2), or last team if fewer than 3 played yet
-    const third = sorted[2] || sorted[sorted.length - 1];
-    return { ...third, group: g.id };
-  });
+    const groupComplete = finishedCount >= 6;
+    if (groupComplete) {
+      // Only the confirmed 3rd
+      result.push({ ...sorted[2], group: g.id, confirmed: true });
+    } else {
+      // Any team could still finish 3rd — show all
+      sorted.forEach(t => result.push({ ...t, group: g.id, confirmed: false }));
+    }
+  }
+  return result;
 }
 
 const DEADLINE_TS = new Date('2026-06-26T18:59:00Z').getTime();
@@ -173,7 +184,7 @@ export default function ThirdPlaceQualifierBetModal({ open, onClose, user, onPla
     }
   }
 
-  const thirds = computeCurrentThirds(matches);
+  const thirds = computePotentialThirds(matches);
 
   if (!open) return null;
 
@@ -328,53 +339,66 @@ export default function ThirdPlaceQualifierBetModal({ open, onClose, user, onPla
                 </div>
               </div>
 
-              {/* 12 third-place teams — one per group */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
-                {thirds.map(t => {
-                  const team = getTeam(t.code);
-                  const isSel = selected.has(t.code);
-                  const isDisabled = closed || (!isSel && count >= REQUIRED);
-                  const gd = t.gf - t.ga;
-                  return (
-                    <button
-                      key={t.code}
-                      type="button"
-                      disabled={isDisabled}
-                      onClick={() => toggleTeam(t.code)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '10px 11px', borderRadius: 10,
-                        background: isSel ? 'rgba(54,211,153,0.14)' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${isSel ? 'rgba(54,211,153,0.7)' : 'rgba(255,255,255,0.08)'}`,
-                        boxShadow: isSel ? '0 0 0 1px rgba(54,211,153,0.3) inset' : 'none',
-                        color: 'var(--ink)', cursor: isDisabled ? 'not-allowed' : 'pointer',
-                        opacity: isDisabled && !isSel ? 0.35 : 1,
-                        transition: 'border-color 0.1s, background 0.1s',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>{team.flag}</span>
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{
-                          fontSize: 12, fontWeight: 600,
-                          color: isSel ? 'var(--win)' : 'var(--ink)',
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>
-                          {team.name}
-                        </div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink-3)', marginTop: 1 }}>
-                          Grp {t.group} · {t.pts}pts · GD {gd >= 0 ? '+' : ''}{gd}
-                        </div>
-                      </div>
-                      {isSel && (
-                        <svg style={{ flexShrink: 0, color: 'var(--win)' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              {/* Potential third-place teams by group */}
+              {(() => {
+                const grouped = {};
+                for (const t of thirds) {
+                  (grouped[t.group] = grouped[t.group] || []).push(t);
+                }
+                return Object.entries(grouped).map(([grp, teams]) => (
+                  <div key={grp} style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                      Group {grp} {teams.length === 1 && <span style={{ color: 'var(--win)', fontSize: 9 }}>✓ confirmed</span>}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 5 }}>
+                      {teams.map(t => {
+                        const team = getTeam(t.code);
+                        const isSel = selected.has(t.code);
+                        const isDisabled = closed || (!isSel && count >= REQUIRED);
+                        const gd = t.gf - t.ga;
+                        return (
+                          <button
+                            key={t.code}
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => toggleTeam(t.code)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              padding: '9px 10px', borderRadius: 10,
+                              background: isSel ? 'rgba(54,211,153,0.14)' : 'rgba(255,255,255,0.04)',
+                              border: `1px solid ${isSel ? 'rgba(54,211,153,0.7)' : 'rgba(255,255,255,0.08)'}`,
+                              boxShadow: isSel ? '0 0 0 1px rgba(54,211,153,0.3) inset' : 'none',
+                              color: 'var(--ink)', cursor: isDisabled ? 'not-allowed' : 'pointer',
+                              opacity: isDisabled && !isSel ? 0.35 : 1,
+                              transition: 'border-color 0.1s, background 0.1s',
+                              textAlign: 'left',
+                            }}
+                          >
+                            <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>{team.flag}</span>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div style={{
+                                fontSize: 11, fontWeight: 600,
+                                color: isSel ? 'var(--win)' : 'var(--ink)',
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                              }}>
+                                {team.name}
+                              </div>
+                              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink-3)', marginTop: 1 }}>
+                                {t.pts}pts · GD {gd >= 0 ? '+' : ''}{gd}
+                              </div>
+                            </div>
+                            {isSel && (
+                              <svg style={{ flexShrink: 0, color: 'var(--win)' }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ));
+              })()}
             </>
           )}
         </div>
