@@ -15,7 +15,7 @@ function relativeTime(iso) {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs }) {
+export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenThirdPlaceQual }) {
   const live = matches.filter(m => m.status === 'live');
   const upcoming = matches
     .filter(m => m.status === 'upcoming')
@@ -265,6 +265,28 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
         </svg>
       </div>
 
+      {/* 3rd-place qualifier bet CTA */}
+      <div
+        onClick={onOpenThirdPlaceQual}
+        style={{
+          margin: '0 16px 8px', padding: '14px 20px', borderRadius: 14,
+          background: 'rgba(54,211,153,0.06)',
+          border: '1px solid rgba(54,211,153,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 20 }}>🥉</span>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>Pick 8 Third-Place Qualifiers</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>All 8 must be right · closes 12:29 AM IST</div>
+          </div>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--ink-3)', flexShrink: 0 }}>
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </div>
+
       {/* Tournament standings shortcut */}
       <div
         onClick={() => onNav('tournament')}
@@ -318,6 +340,7 @@ function formatSpecialMatchLabel(matchId) {
   if (matchId === 'CONTINENT') return 'Winning Continent';
   if (matchId === 'MESSI_V_RONALDO') return 'Messi vs Ronaldo';
   if (matchId === 'GOLDEN_BOOT') return 'Golden Boot';
+  if (matchId === 'THIRD_QUALIFIERS') return '3rd Place Qualifiers';
   if (matchId?.startsWith('HT_')) {
     const slug = matchId.slice(3).toLowerCase().replace(/_/g, ' ');
     return slug.replace(/\b\w/g, c => c.toUpperCase());

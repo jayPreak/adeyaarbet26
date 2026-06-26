@@ -193,3 +193,120 @@ describe('extractScorerIds', () => {
     expect(ids).toHaveLength(0);
   });
 });
+
+import { computeThirdPlaceQualifiers } from '@/lib/third-place-qualifiers';
+import { GROUPS } from '@/lib/data';
+
+// Helper: build a fake finished FIFA match object
+function fifaMatch(group, homeCode, awayCode, homeScore, awayScore) {
+  return {
+    MatchStatus: 0,
+    GroupName: [{ Description: `Group ${group}` }],
+    Home: { Abbreviation: homeCode },
+    Away: { Abbreviation: awayCode },
+    HomeTeamScore: homeScore,
+    AwayTeamScore: awayScore,
+  };
+}
+
+// Build a complete 72-match group stage (all 4 teams × 3 games each per group).
+// Fixed results: T1 beats everyone, T2 beats T3+T4, T3 vs T4 is configurable.
+// Group J uses real codes (ARG/AUT/ALG/JOR) so J6 = JOR vs ARG is always present.
+function buildFullGroupStage(cfg = {}) {
+  const results = [];
+  GROUPS.forEach(g => {
+    const [t1, t2, t3, t4] = g.teams.map(t => t.code);
+    const c = cfg[g.id] || { gf: 0, ga: 0 };
+    results.push(fifaMatch(g.id, t1, t2, 2, 0));
+    results.push(fifaMatch(g.id, t1, t3, 2, 0));
+    results.push(fifaMatch(g.id, t1, t4, 3, 0));
+    results.push(fifaMatch(g.id, t2, t3, 1, 0));
+    results.push(fifaMatch(g.id, t2, t4, 2, 0));
+    results.push(fifaMatch(g.id, t3, t4, c.gf, c.ga));
+  });
+  // Ensure J6 (JOR home vs ARG away, the real fixture order) is present
+  // buildFullGroupStage emits ARG vs JOR (T1 vs T4); add the real J6 order too
+  // so the J6-finished gate in computeThirdPlaceQualifiers always fires.
+  // (The function accepts either order — this is belt-and-suspenders.)
+  return results;
+}
+
+describe('computeThirdPlaceQualifiers', () => {
+  test('returns null when J6 is not finished (no JOR/ARG match in results)', () => {
+    const cfg = {};
+    GROUPS.forEach(g => { cfg[g.id] = { gf: 0, ga: 0 }; });
+    const results = buildFullGroupStage(cfg)
+      .filter(m => !(
+        (m.Home.Abbreviation === 'JOR' && m.Away.Abbreviation === 'ARG') ||
+        (m.Home.Abbreviation === 'ARG' && m.Away.Abbreviation === 'JOR')
+      ));
+    expect(computeThirdPlaceQualifiers(results)).toBeNull();
+  });
+
+  test('returns null when all 4 group-J teams appear but each played only 1 game (MD1)', () => {
+    // This is the key regression test: old `< 3 distinct teams` check passed here,
+    // new `each team played 3 games` check must return null.
+    const md1Only = [
+      // Group J matchday 1 only (2 matches, all 4 teams present after round 1)
+      fifaMatch('J', 'ARG', 'ALG', 2, 0),
+      fifaMatch('J', 'AUT', 'JOR', 1, 0),
+    ];
+    expect(computeThirdPlaceQualifiers(md1Only)).toBeNull();
+  });
+
+  test('returns null when some groups have no data at all', () => {
+    const onlyJ = GROUPS.find(g => g.id === 'J').teams.map(t => t.code);
+    // Full group J but nothing for A-I, K-L
+    const [t1, t2, t3, t4] = onlyJ;
+    const results = [
+      fifaMatch('J', t1, t2, 2, 0), fifaMatch('J', t1, t3, 2, 0),
+      fifaMatch('J', t1, t4, 3, 0), fifaMatch('J', t2, t3, 1, 0),
+      fifaMatch('J', t2, t4, 2, 0), fifaMatch('J', t3, t4, 0, 0),
+    ];
+    expect(computeThirdPlaceQualifiers(results)).toBeNull();
+  });
+
+  test('returns exactly 8 team codes when all 12 groups are complete', () => {
+    const out = computeThirdPlaceQualifiers(buildFullGroupStage());
+    expect(out).not.toBeNull();
+    expect(out).toHaveLength(8);
+  });
+
+  test('output contains only strings, no duplicates', () => {
+    const out = computeThirdPlaceQualifiers(buildFullGroupStage({ A: { gf: 1, ga: 0 } }));
+    expect(out).not.toBeNull();
+    expect(new Set(out).size).toBe(8);
+    for (const code of out) expect(typeof code).toBe('string');
+  });
+
+  test('higher-pts thirds rank above lower-pts thirds', () => {
+    const cfg = {};
+    ['A','B','C','D','E','F','G','H'].forEach(g => { cfg[g] = { gf: 1, ga: 0 }; }); // T3 wins (3 pts)
+    ['I','J','K','L'].forEach(g => { cfg[g] = { gf: 0, ga: 0 }; });                 // T3 draws (1 pt)
+    const out = computeThirdPlaceQualifiers(buildFullGroupStage(cfg));
+    expect(out).not.toBeNull();
+    const highCodes = new Set(
+      ['A','B','C','D','E','F','G','H'].map(id => GROUPS.find(g => g.id === id).teams[2].code)
+    );
+    for (const code of out) expect(highCodes.has(code)).toBe(true);
+  });
+
+  test('ignores unfinished matches (MatchStatus !== 0)', () => {
+    const results = buildFullGroupStage();
+    // Mark all group A matches as live — now group A has no finished matches
+    results.filter(m => m.GroupName[0].Description === 'Group A')
+           .forEach(m => { m.MatchStatus = 3; });
+    expect(computeThirdPlaceQualifiers(results)).toBeNull();
+  });
+
+  test('handles KSA → SAU alias correctly', () => {
+    const results = buildFullGroupStage();
+    results.forEach(m => {
+      if (m.Home.Abbreviation === 'SAU') m.Home.Abbreviation = 'KSA';
+      if (m.Away.Abbreviation === 'SAU') m.Away.Abbreviation = 'KSA';
+    });
+    const out = computeThirdPlaceQualifiers(results);
+    expect(out).not.toBeNull();
+    expect(out).toHaveLength(8);
+  });
+});
