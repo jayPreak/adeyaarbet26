@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { SPECIALS, getSpecial } from '@/lib/specials';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
+import { getTeam } from '@/lib/data';
 import { Flag } from '@/components';
 
 function useDeadlineCountdown(deadlineTs) {
@@ -610,6 +611,194 @@ function H2HDetail({ special, poolData, picks, myBet, user, allUsers, onBack, on
 
 
 
+function ThirdPlaceDetail({ pool, picks, myBet, user, allUsers, onBack, onPlace }) {
+  const total = pool?.total || 0;
+  const bettorCount = pool?.bettorCount || 0;
+  const closed = Date.now() >= new Date('2026-06-26T18:59:00Z').getTime();
+
+  const myPotentialWin = myBet && total > 0 ? total : 0;
+
+  const bettorIds = new Set(picks.map(p => p.userId));
+  const notBet = allUsers.filter(u => !bettorIds.has(u.id));
+
+  return (
+    <div>
+      <div style={{ margin: '0 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--ink-2)', fontSize: 14, cursor: 'pointer', padding: '6px 10px', borderRadius: 8, fontWeight: 600 }}>← Back</button>
+        <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>🥉 3rd Place Race — Pick 8</span>
+        <span style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, background: 'rgba(248,113,113,0.12)', color: 'var(--loss)' }}>
+          Closed
+        </span>
+      </div>
+
+      <div style={{ padding: '0 16px' }}>
+        {/* Rules banner */}
+        <div style={{
+          marginBottom: 14, padding: '12px 14px', borderRadius: 10,
+          background: 'rgba(255,193,7,0.06)', border: '1px solid rgba(255,193,7,0.18)',
+        }}>
+          <div style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.5 }}>
+            <strong style={{ color: 'var(--gold)' }}>All-or-nothing:</strong> All 8 picks must be correct to win.
+            If you get any wrong, your stake is refunded (no loss). Winners split the entire pool.
+          </div>
+        </div>
+
+        {/* Pool summary */}
+        <div style={{
+          display: 'flex', gap: 16, marginBottom: 16, padding: '14px 16px',
+          borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>
+              {fmtMoney(total)}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', fontWeight: 600 }}>Total Pool</div>
+          </div>
+          <div style={{ width: 1, background: 'rgba(255,255,255,0.08)' }} />
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ink)' }}>{bettorCount}</div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', fontWeight: 600 }}>Players</div>
+          </div>
+          {myBet && (
+            <>
+              <div style={{ width: 1, background: 'rgba(255,255,255,0.08)' }} />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>
+                  {fmtMoney(myPotentialWin)}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', fontWeight: 600 }}>
+                  Win if correct
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* My bet */}
+        {myBet && (
+          <div style={{
+            marginBottom: 16, padding: '14px 16px', borderRadius: 12,
+            background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.15)',
+          }}>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600, marginBottom: 8 }}>YOUR PICKS · {fmtMoney(myBet.amount)} staked</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {myBet.pick.split(',').map(code => {
+                const team = getTeam(code);
+                return (
+                  <span key={code} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '4px 8px', borderRadius: 6,
+                    background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)',
+                    fontSize: 12, color: 'var(--win)', fontWeight: 600,
+                  }}>
+                    {team.flag} {team.name}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Place/change bet */}
+        {!closed && (
+          <button
+            onClick={onPlace}
+            style={{ width: '100%', padding: '14px', marginBottom: 16, borderRadius: 12, background: 'var(--gold)', color: '#0a0a0a', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+          >
+            {myBet ? 'Change picks' : 'Place bet'}
+          </button>
+        )}
+
+        {/* Everyone's picks */}
+        {picks.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 10 }}>
+              EVERYONE'S PICKS ({picks.length})
+            </div>
+            {picks.map((p, i) => {
+              const isMe = p.userId === user?.id;
+              const teams = p.pick ? p.pick.split(',').map(c => getTeam(c)) : [];
+              return (
+                <div key={i} style={{
+                  padding: '12px', marginBottom: 8, borderRadius: 12,
+                  background: isMe ? 'rgba(54,211,153,0.07)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${isMe ? 'rgba(54,211,153,0.3)' : 'rgba(255,255,255,0.07)'}`,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <div style={{
+                      width: 26, height: 26, borderRadius: '50%',
+                      background: p.avatarUrl ? `url(${p.avatarUrl}) center/cover` : 'rgba(255,255,255,0.1)',
+                      backgroundSize: 'cover', backgroundPosition: 'center',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 700, color: 'var(--ink)',
+                    }}>
+                      {!p.avatarUrl && (p.displayName?.[0] || '?')}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: isMe ? 'var(--win)' : 'var(--ink)' }}>
+                        {p.displayName}{isMe && ' (you)'}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 8, fontFamily: 'var(--font-mono)' }}>
+                        {fmtMoney(p.amount)}
+                      </span>
+                    </div>
+                    {total > 0 && (
+                      <span style={{ fontSize: 11, color: 'var(--win)', fontFamily: 'var(--font-mono)' }}>
+                        wins {fmtMoney(total)}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {teams.map(t => (
+                      <span key={t.code} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                        padding: '2px 6px', borderRadius: 5,
+                        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)',
+                        fontSize: 10, color: 'var(--ink-2)',
+                      }}>
+                        {t.flag} {t.code}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Haven't bet */}
+        {notBet.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>
+              HAVEN'T BET ({notBet.length})
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {notBet.map(u => (
+                <div key={u.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 10px', borderRadius: 8,
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: '50%',
+                    background: u.avatar_url ? `url(${u.avatar_url}) center/cover` : 'rgba(255,255,255,0.1)',
+                    backgroundSize: 'cover', backgroundPosition: 'center',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 8, color: 'var(--ink-3)',
+                  }}>
+                    {!u.avatar_url && (u.display_name?.[0] || '?')}
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{u.display_name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allUsers = [], matches = [], onToast }) {
   const [poolsData, setPoolsData] = useState({});
   const [expanded, setExpanded] = useState(null);
@@ -650,6 +839,16 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       })
       .catch(() => {});
 
+    // Third place qualifiers data
+    fetch(`/api/third-place-qualifier-bet${user?.id ? `?user_id=${user.id}` : ''}`)
+      .then(r => r.json())
+      .then(data => {
+        setPoolsData(prev => ({ ...prev, third_place_qualifiers: data.pool || { total: 0, bettorCount: 0 } }));
+        setPicksData(prev => ({ ...prev, third_place_qualifiers: data.picks || [] }));
+        setMyBetsData(prev => ({ ...prev, third_place_qualifiers: data.myBet || null }));
+      })
+      .catch(() => {});
+
 
   }, [user, bets]);
 
@@ -686,6 +885,21 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
             onBack={() => setExpanded(null)}
             onPlace={() => onOpenSpecialBet('h2h')}
             onCancel={() => onOpenSpecialBet('h2h')}
+          />
+        </div>
+      );
+    }
+    if (expandedSpecial.id === 'third_place_qualifiers') {
+      return (
+        <div>
+          <ThirdPlaceDetail
+            pool={poolsData.third_place_qualifiers}
+            picks={picksData.third_place_qualifiers || []}
+            myBet={myBetsData.third_place_qualifiers || null}
+            user={user}
+            allUsers={allUsers}
+            onBack={() => setExpanded(null)}
+            onPlace={() => onOpenSpecialBet('third_place_qualifiers')}
           />
         </div>
       );
@@ -768,19 +982,21 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
         }
 
 
-        // 3rd place qualifiers — open dedicated modal directly
+        // 3rd place qualifiers — expand inline
         if (special.id === 'third_place_qualifiers') {
+          const tpqPool = poolsData.third_place_qualifiers;
+          const tpqMyBet = myBetsData.third_place_qualifiers || null;
           return (
             <SpecialCard
               key={special.id}
               special={special}
-              poolData={{ total: 0, byTeam: {} }}
-              onOpen={() => onOpenSpecialBet('third_place_qualifiers')}
+              poolData={{ total: tpqPool?.total || 0, byTeam: {} }}
+              onOpen={() => setExpanded(special.id)}
               deadlineTs={new Date(special.deadlineTs).getTime()}
-              myBet={null}
+              myBet={tpqMyBet}
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
-              highlight="Pick 8 qualifiers"
-              bettorCount={0}
+              highlight="All 8 must be correct"
+              bettorCount={tpqPool?.bettorCount || 0}
               totalFriends={allUsers.length}
             />
           );
