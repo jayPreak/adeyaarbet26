@@ -898,6 +898,24 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
         }
 
 
+        // 3rd place qualifiers — open dedicated modal directly
+        if (special.id === 'third_place_qualifiers') {
+          return (
+            <SpecialCard
+              key={special.id}
+              special={special}
+              poolData={{ total: 0, byTeam: {} }}
+              onOpen={() => onOpenSpecialBet('third_place_qualifiers')}
+              deadlineTs={new Date(special.deadlineTs).getTime()}
+              myBet={null}
+              resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
+              highlight="Pick 8 qualifiers"
+              bettorCount={0}
+              totalFriends={allUsers.length}
+            />
+          );
+        }
+
         // Cup winner card (default)
         const pool = poolsData[special.id];
         const myBet = myBetsData[special.id] || null;

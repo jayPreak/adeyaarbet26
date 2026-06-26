@@ -9,6 +9,7 @@ import GoalScorerBetModal from '@/components/GoalScorerBetModal';
 import ContinentBetModal from '@/components/ContinentBetModal';
 import H2HBetModal from '@/components/H2HBetModal';
 import GoldenBootBetModal from '@/components/GoldenBootBetModal';
+import ThirdPlaceQualifierBetModal from '@/components/ThirdPlaceQualifierBetModal';
 import DesktopApp from '@/components/desktop/DesktopApp';
 
 class ErrorBoundary extends Component {
@@ -47,6 +48,7 @@ function TabsShell({ children }) {
     continentOpen, setContinentOpen,
     h2hOpen, setH2hOpen,
     goldenBootOpen, setGoldenBootOpen,
+    thirdPlaceQualOpen, setThirdPlaceQualOpen,
     refreshCupWinnerBet, refreshData, refreshPools,
   } = useBetting();
 
@@ -135,6 +137,9 @@ function TabsShell({ children }) {
       </div>
       <div data-theme={theme}>
         <GoldenBootBetModal open={goldenBootOpen} onClose={() => setGoldenBootOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
+      </div>
+      <div data-theme={theme}>
+        <ThirdPlaceQualifierBetModal open={thirdPlaceQualOpen} onClose={() => setThirdPlaceQualOpen(false)} user={user} onPlaced={() => { refreshData(); }} matches={matches} />
       </div>
     </div>
   );

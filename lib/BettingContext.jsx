@@ -66,6 +66,7 @@ export function BettingProvider({ children }) {
   const [continentOpen, setContinentOpen] = useState(false);
   const [h2hOpen, setH2hOpen] = useState(false);
   const [goldenBootOpen, setGoldenBootOpen] = useState(false);
+  const [thirdPlaceQualOpen, setThirdPlaceQualOpen] = useState(false);
   const [poolMap, setPoolMap] = useState({});
   const [isDesktop, setIsDesktop] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
@@ -247,6 +248,8 @@ export function BettingProvider({ children }) {
       setH2hOpen(true);
     } else if (id === 'golden_boot') {
       setGoldenBootOpen(true);
+    } else if (id === 'third_place_qualifiers') {
+      setThirdPlaceQualOpen(true);
     } else {
       setCupWinnerOpen(true);
     }
@@ -270,6 +273,7 @@ export function BettingProvider({ children }) {
     continentOpen, setContinentOpen,
     h2hOpen, setH2hOpen,
     goldenBootOpen, setGoldenBootOpen,
+    thirdPlaceQualOpen, setThirdPlaceQualOpen,
   }), [
     user, loading, refreshUser,
     bets, betsLoaded, balance, realisedBalance,
@@ -281,7 +285,7 @@ export function BettingProvider({ children }) {
     handleLogout, handleOpenSpecialBet,
     refreshData, refreshPools, refreshCupWinnerBet,
     cupWinnerOpen, goalScorerOpen, goalScorerMatchId,
-    continentOpen, h2hOpen, goldenBootOpen,
+    continentOpen, h2hOpen, goldenBootOpen, thirdPlaceQualOpen,
   ]);
 
   return (

@@ -485,6 +485,42 @@ export default function ThirdPlaceQualifierBetModal({ open, onClose, user, onPla
         .tpq-modal__submit:disabled {
           background: #1F2229; color: #5B6473; cursor: not-allowed;
         }
+        .tpq-modal .cup-modal__slider {
+          appearance: none; -webkit-appearance: none;
+          width: 100%; height: 8px;
+          background: #2A2F39; border-radius: 4px; outline: none;
+          margin-bottom: 12px; display: block;
+        }
+        .tpq-modal .cup-modal__slider::-webkit-slider-thumb {
+          appearance: none; -webkit-appearance: none;
+          width: 26px; height: 26px;
+          background: #36D399; border-radius: 50%;
+          border: 3px solid #0B0D11;
+          box-shadow: 0 2px 10px rgba(54,211,153,0.45);
+          cursor: pointer;
+        }
+        .tpq-modal .cup-modal__slider::-moz-range-thumb {
+          width: 26px; height: 26px;
+          background: #36D399; border-radius: 50%;
+          border: 3px solid #0B0D11;
+          box-shadow: 0 2px 10px rgba(54,211,153,0.45);
+          cursor: pointer;
+        }
+        .tpq-modal .cup-modal__presets {
+          display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+          margin-bottom: 10px;
+        }
+        .tpq-modal .cup-modal__presets button {
+          background: #1A1D24; border: 1px solid rgba(255,255,255,0.10);
+          padding: 9px 0; border-radius: 10px;
+          font-family: var(--font-mono); font-weight: 600; font-size: 12.5px;
+          color: #F2F3F5; cursor: pointer;
+        }
+        .tpq-modal .cup-modal__presets button.active {
+          background: rgba(54,211,153,0.14);
+          border-color: #36D399;
+          color: #36D399;
+        }
         @media (min-width: 640px) {
           .tpq-modal .sheet { max-width: 520px; max-height: 88vh; }
         }

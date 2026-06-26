@@ -3,6 +3,7 @@ import supabaseAnon from '@/lib/supabase';
 import supabaseAdmin from '@/lib/supabase-admin';
 import { FIFA_MATCHES_URL, TEAM_CODE_ALIAS } from '@/lib/schedule-sync';
 import { MATCHES, GROUPS } from '@/lib/data';
+import { computeThirdPlaceQualifiers } from '@/lib/third-place-qualifiers';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -70,58 +71,6 @@ function extractScorerIds(liveData) {
 
 // Compute the top 8 third-place qualifiers from all finished FIFA match data.
 // Returns an array of 8 team codes, or null if not all 12 groups are complete.
-function computeThirdPlaceQualifiers(fifaResults) {
-  const groupStats = {};
-
-  for (const fm of fifaResults) {
-    if (fm.MatchStatus !== 0) continue;
-    const g = groupLetter(fm);
-    if (!g) continue;
-    const hc = teamCode(fm.Home);
-    const ac = teamCode(fm.Away);
-    if (!hc || !ac) continue;
-    const hg = fm.HomeTeamScore;
-    const ag = fm.AwayTeamScore;
-    if (hg == null || ag == null) continue;
-
-    if (!groupStats[g]) groupStats[g] = {};
-    if (!groupStats[g][hc]) groupStats[g][hc] = { code: hc, pts: 0, gf: 0, ga: 0 };
-    if (!groupStats[g][ac]) groupStats[g][ac] = { code: ac, pts: 0, gf: 0, ga: 0 };
-
-    groupStats[g][hc].gf += hg; groupStats[g][hc].ga += ag;
-    groupStats[g][ac].gf += ag; groupStats[g][ac].ga += hg;
-
-    if (hg > ag)      { groupStats[g][hc].pts += 3; }
-    else if (ag > hg) { groupStats[g][ac].pts += 3; }
-    else              { groupStats[g][hc].pts += 1; groupStats[g][ac].pts += 1; }
-  }
-
-  // Need all 12 groups computed with at least 3 teams
-  const groupIds = GROUPS.map(g => g.id);
-  for (const gid of groupIds) {
-    if (!groupStats[gid] || Object.keys(groupStats[gid]).length < 3) return null;
-  }
-
-  const thirds = [];
-  for (const gid of groupIds) {
-    const sorted = Object.values(groupStats[gid]).sort((a, b) =>
-      b.pts - a.pts ||
-      (b.gf - b.ga) - (a.gf - a.ga) ||
-      b.gf - a.gf ||
-      a.code.localeCompare(b.code)
-    );
-    thirds.push({ ...sorted[2], group: gid });
-  }
-
-  thirds.sort((a, b) =>
-    b.pts - a.pts ||
-    (b.gf - b.ga) - (a.gf - a.ga) ||
-    b.gf - a.gf ||
-    a.group.localeCompare(b.group)
-  );
-
-  return thirds.slice(0, 8).map(t => t.code);
-}
 
 async function settleGoalscorer(matchId, schedRow) {
   if (!schedRow?.fifa_id_stage || !schedRow?.fifa_id_match) return null;
