@@ -337,7 +337,7 @@ export default function AdeYaarApp() {
         <ContinentBetModal open={continentOpen} onClose={() => setContinentOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
         <H2HBetModal open={h2hOpen} onClose={() => setH2hOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
         <GoldenBootBetModal open={goldenBootOpen} onClose={() => setGoldenBootOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
-        <ThirdPlaceQualifierBetModal open={thirdPlaceQualOpen} onClose={() => setThirdPlaceQualOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
+        <ThirdPlaceQualifierBetModal open={thirdPlaceQualOpen} onClose={() => setThirdPlaceQualOpen(false)} user={user} onPlaced={() => { refreshData(); }} matches={matches} />
       </div>
     );
   }
@@ -439,6 +439,7 @@ export default function AdeYaarApp() {
           onClose={() => setThirdPlaceQualOpen(false)}
           user={user}
           onPlaced={() => { refreshData(); }}
+          matches={matches}
         />
       </div>
 

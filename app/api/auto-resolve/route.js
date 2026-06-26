@@ -242,18 +242,19 @@ export async function GET() {
     }
   }
 
-  // After J6 (Jordan vs Argentina, last group game) settles, resolve third-place qualifier bets.
+  // Settle third-place qualifier bets once J6 (last group game) is fully resolved.
+  // Triggered on every auto-resolve run where pending qualifier bets exist AND J6
+  // has no pending match bets (i.e. it has already been settled). This makes it
+  // idempotent — if computeThirdPlaceQualifiers() returns null on the first run
+  // (FIFA payload incomplete) it will retry on subsequent page loads.
   let thirdPlaceResult = null;
-  if (resolved.includes('J6') && db) {
-    const { data: pending } = await db
-      .from('bets')
-      .select('id')
-      .eq('match_id', 'THIRD_QUALIFIERS')
-      .eq('kind', 'third_place_qualifiers')
-      .eq('status', 'pending')
-      .limit(1);
+  if (db) {
+    const [{ data: pendingQuals }, { data: pendingJ6 }] = await Promise.all([
+      db.from('bets').select('id').eq('match_id', 'THIRD_QUALIFIERS').eq('kind', 'third_place_qualifiers').eq('status', 'pending').limit(1),
+      db.from('bets').select('id').eq('match_id', 'J6').eq('kind', 'match').eq('status', 'pending').limit(1),
+    ]);
 
-    if (pending?.length) {
+    if (pendingQuals?.length && pendingJ6?.length === 0) {
       const winningTeams = computeThirdPlaceQualifiers(fifaResults);
       if (winningTeams) {
         const { data, error } = await db.rpc('settle_third_place_qualifiers', {

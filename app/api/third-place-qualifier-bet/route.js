@@ -39,10 +39,14 @@ export async function GET(request) {
     ? (pending.find(b => b.user_id === userId) || null)
     : null;
 
+  // Hide individual picks until the deadline has passed to prevent copying
+  const deadlinePassed = Date.now() > DEADLINE_TS;
+
   return NextResponse.json({
     myBet: myBet ? { id: myBet.id, pick: myBet.pick, amount: myBet.amount } : null,
     pool: { total, bettorCount },
-    picks,
+    picks: deadlinePassed ? picks : [],
+    deadlinePassed,
   });
 }
 
@@ -67,23 +71,8 @@ export async function POST(request) {
 
   const pick = [...picks].sort().join(',');
 
-  // Cancel any existing pending bet first (replace flow)
-  const { data: existing } = await supabase
-    .from('bets')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('match_id', MATCH_ID)
-    .eq('kind', KIND)
-    .eq('status', 'pending')
-    .maybeSingle();
-
-  if (existing?.id) {
-    await supabase.rpc('cancel_special_bet_by_id', {
-      p_user_id: userId,
-      p_bet_id: existing.id,
-    });
-  }
-
+  // place_special_bet with p_multi_pick=false atomically cancels any existing
+  // pending bet for this (user, match_id, kind) before inserting the new one.
   const { data, error } = await supabase.rpc('place_special_bet', {
     p_user_id: userId,
     p_match_id: MATCH_ID,
