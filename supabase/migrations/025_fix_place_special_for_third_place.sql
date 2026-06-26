@@ -57,11 +57,6 @@ BEGIN
     END IF;
   END IF;
 
-  -- Balance check
-  IF p_amount > public.compute_balance(p_user_id) THEN
-    RAISE EXCEPTION 'Insufficient balance';
-  END IF;
-
   -- For single-pick specials, cancel existing bet first (idempotent replace)
   IF NOT p_multi_pick THEN
     SELECT id INTO v_existing_id
