@@ -61,11 +61,8 @@ export function BettingProvider({ children }) {
   const [cupWinnerDeadlineTs, setCupWinnerDeadlineTs] = useState(null);
   const [cupWinnerOpen, setCupWinnerOpen] = useState(false);
   const [myCupWinnerBet, setMyCupWinnerBet] = useState(null);
-  const [goalScorerOpen, setGoalScorerOpen] = useState(false);
-  const [goalScorerMatchId, setGoalScorerMatchId] = useState(null);
   const [continentOpen, setContinentOpen] = useState(false);
   const [h2hOpen, setH2hOpen] = useState(false);
-  const [goldenBootOpen, setGoldenBootOpen] = useState(false);
   const [thirdPlaceQualOpen, setThirdPlaceQualOpen] = useState(false);
   const [poolMap, setPoolMap] = useState({});
   const [isDesktop, setIsDesktop] = useState(false);
@@ -238,16 +235,11 @@ export function BettingProvider({ children }) {
     }
   }, [matches, user, placing, refreshData, refreshPools]);
 
-  const handleOpenSpecialBet = useCallback((id, ctx) => {
-    if (id === 'goalscorer' && ctx?.matchId) {
-      setGoalScorerMatchId(ctx.matchId);
-      setGoalScorerOpen(true);
-    } else if (id === 'continent') {
+  const handleOpenSpecialBet = useCallback((id) => {
+    if (id === 'continent') {
       setContinentOpen(true);
     } else if (id === 'h2h') {
       setH2hOpen(true);
-    } else if (id === 'golden_boot') {
-      setGoldenBootOpen(true);
     } else if (id === 'third_place_qualifiers') {
       setThirdPlaceQualOpen(true);
     } else {
@@ -269,10 +261,8 @@ export function BettingProvider({ children }) {
     setToast, setBetSheet,
     // modal state
     cupWinnerOpen, setCupWinnerOpen,
-    goalScorerOpen, setGoalScorerOpen, goalScorerMatchId,
     continentOpen, setContinentOpen,
     h2hOpen, setH2hOpen,
-    goldenBootOpen, setGoldenBootOpen,
     thirdPlaceQualOpen, setThirdPlaceQualOpen,
   }), [
     user, loading, refreshUser,
@@ -284,8 +274,7 @@ export function BettingProvider({ children }) {
     openBet, closeBet, cancelBet, confirmBet,
     handleLogout, handleOpenSpecialBet,
     refreshData, refreshPools, refreshCupWinnerBet,
-    cupWinnerOpen, goalScorerOpen, goalScorerMatchId,
-    continentOpen, h2hOpen, goldenBootOpen, thirdPlaceQualOpen,
+    cupWinnerOpen, continentOpen, h2hOpen, thirdPlaceQualOpen,
   ]);
 
   return (

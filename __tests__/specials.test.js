@@ -2,8 +2,8 @@ import { SPECIALS, getSpecial, getSpecialByMatchId, getConfederation, isSpecialB
 
 describe('SPECIALS registry', () => {
   test('has all specials defined', () => {
-    expect(SPECIALS).toHaveLength(6);
-    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'h2h', 'golden_boot', 'third_place_qualifiers', 'goalscorer']);
+    expect(SPECIALS).toHaveLength(4);
+    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'h2h', 'third_place_qualifiers']);
   });
 
   test('each special has required fields', () => {

@@ -9,10 +9,8 @@ import { AppHeader, TabBar, PlaceBetSheet, Toast, SpecialNotification } from '@/
 import HomeScreen from '@/components/screens/HomeScreen';
 import FixturesScreen from '@/components/screens/FixturesScreen';
 import CupWinnerBetModal from '@/components/CupWinnerBetModal';
-import GoalScorerBetModal from '@/components/GoalScorerBetModal';
 import ContinentBetModal from '@/components/ContinentBetModal';
 import H2HBetModal from '@/components/H2HBetModal';
-import GoldenBootBetModal from '@/components/GoldenBootBetModal';
 import ThirdPlaceQualifierBetModal from '@/components/ThirdPlaceQualifierBetModal';
 import SpecialsScreen from '@/components/screens/SpecialsScreen';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
@@ -104,11 +102,8 @@ export default function AdeYaarApp() {
   const [cupWinnerDeadlineTs, setCupWinnerDeadlineTs] = useState(null);
   const [cupWinnerOpen, setCupWinnerOpen] = useState(false);
   const [myCupWinnerBet, setMyCupWinnerBet] = useState(null);
-  const [goalScorerOpen, setGoalScorerOpen] = useState(false);
-  const [goalScorerMatchId, setGoalScorerMatchId] = useState(null);
   const [continentOpen, setContinentOpen] = useState(false);
   const [h2hOpen, setH2hOpen] = useState(false);
-  const [goldenBootOpen, setGoldenBootOpen] = useState(false);
   const [thirdPlaceQualOpen, setThirdPlaceQualOpen] = useState(false);
   const [poolMap, setPoolMap] = useState({});
   const [isDesktop, setIsDesktop] = useState(false);
@@ -291,15 +286,10 @@ export default function AdeYaarApp() {
   if (loading || !user) return null;
 
   const handleOpenSpecialBet = (id, ctx) => {
-    if (id === 'goalscorer' && ctx?.matchId) {
-      setGoalScorerMatchId(ctx.matchId);
-      setGoalScorerOpen(true);
-    } else if (id === 'continent') {
+    if (id === 'continent') {
       setContinentOpen(true);
     } else if (id === 'h2h') {
       setH2hOpen(true);
-    } else if (id === 'golden_boot') {
-      setGoldenBootOpen(true);
     } else if (id === 'third_place_qualifiers') {
       setThirdPlaceQualOpen(true);
     } else {
@@ -335,10 +325,8 @@ export default function AdeYaarApp() {
           />
         )}
         <CupWinnerBetModal open={cupWinnerOpen} onClose={() => setCupWinnerOpen(false)} user={user} myCupWinnerBet={myCupWinnerBet} onPlaced={() => { refreshCupWinnerBet(); refreshData(); }} deadlineTs={cupWinnerDeadlineTs} />
-        <GoalScorerBetModal open={goalScorerOpen} onClose={() => setGoalScorerOpen(false)} matchId={goalScorerMatchId} user={user} onPlaced={() => { refreshData(); refreshPools(); }} />
         <ContinentBetModal open={continentOpen} onClose={() => setContinentOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
         <H2HBetModal open={h2hOpen} onClose={() => setH2hOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
-        <GoldenBootBetModal open={goldenBootOpen} onClose={() => setGoldenBootOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
         <ThirdPlaceQualifierBetModal open={thirdPlaceQualOpen} onClose={() => setThirdPlaceQualOpen(false)} user={user} onPlaced={() => { refreshData(); }} matches={matches} />
       </div>
     );
@@ -402,16 +390,6 @@ export default function AdeYaarApp() {
       </div>
 
       <div data-theme={theme}>
-        <GoalScorerBetModal
-          open={goalScorerOpen}
-          onClose={() => setGoalScorerOpen(false)}
-          matchId={goalScorerMatchId}
-          user={user}
-          onPlaced={() => { refreshData(); refreshPools(); }}
-        />
-      </div>
-
-      <div data-theme={theme}>
         <ContinentBetModal
           open={continentOpen}
           onClose={() => setContinentOpen(false)}
@@ -430,12 +408,6 @@ export default function AdeYaarApp() {
       </div>
 
       <div data-theme={theme}>
-        <GoldenBootBetModal
-          open={goldenBootOpen}
-          onClose={() => setGoldenBootOpen(false)}
-          user={user}
-          onPlaced={() => { refreshData(); }}
-        />
         <ThirdPlaceQualifierBetModal
           open={thirdPlaceQualOpen}
           onClose={() => setThirdPlaceQualOpen(false)}

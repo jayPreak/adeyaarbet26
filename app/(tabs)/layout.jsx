@@ -5,10 +5,8 @@ import { BettingProvider, useBetting } from '@/lib/BettingContext';
 import { AppHeader, TabBar, PlaceBetSheet, Toast, SpecialNotification } from '@/components';
 import CountdownGate from '@/components/CountdownGate';
 import CupWinnerBetModal from '@/components/CupWinnerBetModal';
-import GoalScorerBetModal from '@/components/GoalScorerBetModal';
 import ContinentBetModal from '@/components/ContinentBetModal';
 import H2HBetModal from '@/components/H2HBetModal';
-import GoldenBootBetModal from '@/components/GoldenBootBetModal';
 import ThirdPlaceQualifierBetModal from '@/components/ThirdPlaceQualifierBetModal';
 import DesktopApp from '@/components/desktop/DesktopApp';
 
@@ -44,10 +42,8 @@ function TabsShell({ children }) {
     setToast, matches, bets, poolMap, allUsers,
     myCupWinnerBet, cupWinnerDeadlineTs,
     cupWinnerOpen, setCupWinnerOpen,
-    goalScorerOpen, setGoalScorerOpen, goalScorerMatchId,
     continentOpen, setContinentOpen,
     h2hOpen, setH2hOpen,
-    goldenBootOpen, setGoldenBootOpen,
     thirdPlaceQualOpen, setThirdPlaceQualOpen,
     refreshCupWinnerBet, refreshData, refreshPools,
   } = useBetting();
@@ -83,10 +79,8 @@ function TabsShell({ children }) {
           />
         )}
         <CupWinnerBetModal open={cupWinnerOpen} onClose={() => setCupWinnerOpen(false)} user={user} myCupWinnerBet={myCupWinnerBet} onPlaced={() => { refreshCupWinnerBet(); refreshData(); }} deadlineTs={cupWinnerDeadlineTs} />
-        <GoalScorerBetModal open={goalScorerOpen} onClose={() => setGoalScorerOpen(false)} matchId={goalScorerMatchId} user={user} onPlaced={() => { refreshData(); refreshPools(); }} />
         <ContinentBetModal open={continentOpen} onClose={() => setContinentOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
         <H2HBetModal open={h2hOpen} onClose={() => setH2hOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
-        <GoldenBootBetModal open={goldenBootOpen} onClose={() => setGoldenBootOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
       </div>
     );
   }
@@ -127,16 +121,10 @@ function TabsShell({ children }) {
         <CupWinnerBetModal open={cupWinnerOpen} onClose={() => setCupWinnerOpen(false)} user={user} myCupWinnerBet={myCupWinnerBet} onPlaced={() => { refreshCupWinnerBet(); refreshData(); }} deadlineTs={cupWinnerDeadlineTs} />
       </div>
       <div data-theme={theme}>
-        <GoalScorerBetModal open={goalScorerOpen} onClose={() => setGoalScorerOpen(false)} matchId={goalScorerMatchId} user={user} onPlaced={() => { refreshData(); refreshPools(); }} />
-      </div>
-      <div data-theme={theme}>
         <ContinentBetModal open={continentOpen} onClose={() => setContinentOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
       </div>
       <div data-theme={theme}>
         <H2HBetModal open={h2hOpen} onClose={() => setH2hOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
-      </div>
-      <div data-theme={theme}>
-        <GoldenBootBetModal open={goldenBootOpen} onClose={() => setGoldenBootOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
       </div>
       <div data-theme={theme}>
         <ThirdPlaceQualifierBetModal open={thirdPlaceQualOpen} onClose={() => setThirdPlaceQualOpen(false)} user={user} onPlaced={() => { refreshData(); }} matches={matches} />
