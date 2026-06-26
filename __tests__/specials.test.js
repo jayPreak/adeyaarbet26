@@ -1,9 +1,9 @@
 import { SPECIALS, getSpecial, getSpecialByMatchId, getConfederation, isSpecialBet, CONFEDERATION_OPTIONS } from '@/lib/specials';
 
 describe('SPECIALS registry', () => {
-  test('has all 5 specials defined', () => {
-    expect(SPECIALS).toHaveLength(5);
-    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'h2h', 'golden_boot', 'goalscorer']);
+  test('has all specials defined', () => {
+    expect(SPECIALS).toHaveLength(6);
+    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'h2h', 'golden_boot', 'third_place_qualifiers', 'goalscorer']);
   });
 
   test('each special has required fields', () => {

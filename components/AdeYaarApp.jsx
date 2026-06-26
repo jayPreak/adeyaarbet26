@@ -13,6 +13,7 @@ import GoalScorerBetModal from '@/components/GoalScorerBetModal';
 import ContinentBetModal from '@/components/ContinentBetModal';
 import H2HBetModal from '@/components/H2HBetModal';
 import GoldenBootBetModal from '@/components/GoldenBootBetModal';
+import ThirdPlaceQualifierBetModal from '@/components/ThirdPlaceQualifierBetModal';
 import SpecialsScreen from '@/components/screens/SpecialsScreen';
 import { CUP_WINNER_DEADLINE_TS } from '@/lib/cup-winner';
 
@@ -108,6 +109,7 @@ export default function AdeYaarApp() {
   const [continentOpen, setContinentOpen] = useState(false);
   const [h2hOpen, setH2hOpen] = useState(false);
   const [goldenBootOpen, setGoldenBootOpen] = useState(false);
+  const [thirdPlaceQualOpen, setThirdPlaceQualOpen] = useState(false);
   const [poolMap, setPoolMap] = useState({});
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -335,6 +337,7 @@ export default function AdeYaarApp() {
         <ContinentBetModal open={continentOpen} onClose={() => setContinentOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
         <H2HBetModal open={h2hOpen} onClose={() => setH2hOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
         <GoldenBootBetModal open={goldenBootOpen} onClose={() => setGoldenBootOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
+        <ThirdPlaceQualifierBetModal open={thirdPlaceQualOpen} onClose={() => setThirdPlaceQualOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
       </div>
     );
   }
@@ -348,7 +351,7 @@ export default function AdeYaarApp() {
 
           <div className="scroll">
             <ErrorBoundary>
-              {tab === 'home'     && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={() => setCupWinnerOpen(true)} cupWinnerDeadlineTs={cupWinnerDeadlineTs} />}
+              {tab === 'home'     && <HomeScreen matches={matches} balance={balance} bets={bets} onBet={openBet} onCancelBet={cancelBet} onNav={setTab} user={user} poolMap={poolMap} allUsers={allUsers} myCupWinnerBet={myCupWinnerBet} onOpenCupWinner={() => setCupWinnerOpen(true)} cupWinnerDeadlineTs={cupWinnerDeadlineTs} onOpenThirdPlaceQual={() => setThirdPlaceQualOpen(true)} />}
               {tab === 'fixtures' && <FixturesScreen matches={matches} onBet={openBet} bets={bets} onCancelBet={cancelBet} poolMap={poolMap} allUsers={allUsers} userId={user.id} />}
               {tab === 'specials' && (
                 <SpecialsScreen
@@ -428,6 +431,12 @@ export default function AdeYaarApp() {
         <GoldenBootBetModal
           open={goldenBootOpen}
           onClose={() => setGoldenBootOpen(false)}
+          user={user}
+          onPlaced={() => { refreshData(); }}
+        />
+        <ThirdPlaceQualifierBetModal
+          open={thirdPlaceQualOpen}
+          onClose={() => setThirdPlaceQualOpen(false)}
           user={user}
           onPlaced={() => { refreshData(); }}
         />
