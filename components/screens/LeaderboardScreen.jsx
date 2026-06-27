@@ -137,6 +137,83 @@ function LeaderRow({ rank, user, entry, isMe, valueMain, valueSub, valueColor })
   );
 }
 
+function SettlementPlan({ user }) {
+  const [resolved, setResolved] = useState([]);
+  const [withPending, setWithPending] = useState([]);
+  const [basis, setBasis] = useState('resolved');
+
+  useEffect(() => {
+    fetch('/api/settlement')
+      .then(r => r.json())
+      .then(d => {
+        if (Array.isArray(d.resolved?.transactions)) setResolved(d.resolved.transactions);
+        if (Array.isArray(d.withPending?.transactions)) setWithPending(d.withPending.transactions);
+      })
+      .catch(() => {});
+  }, []);
+
+  const txs = basis === 'resolved' ? resolved : withPending;
+
+  return (
+    <div style={{ margin: '16px 16px 0', padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Settlement plan
+        </div>
+        <div style={{ display: 'inline-flex', gap: 3, padding: 3, borderRadius: 9, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          {[['resolved', 'Resolved'], ['withPending', 'Incl. pending']].map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setBasis(id)}
+              style={{
+                padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                background: basis === id ? 'var(--gold-soft, rgba(255,215,0,0.12))' : 'transparent',
+                color: basis === id ? 'var(--gold)' : 'var(--ink-3)',
+              }}
+            >{label}</button>
+          ))}
+        </div>
+      </div>
+
+      {txs.length === 0 ? (
+        <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--ink-3)', fontSize: 12 }}>
+          {basis === 'resolved'
+            ? 'All square, no payments needed yet'
+            : 'No matched debts yet. Once anyone has a payout, pending stakes pair with creditors'}
+        </div>
+      ) : (
+        txs.map((tx, i) => {
+          const meIn = user && (tx.from.id === user.id || tx.to.id === user.id);
+          return (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
+              borderBottom: i < txs.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+            }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--loss)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                {tx.from.name[0]}
+              </div>
+              <div style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: meIn ? 700 : 600 }}>
+                <span style={{ color: 'var(--loss)' }}>{tx.from.name}</span>
+                <span style={{ color: 'var(--ink-3)' }}> pays </span>
+                <span style={{ color: 'var(--win)' }}>{tx.to.name}</span>
+              </div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 14, color: 'var(--gold)', flexShrink: 0 }}>
+                {CURRENCY_SYMBOL}{tx.amount.toLocaleString('en-IN')}
+              </div>
+            </div>
+          );
+        })
+      )}
+
+      <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: 11, color: 'var(--ink-3)', textAlign: 'center' }}>
+        {basis === 'resolved'
+          ? 'If WC ended now (pending bets refunded) · finalised at end of tournament'
+          : 'Treats pending stakes as already spent. Early on most debts have no creditor yet'}
+      </div>
+    </div>
+  );
+}
+
 export function TotalWinsTab({ rankings, user }) {
   const sorted = [...rankings].sort((a, b) => (b.realisedBalance || 0) - (a.realisedBalance || 0));
   const hasAnyResolved = sorted.some(r => r.realisedBalance !== 0);
@@ -166,6 +243,7 @@ export function TotalWinsTab({ rankings, user }) {
         );
       })}
       </div>
+      <SettlementPlan user={user} />
     </div>
   );
 }
