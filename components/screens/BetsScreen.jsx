@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 import { getMatch, getTeam } from '@/lib/data';
 import { getSpecial } from '@/lib/specials';
 import { BetCard } from '@/components';
+import { SettlementPlan } from '@/components/screens/LeaderboardScreen';
 
 export function NetWorthGraph({ bets }) {
   const [tooltip, setTooltip] = useState(null);
@@ -91,7 +92,7 @@ export function NetWorthGraph({ bets }) {
 
   const zeroY = PY + (1 - (0 - minY) / range) * chartH;
 
-  const handleTap = useCallback((e) => {
+  const handleTap = (e) => {
     if (!svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
     const tapX = e.clientX - rect.left;
@@ -111,7 +112,7 @@ export function NetWorthGraph({ bets }) {
     } else {
       setTooltip(null);
     }
-  }, [points]);
+  };
 
   const lastPt = points[points.length - 1];
   const isUp = lastPt.y >= 0;
@@ -663,6 +664,7 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
           </div>
           <NetWorthGraph bets={bets} />
           <SettlementCard user={user} bets={bets} />
+          <SettlementPlan user={user} />
 
           {pendingCount > 0 && (
             <div style={{

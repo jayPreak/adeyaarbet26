@@ -137,7 +137,7 @@ function LeaderRow({ rank, user, entry, isMe, valueMain, valueSub, valueColor })
   );
 }
 
-function SettlementPlan({ user }) {
+export function SettlementPlan({ user }) {
   const [resolved, setResolved] = useState([]);
   const [withPending, setWithPending] = useState([]);
   const [basis, setBasis] = useState('resolved');
@@ -155,7 +155,7 @@ function SettlementPlan({ user }) {
   const txs = basis === 'resolved' ? resolved : withPending;
 
   return (
-    <div style={{ margin: '16px 16px 0', padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+    <div style={{ margin: '16px 16px 12px', padding: '14px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           Settlement plan

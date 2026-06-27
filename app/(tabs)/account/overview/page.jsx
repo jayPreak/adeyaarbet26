@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useBetting } from '@/lib/BettingContext';
 import { fmtNet } from '@/lib/currency';
 import { NetWorthGraph, SettlementCard, PenaltiesCard, AchievementBadges } from '@/components/screens/BetsScreen';
+import { SettlementPlan } from '@/components/screens/LeaderboardScreen';
 
 export default function AccountOverviewPage() {
   const { user, bets, bestCaseWin, scheduleMap } = useBetting();
@@ -32,6 +33,7 @@ export default function AccountOverviewPage() {
       </div>
       <NetWorthGraph bets={bets} />
       <SettlementCard user={user} bets={bets} />
+      <SettlementPlan user={user} />
 
       {pendingCount > 0 && (
         <div style={{
