@@ -33,7 +33,6 @@ export default function AccountOverviewPage() {
       </div>
       <NetWorthGraph bets={bets} />
       <SettlementCard user={user} bets={bets} />
-      <SettlementPlan user={user} />
 
       {pendingCount > 0 && (
         <div style={{
@@ -61,6 +60,7 @@ export default function AccountOverviewPage() {
         </div>
       )}
 
+      <SettlementPlan user={user} />
       <PenaltiesCard penaltyBets={penaltyBets} scheduleMap={scheduleMap} />
       <AchievementBadges user={user} />
     </>
