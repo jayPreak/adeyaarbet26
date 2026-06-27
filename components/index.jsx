@@ -131,9 +131,10 @@ export function SpecialNotification({ onNavigate }) {
   if (!visible) return null;
 
   return (
-    <div style={{
+    <div className="special-notif" style={{
       display: 'flex', alignItems: 'center', gap: 8,
       padding: '8px 12px 8px 16px',
+      marginBottom: 8,
       background: 'linear-gradient(90deg, rgba(0,255,133,0.08) 0%, rgba(77,168,255,0.08) 100%)',
       borderBottom: '1px solid rgba(0,255,133,0.15)',
     }}>
@@ -252,6 +253,83 @@ export function SectionHead({ title, more, onMore }) {
 }
 
 // ── Match card ───────────────────────────────────────────────
+// ── Watch live links (shown on in-play matches) ──────────────
+const NEXTDNS_APP = 'https://apps.apple.com/in/app/nextdns/id1463342498';
+const NEXTDNS_PROFILE = 'https://apple.nextdns.io';
+const ADGUARD_DNS = 'https://apps.apple.com/in/app/adguard-dns/id6754605049';
+const GOOGLE_DOH = 'https://github.com/paulmillr/encrypted-dns/raw/master/signed/google-default-https.mobileconfig';
+const CF_HOME = 'https://one.one.one.one/';
+const PROTON_VPN = 'https://protonvpn.com/';
+const MULLVAD = 'https://mullvad.net/';
+
+export function WatchLive({ home, away }) {
+  const [showHelp, setShowHelp] = useState(false);
+  const favicon = (domain) => `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
+  const stop = (e) => e.stopPropagation();
+
+  const pill = {
+    display: 'inline-flex', alignItems: 'center', gap: 6,
+    padding: '7px 11px', borderRadius: 8, textDecoration: 'none',
+    fontSize: 12, fontWeight: 600, color: 'var(--ink)',
+    border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)',
+  };
+  const dlink = { color: 'var(--cool)', textDecoration: 'underline', fontWeight: 600 };
+  const A = ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" onClick={stop} style={dlink}>{children}</a>;
+
+  return (
+    <div style={{ marginTop: 10 }} onClick={stop}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--loss)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Watch live
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+          <a href="https://streamed.pk/category/football" target="_blank" rel="noopener noreferrer" style={pill} onClick={stop}>
+            <img src="/streamed.png" alt="" width={16} height={16} style={{ borderRadius: 3 }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            streamed.pk
+          </a>
+          <a href="https://www.zee5.com" target="_blank" rel="noopener noreferrer" style={pill} onClick={stop}>
+            <img src={favicon('zee5.com')} alt="" width={16} height={16} style={{ borderRadius: 3 }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            ZEE5
+          </a>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={(e) => { stop(e); setShowHelp(v => !v); }}
+        style={{ marginTop: 6, background: 'none', border: 'none', padding: 0, color: 'var(--ink-3)', fontSize: 11, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+      >
+        <span style={{ textDecoration: 'underline' }}>streamed.pk blocked?</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showHelp ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }}>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {showHelp && (
+        <div style={{ marginTop: 6, padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 8 }}>
+            ISPs (Jio especially) block streamed.pk at the DNS level. Switch to encrypted DNS and it loads again. The 1.1.1.1 app is gone from India's App Store, so use NextDNS.
+          </div>
+          {[
+            ['iPhone', <>Install <A href={NEXTDNS_APP}>NextDNS</A>, open it, tap Enable. Works on Airtel, Vi and most Jio.</>],
+            ['No app?', <>Open <A href={NEXTDNS_PROFILE}>apple.nextdns.io</A> in Safari, tap Download Profile, then Settings &gt; Profile Downloaded &gt; Install.</>],
+            ['Also works', <><A href={ADGUARD_DNS}>AdGuard DNS</A> app, or a Google DoH <A href={GOOGLE_DOH}>profile</A> (no account).</>],
+            ['Android', <>The <A href={NEXTDNS_APP}>NextDNS app</A>, or Settings &gt; Network &amp; internet &gt; Private DNS. Plain one.one.one.one may be blocked on Jio.</>],
+            ['Desktop', <>Install the <A href={CF_HOME}>1.1.1.1 app</A> for Windows or Mac, then turn it on.</>],
+            ['Still blocked', <>Fails even after this? That is an SNI/IP block (Jio). Only a VPN fixes it: <A href={PROTON_VPN}>Proton VPN</A> or <A href={MULLVAD}>Mullvad</A>.</>],
+          ].map(([label, body]) => (
+            <div key={label} style={{ display: 'flex', gap: 8, marginBottom: 6, fontSize: 11 }}>
+              <span style={{ minWidth: 78, fontWeight: 700, color: 'var(--ink-2)', flexShrink: 0 }}>{label}</span>
+              <span style={{ color: 'var(--ink-2)' }}>{body}</span>
+            </div>
+          ))}
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>
+            Check it worked at <a href="https://test.nextdns.io" target="_blank" rel="noopener noreferrer" onClick={stop} className="mono" style={dlink}>test.nextdns.io</a>. Mirror list: <a href="https://strmd.link" target="_blank" rel="noopener noreferrer" onClick={stop} className="mono" style={dlink}>strmd.link</a>.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, allUsers = [], userId }) {
   const home = getTeam(match.home);
   const away = getTeam(match.away);
@@ -302,6 +380,8 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
           <div className="match-card__team-name">{away.name}</div>
         </div>
       </div>
+
+      {isLive && <WatchLive home={match.home} away={match.away} />}
 
       {!isFinished && bettingOpen && (
         <div className="match-card__odds">
@@ -566,6 +646,8 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
           <div className="hero__team-name">{away.name}</div>
         </div>
       </div>
+
+      {isLive && <WatchLive home={match.home} away={match.away} />}
 
       {bettingOpen ? (
         <div className="hero__cta-row">
@@ -1118,6 +1200,10 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
         )}
       </div>
 
+
+      {bet.status === 'pending' && kickoffMs && Date.now() >= kickoffMs && Date.now() < kickoffMs + 9000000 && (
+        <WatchLive home={match.home} away={match.away} />
+      )}
 
       {poolData && poolData.bets?.length > 0 && (
         <MatchPoolTable poolData={poolData} home={home} away={away} allUsers={allUsers} userId={userId} />
