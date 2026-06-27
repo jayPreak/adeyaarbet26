@@ -621,7 +621,8 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
     setJustRandomized(false);
     // Spin for 600ms then reveal
     const funAmounts = [50, 100, 150, 200, 250, 300, 500, 750, 1000, 1500, 2000];
-    const sides = ['home', 'draw', 'away'];
+    const isKnockout = !match.group;
+    const sides = isKnockout ? ['home', 'away'] : ['home', 'draw', 'away'];
     let ticks = 0;
     const totalTicks = 8;
     const interval = setInterval(() => {
@@ -766,7 +767,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
         <div className="match-card__odds" style={{ marginBottom: pool.total > 0 ? 8 : 18 }}>
           {[
             { k: 'home', l: home.name },
-            { k: 'draw', l: 'Draw' },
+            ...(!match.group ? [] : [{ k: 'draw', l: 'Draw' }]),
             { k: 'away', l: away.name },
           ].map(o => {
             const odds = pool.total > 0 ? sideOdds(pool, o.k) : null;
