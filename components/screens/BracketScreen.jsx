@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { GROUPS, BRACKET, MATCHES, getTeam } from '@/lib/data';
+import { useState, useEffect } from 'react';
+import { GROUPS, MATCHES, getTeam } from '@/lib/data';
 
 // ── Shared standings computation ─────────────────────────────
 
@@ -26,40 +26,73 @@ function computeGroupStandings(group, matches) {
 
 // ── Knockout bracket ─────────────────────────────────────────
 
-function BracketMatch({ home, away }) {
-  const tbd = !home || home === 'TBD';
-  if (tbd) {
+function BracketSlot({ code, placeholder, score, penScore, finished }) {
+  if (code) {
+    const t = getTeam(code);
     return (
-      <div className="bracket-match" style={{ opacity: 0.5 }}>
-        {['a','b'].map(k => (
-          <div key={k} className="bracket-team">
-            <div className="bracket-team__name">
-              <span style={{ width: 16, color: 'var(--ink-3)' }}>—</span>
-              <span style={{ color: 'var(--ink-3)' }}>TBD</span>
-            </div>
-            <span className="bracket-score" style={{ color: 'var(--ink-3)' }}>·</span>
-          </div>
-        ))}
+      <div className="bracket-team">
+        <div className="bracket-team__name">
+          <span style={{ fontSize: 13 }}>{t.flag}</span>
+          <span>{t.name}</span>
+        </div>
+        {finished
+          ? <span className="bracket-score" style={{ color: 'var(--ink)' }}>
+              {score ?? 0}
+              {penScore != null && <span style={{ fontSize: 9, color: 'var(--ink-3)' }}>&nbsp;({penScore}p)</span>}
+            </span>
+          : <span className="bracket-score" style={{ color: 'var(--ink-3)' }}>—</span>
+        }
       </div>
     );
   }
-  const h = getTeam(home), a = getTeam(away);
   return (
-    <div className="bracket-match">
-      {[h, a].map(t => (
-        <div key={t.code} className="bracket-team">
-          <div className="bracket-team__name">
-            <span style={{ fontSize: 13 }}>{t.flag}</span>
-            <span>{t.name}</span>
-          </div>
-          <span className="bracket-score">—</span>
-        </div>
-      ))}
+    <div className="bracket-team" style={{ opacity: 0.5 }}>
+      <div className="bracket-team__name">
+        <span style={{ width: 16, color: 'var(--ink-3)' }}>—</span>
+        <span style={{ color: 'var(--ink-3)', fontSize: 10 }}>{placeholder || 'TBD'}</span>
+      </div>
+      <span className="bracket-score" style={{ color: 'var(--ink-3)' }}>·</span>
     </div>
   );
 }
 
+function BracketMatch({ home, away, homeScore, awayScore, homePen, awayPen, status, placeholderA, placeholderB }) {
+  const finished = status === 0;
+  return (
+    <div className="bracket-match">
+      <BracketSlot code={home} placeholder={placeholderA} score={homeScore} penScore={homePen} finished={finished} />
+      <BracketSlot code={away} placeholder={placeholderB} score={awayScore} penScore={awayPen} finished={finished} />
+    </div>
+  );
+}
+
+const STAGE_INFO = [
+  { key: 'R32',   label: 'Round of 32',        count: 16 },
+  { key: 'R16',   label: 'Round of 16',         count: 8  },
+  { key: 'QF',    label: 'Quarterfinals',        count: 4  },
+  { key: 'SF',    label: 'Semifinals',           count: 2  },
+  { key: 'Final', label: 'Final · Jul 18',       count: 1, gold: true },
+  { key: '3rd',   label: '3rd Place · Jul 19',   count: 1, gold: true },
+];
+
 function KnockoutView() {
+  const [matches, setMatches] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/fifa/knockout')
+      .then(r => r.json())
+      .then(setMatches)
+      .catch(() => setMatches([]));
+  }, []);
+
+  const byStage = {};
+  if (matches) {
+    for (const m of matches) {
+      if (!byStage[m.stage]) byStage[m.stage] = [];
+      byStage[m.stage].push(m);
+    }
+  }
+
   return (
     <>
       <div style={{ padding: '4px 20px 8px', fontSize: 11, color: 'var(--ink-3)' }}>
@@ -67,36 +100,20 @@ function KnockoutView() {
       </div>
       <div className="bracket-scroll">
         <div className="bracket">
-          <div className="bracket-round">
-            <div className="bracket-round__title">Round of 32</div>
-            {BRACKET.R32.slice(0, 8).map(m => (
-              <BracketMatch key={m.id} home={m.home} away={m.away} />
-            ))}
-          </div>
-          <div className="bracket-round">
-            <div className="bracket-round__title">Round of 16</div>
-            {[0,1,2,3].map(i => <BracketMatch key={i} />)}
-          </div>
-          <div className="bracket-round">
-            <div className="bracket-round__title">Quarterfinals</div>
-            {[0,1].map(i => <BracketMatch key={i} />)}
-          </div>
-          <div className="bracket-round">
-            <div className="bracket-round__title">Semifinal</div>
-            <BracketMatch />
-          </div>
-          <div className="bracket-round" style={{ justifyContent: 'center' }}>
-            <div className="bracket-round__title" style={{ color: 'var(--gold)' }}>
-              Final · Jul 19
-            </div>
-            <div className="bracket-match" style={{ borderColor: 'var(--gold)', background: 'var(--gold-soft)' }}>
-              <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--gold)' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>METLIFE · NJ</div>
-                <div style={{ fontSize: 22, marginTop: 4 }}>🏆</div>
-                <div style={{ fontSize: 10, marginTop: 4, color: 'rgba(255,200,80,0.7)' }}>TBD vs TBD</div>
+          {STAGE_INFO.map(({ key, label, count, gold }) => {
+            const stageMatches = byStage[key] || [];
+            return (
+              <div key={key} className="bracket-round" style={{ justifyContent: 'flex-start', gap: 8 }}>
+                <div className="bracket-round__title" style={gold ? { color: 'var(--gold)' } : undefined}>
+                  {label}
+                </div>
+                {matches
+                  ? stageMatches.map(m => <BracketMatch key={m.id} {...m} />)
+                  : Array.from({ length: count }).map((_, i) => <BracketMatch key={i} />)
+                }
               </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
       </div>
     </>
