@@ -155,17 +155,28 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
   );
 }
 
+// Get element position relative to container using offsetLeft/offsetTop (unaffected by CSS transforms)
+function getOffsetPos(el, container) {
+  let x = 0, y = 0;
+  let node = el;
+  while (node && node !== container) {
+    x += node.offsetLeft;
+    y += node.offsetTop;
+    node = node.offsetParent;
+  }
+  return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+}
+
 // SVG path between two nodes (curved bracket connector)
 function computeSvgPath(fromEl, toEl, container) {
   if (!fromEl || !toEl || !container) return '';
-  const containerRect = container.getBoundingClientRect();
-  const from = fromEl.getBoundingClientRect();
-  const to = toEl.getBoundingClientRect();
+  const from = getOffsetPos(fromEl, container);
+  const to = getOffsetPos(toEl, container);
 
-  const x1 = from.right - containerRect.left;
-  const y1 = from.top + from.height / 2 - containerRect.top;
-  const x2 = to.left - containerRect.left;
-  const y2 = to.top + to.height / 2 - containerRect.top;
+  const x1 = from.x + from.w;
+  const y1 = from.y + from.h / 2;
+  const x2 = to.x;
+  const y2 = to.y + to.h / 2;
 
   const midX = (x1 + x2) / 2;
 

@@ -581,7 +581,7 @@ body {
 .ko-canvas__btn:active { background: var(--surface-3); }
 
 .ko-bracket { display: flex; align-items: stretch; gap: 32px; position: relative; }
-.ko-bracket__svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: visible; }
+.ko-bracket__svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: visible; }
 .ko-bracket__round { display: flex; flex-direction: column; position: relative; z-index: 1; }
 .ko-bracket__title {
   font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
