@@ -594,9 +594,9 @@ body {
 /* Node */
 .ko-node {
   display: flex; flex-direction: column;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 10px; padding: 10px 12px;
-  cursor: pointer; text-align: left; width: 180px;
+  background: var(--surface); border: 1.5px solid var(--line);
+  border-radius: 10px; padding: 8px 10px 0; width: 190px;
+  cursor: pointer; text-align: left;
   transition: border-color 0.15s, transform 0.1s;
 }
 .ko-node:active { transform: scale(0.97); }
@@ -607,28 +607,40 @@ body {
 @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 .ko-node__team { display: flex; align-items: center; justify-content: space-between; padding: 3px 0; }
-.ko-node__team-info { display: flex; align-items: center; gap: 6px; }
-.ko-node__flag { font-size: 14px; }
-.ko-node__name { font-size: 11px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
-.ko-node__score { font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--ink); }
+.ko-node__team-info { display: flex; align-items: center; gap: 5px; }
+.ko-node__flag { font-size: 13px; }
+.ko-node__name { font-size: 11px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
+.ko-node__my-pick { font-size: 7px; color: var(--gold); margin-left: -2px; }
+.ko-node__team-right { display: flex; align-items: center; gap: 6px; }
+.ko-node__team-pool { font-size: 9px; font-weight: 500; color: var(--ink-2); font-family: var(--font-mono); }
+.ko-node__score { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--ink); }
 .ko-node__score.live { color: var(--live); }
 
 .ko-node__divider { height: 1px; background: var(--line); margin: 2px 0; }
 
-.ko-node__footer { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--line); }
-.ko-node__time { display: flex; flex-direction: column; gap: 1px; font-size: 9px; color: var(--ink-3); }
+.ko-node__pool-bar { display: flex; height: 3px; border-radius: 2px; overflow: hidden; margin-top: 6px; gap: 1px; }
+.ko-node__pool-home { background: var(--win); border-radius: 2px 0 0 2px; min-width: 2px; }
+.ko-node__pool-away { background: var(--loss); border-radius: 0 2px 2px 0; min-width: 2px; }
+
+.ko-node__footer-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 6px -10px 0; padding: 5px 10px;
+  background: rgba(255,255,255,0.03); border-radius: 0 0 9px 9px;
+  border-top: 1px solid var(--line);
+}
+.ko-node__timer { display: flex; align-items: center; gap: 4px; }
+.ko-node__clock-icon { color: var(--gold); flex-shrink: 0; }
+.ko-node__timer-text { font-size: 9px; font-weight: 500; color: var(--ink-2); }
+.ko-node__countdown { font-size: 9px; font-weight: 600; color: var(--gold); font-family: var(--font-mono); }
+.ko-node__ft { font-size: 9px; font-weight: 700; color: var(--ink-3); letter-spacing: 0.05em; }
+.ko-node__minute { font-size: 9px; font-weight: 700; color: var(--live); font-family: var(--font-mono); }
+
 .ko-node__meta { display: flex; align-items: center; gap: 4px; }
 .ko-node__badge { font-size: 8px; font-weight: 700; color: var(--gold); background: var(--gold-soft); padding: 2px 5px; border-radius: 4px; }
 .ko-node__badge.won { color: var(--win); background: rgba(0,255,133,0.12); }
 .ko-node__badge.lost { color: var(--loss); background: rgba(255,61,127,0.12); }
-.ko-node__pool { font-size: 8px; color: var(--ink-3); }
-
-.ko-node__pool-bar { display: flex; height: 4px; border-radius: 2px; overflow: hidden; margin-top: 6px; gap: 1px; }
-.ko-node__pool-home { background: var(--win); border-radius: 2px 0 0 2px; min-width: 2px; }
-.ko-node__pool-away { background: var(--loss); border-radius: 0 2px 2px 0; min-width: 2px; }
-.ko-node__pool-labels { display: flex; justify-content: space-between; font-size: 8px; color: var(--ink-3); margin-top: 2px; }
-.ko-node__pool-labels span:first-child { color: var(--win); }
-.ko-node__pool-labels span:last-child { color: var(--loss); }
+.ko-node__tap-hint { font-size: 8px; color: var(--ink-3); }
+.ko-node__pool-total { font-size: 8px; font-weight: 600; color: var(--ink-2); font-family: var(--font-mono); }
 
 
 /* ── Leaderboard ───────────────────────────────────────────── */

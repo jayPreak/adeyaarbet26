@@ -292,7 +292,9 @@ function formatActivityText(a, fifaIdMap, matchesById) {
     ? (getMatch(matchId) || matchesById?.[matchId] || fifaIdMap?.[matchId] || null)
     : null;
   const matchLabel = specialLabel
-    || (match && match.home && match.away ? `${getTeam(match.home)?.name || match.home} vs ${getTeam(match.away)?.name || match.away}` : matchId || '');
+    || (match && (match.home || match.away)
+      ? `${match.home ? getTeam(match.home).name : (match.placeholderA || 'TBD')} vs ${match.away ? getTeam(match.away).name : (match.placeholderB || 'TBD')}`
+      : (matchId?.replace('-', ' ') || ''));
 
   if (a.type === 'bet_placed' && a.payload) {
     const pickCode = a.payload.team || a.payload.pick;
@@ -305,7 +307,11 @@ function formatActivityText(a, fifaIdMap, matchesById) {
     } else if (matchId?.startsWith('HT_')) {
       pickLabel = pickCode === 'yes' ? 'YES' : pickCode === 'no' ? 'NO' : pickCode;
     } else if (match) {
-      pickLabel = pickCode === 'home' ? getTeam(match.home).name : pickCode === 'away' ? getTeam(match.away).name : 'Draw';
+      pickLabel = pickCode === 'home'
+        ? (match.home ? getTeam(match.home).name : 'Home')
+        : pickCode === 'away'
+          ? (match.away ? getTeam(match.away).name : 'Away')
+          : 'Draw';
     } else {
       pickLabel = pickCode;
     }
