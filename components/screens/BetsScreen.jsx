@@ -84,7 +84,7 @@ export function NetWorthGraph({ bets, compact }) {
 
     const ys = pts.map(p => p.y);
     return { points: pts, minY: Math.min(...ys), maxY: Math.max(...ys) };
-  }, [bets]);
+  }, [bets, range]);
 
   const NODE_SPACING = 28;
   const MIN_W = 320;
