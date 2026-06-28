@@ -639,8 +639,9 @@ export default function BetsScreen({ bets = [], onCancelBet, user, onProfileUpda
     [realBets]
   );
   const totalLost = useMemo(
-    () => realBets.filter(b => b.status === 'lost').reduce((s, b) => s + b.amount, 0),
-    [realBets]
+    () => realBets.filter(b => b.status === 'lost').reduce((s, b) => s + b.amount, 0)
+      + penaltyBets.filter(b => b.status === 'lost').reduce((s, b) => s + b.amount, 0),
+    [realBets, penaltyBets]
   );
   const pendingCount = realBets.filter(b => b.status === 'pending').length;
   const settled = realBets.filter(b => b.status === 'won' || b.status === 'lost');
