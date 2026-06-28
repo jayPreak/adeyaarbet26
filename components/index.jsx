@@ -385,7 +385,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
       {isLive && <WatchLive home={match.home} away={match.away} />}
 
       {!isFinished && bettingOpen && (
-        <div className="match-card__odds">
+        <div className={'match-card__odds' + (match.knockout ? ' match-card__odds--2col' : '')}>
           {[
             { key: 'home', label: home.code },
             ...(!match.knockout ? [{ key: 'draw', label: 'X' }] : []),
