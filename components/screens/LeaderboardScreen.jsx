@@ -138,7 +138,12 @@ function LeaderRow({ rank, user, entry, isMe, valueMain, valueSub, valueColor, o
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: valueColor || 'var(--ink)' }}>
         {valueMain}
       </div>
-      <span style={{ fontSize: 14, opacity: 0.4, marginLeft: 4 }}>📈</span>
+      <span style={{
+        fontSize: 9, fontWeight: 600, color: 'var(--ink-3)',
+        padding: '3px 6px', borderRadius: 4,
+        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
+        marginLeft: 6, whiteSpace: 'nowrap',
+      }}>View</span>
     </div>
   );
 }
