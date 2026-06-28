@@ -143,7 +143,7 @@ function LeaderRow({ rank, user, entry, isMe, valueMain, valueSub, valueColor, o
         padding: '3px 6px', borderRadius: 4,
         background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)',
         marginLeft: 6, whiteSpace: 'nowrap',
-      }}>View</span>
+      }}>View Chart</span>
     </div>
   );
 }
