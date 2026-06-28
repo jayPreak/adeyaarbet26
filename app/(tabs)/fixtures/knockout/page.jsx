@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { TransformWrapper, TransformComponent, useControls } from 'react-zoom-pan-pinch';
 import { useBetting } from '@/lib/BettingContext';
 import { getTeam } from '@/lib/data';
@@ -235,6 +235,12 @@ export default function KnockoutPage() {
 
   const thirdPlace = byStage['3rd'] || [];
   const saved = useMemo(() => loadViewState(), []);
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => { mountedRef.current = true; }, 300);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <div>
@@ -250,7 +256,7 @@ export default function KnockoutPage() {
           maxScale={2.5}
           limitToBounds={false}
           doubleClick={{ disabled: true }}
-          onTransformed={(_, state) => { saveViewState({ scale: state.scale, positionX: state.positionX, positionY: state.positionY }); }}
+          onTransformed={(_, state) => { if (mountedRef.current) saveViewState({ scale: state.scale, positionX: state.positionX, positionY: state.positionY }); }}
         >
           <ZoomControls />
           <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }} contentStyle={{ padding: 16 }}>

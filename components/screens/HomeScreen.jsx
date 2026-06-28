@@ -24,8 +24,10 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
   const featured = live[0] || upcoming[0];
 
   const fifaIdMap = {};
+  const matchesById = {};
   for (const m of matches) {
     if (m.fifaId) fifaIdMap[m.fifaId] = m;
+    matchesById[m.id] = m;
   }
 
   const [activity, setActivity] = useState([]);
@@ -45,7 +47,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
               id: a.id,
               username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
               avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap),
+              text: formatActivityText(a, fifaIdMap, matchesById),
               createdAt: a.created_at,
             })));
         }
@@ -66,7 +68,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
               id: a.id,
               username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
               avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap),
+              text: formatActivityText(a, fifaIdMap, matchesById),
               createdAt: a.created_at,
             }));
           setFullActivity(mapped);
@@ -90,7 +92,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
               id: a.id,
               username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
               avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap),
+              text: formatActivityText(a, fifaIdMap, matchesById),
               createdAt: a.created_at,
             }));
           setFullActivity(prev => [...prev, ...mapped]);
@@ -241,72 +243,6 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
         </>
       )}
 
-      {/* Upcoming CTA */}
-      <div
-        onClick={() => onNav('fixtures')}
-        style={{
-          margin: '8px 16px 6px',
-          padding: '16px 20px',
-          borderRadius: 14,
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          cursor: 'pointer',
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>Bet on upcoming matches</div>
-          <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>{upcoming.length} matches coming up</div>
-        </div>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--ink-3)' }}>
-          <path d="M9 18l6-6-6-6" />
-        </svg>
-      </div>
-
-      {/* 3rd-place qualifier bet CTA */}
-      <div
-        onClick={onOpenThirdPlaceQual}
-        style={{
-          margin: '0 16px 8px', padding: '14px 20px', borderRadius: 14,
-          background: 'rgba(54,211,153,0.06)',
-          border: '1px solid rgba(54,211,153,0.2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 20 }}>🥉</span>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>Pick 8 Third-Place Qualifiers</div>
-            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>All 8 must be right · closes 12:29 AM IST</div>
-          </div>
-        </div>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--ink-3)', flexShrink: 0 }}>
-          <path d="M9 18l6-6-6-6" />
-        </svg>
-      </div>
-
-      {/* Tournament standings shortcut */}
-      <div
-        onClick={() => onNav('tournament')}
-        style={{
-          margin: '0 16px 12px', padding: '14px 20px', borderRadius: 14,
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 20 }}>🏆</span>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>Tournament standings</div>
-            <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>12 groups · W/D/L · bracket</div>
-          </div>
-        </div>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: 'var(--ink-3)' }}>
-          <path d="M9 18l6-6-6-6" />
-        </svg>
-      </div>
 
       {/* Friend activity */}
       <SectionHead title="Friend activity" more="See all" onMore={openAllActivity} />
@@ -348,15 +284,15 @@ function formatSpecialMatchLabel(matchId) {
   return null;
 }
 
-function formatActivityText(a, fifaIdMap) {
+function formatActivityText(a, fifaIdMap, matchesById) {
   const matchId = a.payload?.match_id;
   const specialLabel = formatSpecialMatchLabel(matchId);
   const isSpecial = !!specialLabel;
   const match = (!isSpecial && matchId)
-    ? (getMatch(matchId) || fifaIdMap?.[matchId] || null)
+    ? (getMatch(matchId) || matchesById?.[matchId] || fifaIdMap?.[matchId] || null)
     : null;
   const matchLabel = specialLabel
-    || (match ? `${getTeam(match.home).name} vs ${getTeam(match.away).name}` : matchId || '');
+    || (match && match.home && match.away ? `${getTeam(match.home)?.name || match.home} vs ${getTeam(match.away)?.name || match.away}` : matchId || '');
 
   if (a.type === 'bet_placed' && a.payload) {
     const pickCode = a.payload.team || a.payload.pick;
