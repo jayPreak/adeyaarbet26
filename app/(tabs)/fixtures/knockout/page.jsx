@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useLayoutEffect, useCallback } from 'react';
 import { TransformWrapper, TransformComponent, useControls } from 'react-zoom-pan-pinch';
 import { useBetting } from '@/lib/BettingContext';
 import { getTeam } from '@/lib/data';
@@ -80,6 +80,7 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
 
   return (
     <button
+      id={`ko-node-${match.id}`}
       className="ko-node"
       onClick={(e) => { e.stopPropagation(); onTap(match); }}
       style={{ borderColor }}
@@ -121,7 +122,6 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
         )}
       </div>
 
-      {/* Pool percentage bar */}
       {totalPool > 0 && (
         <div className="ko-node__pool-bar">
           <div className="ko-node__pool-home" style={{ width: `${homePct}%` }} />
@@ -155,19 +155,47 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
   );
 }
 
-function BracketConnectors({ count }) {
-  const pairs = count / 2;
-  return (
-    <div className="ko-connectors">
-      {Array.from({ length: pairs }, (_, i) => (
-        <div key={i} className="ko-connector-pair">
-          <div className="ko-connector-line ko-connector-top" />
-          <div className="ko-connector-line ko-connector-bot" />
-          <div className="ko-connector-merge" />
-        </div>
-      ))}
-    </div>
-  );
+// SVG path between two nodes (curved bracket connector)
+function computeSvgPath(fromEl, toEl, container) {
+  if (!fromEl || !toEl || !container) return '';
+  const containerRect = container.getBoundingClientRect();
+  const from = fromEl.getBoundingClientRect();
+  const to = toEl.getBoundingClientRect();
+
+  const x1 = from.right - containerRect.left;
+  const y1 = from.top + from.height / 2 - containerRect.top;
+  const x2 = to.left - containerRect.left;
+  const y2 = to.top + to.height / 2 - containerRect.top;
+
+  const midX = (x1 + x2) / 2;
+
+  // Straight horizontal if same y
+  if (Math.abs(y1 - y2) < 2) {
+    return `M${x1},${y1} L${x2},${y2}`;
+  }
+
+  // Curved path: horizontal out, curve down/up, horizontal in
+  return `M${x1},${y1} L${midX - 8},${y1} Q${midX},${y1} ${midX},${y1 + Math.sign(y2 - y1) * 8} L${midX},${y2 - Math.sign(y2 - y1) * 8} Q${midX},${y2} ${midX + 8},${y2} L${x2},${y2}`;
+}
+
+// Build the edge list: each pair in stage N feeds into one node in stage N+1
+function buildEdges(byStage) {
+  const edges = [];
+  const stages = STAGE_ORDER.filter(s => byStage[s]?.length);
+
+  for (let i = 0; i < stages.length - 1; i++) {
+    const cur = byStage[stages[i]];
+    const next = byStage[stages[i + 1]];
+    // Pair consecutive matches: match 0,1 → next 0; match 2,3 → next 1, etc.
+    for (let j = 0; j < next.length; j++) {
+      const srcA = cur[j * 2];
+      const srcB = cur[j * 2 + 1];
+      const dest = next[j];
+      if (srcA && dest) edges.push([srcA.id, dest.id]);
+      if (srcB && dest) edges.push([srcB.id, dest.id]);
+    }
+  }
+  return edges;
 }
 
 const STORAGE_KEY = 'ko_bracket_view_state';
@@ -199,6 +227,10 @@ function ZoomControls() {
 
 export default function KnockoutPage() {
   const { matches, openBet, bets, poolMap } = useBetting();
+  const bracketRef = useRef(null);
+  const readyRef = useRef(false);
+  const wrapperRef = useRef(null);
+  const [paths, setPaths] = useState([]);
 
   const knockoutMatches = useMemo(() => {
     return matches.filter(m => m.knockout);
@@ -213,6 +245,29 @@ export default function KnockoutPage() {
     }
     return grouped;
   }, [knockoutMatches]);
+
+  const edges = useMemo(() => buildEdges(byStage), [byStage]);
+
+  const computePaths = useCallback(() => {
+    const container = bracketRef.current;
+    if (!container || !edges.length) { setPaths([]); return; }
+    const result = [];
+    for (const [fromId, toId] of edges) {
+      const fromEl = container.querySelector(`#ko-node-${CSS.escape(fromId)}`);
+      const toEl = container.querySelector(`#ko-node-${CSS.escape(toId)}`);
+      const p = computeSvgPath(fromEl, toEl, container);
+      if (p) result.push(p);
+    }
+    setPaths(result);
+  }, [edges]);
+
+  // Recompute paths after layout
+  useLayoutEffect(() => {
+    const t = setTimeout(computePaths, 60);
+    return () => clearTimeout(t);
+  }, [computePaths, knockoutMatches]);
+
+  // readyRef gates saves — only allow after restore is done
 
   function handleTap(match) {
     const betMatch = {
@@ -234,17 +289,6 @@ export default function KnockoutPage() {
   }
 
   const thirdPlace = byStage['3rd'] || [];
-  const saved = useMemo(() => loadViewState(), []);
-  const readyRef = useRef(false);
-  const wrapperRef = useRef(null);
-
-  useEffect(() => {
-    if (saved && wrapperRef.current) {
-      wrapperRef.current.setTransform(saved.positionX, saved.positionY, saved.scale, 0);
-    }
-    const t = setTimeout(() => { readyRef.current = true; }, 500);
-    return () => clearTimeout(t);
-  }, []);
 
   return (
     <div>
@@ -254,47 +298,56 @@ export default function KnockoutPage() {
       <div className="ko-canvas">
         <TransformWrapper
           ref={wrapperRef}
-          initialScale={saved?.scale || 0.65}
-          initialPositionX={saved?.positionX || 0}
-          initialPositionY={saved?.positionY || 0}
+          initialScale={0.65}
+          initialPositionX={0}
+          initialPositionY={0}
           minScale={0.3}
           maxScale={2.5}
           limitToBounds={false}
           doubleClick={{ disabled: true }}
-          onTransformed={(_, state) => { if (readyRef.current) saveViewState({ scale: state.scale, positionX: state.positionX, positionY: state.positionY }); }}
+          onInit={(ref) => {
+            const saved = loadViewState();
+            if (saved && ref) {
+              ref.setTransform(saved.positionX, saved.positionY, saved.scale, 0);
+            }
+            // Delay enabling saves to prevent onTransform from overwriting with init values
+            setTimeout(() => { readyRef.current = true; }, 300);
+          }}
+          onTransform={(_, state) => { if (readyRef.current) saveViewState(state); }}
         >
           <ZoomControls />
           <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }} contentStyle={{ padding: 16 }}>
-            <div className="ko-bracket">
-              {STAGE_ORDER.map((stage, idx) => {
+            <div className="ko-bracket" ref={bracketRef} style={{ position: 'relative' }}>
+              {/* SVG overlay for connector lines */}
+              <svg className="ko-bracket__svg">
+                {paths.map((d, i) => (
+                  <path key={i} d={d} fill="none" stroke="var(--line-strong, rgba(255,255,255,0.15))" strokeWidth="1.5" />
+                ))}
+              </svg>
+
+              {STAGE_ORDER.map((stage) => {
                 const stageMatches = byStage[stage] || [];
                 if (!stageMatches.length) return null;
                 const isGold = stage === 'Final';
-                const nextStage = STAGE_ORDER[idx + 1];
-                const nextCount = byStage[nextStage]?.length || 0;
-                const showConnectors = nextCount > 0 && stageMatches.length === nextCount * 2;
                 return (
-                  <div key={stage} className="ko-bracket__stage-group">
-                    <div className="ko-bracket__round">
-                      <div className={'ko-bracket__title' + (isGold ? ' gold' : '')}>
-                        {STAGE_LABELS[stage]}
-                      </div>
-                      <div className="ko-bracket__matches">
-                        {stageMatches.map(m => {
-                          const myBets2 = bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending');
-                          return (
-                            <KnockoutNode
-                              key={m.id}
-                              match={m}
-                              onTap={handleTap}
-                              myBets={myBets2}
-                              poolData={poolMap[m.id]}
-                            />
-                          );
-                        })}
-                      </div>
+                  <div key={stage} className="ko-bracket__round">
+                    <div className={'ko-bracket__title' + (isGold ? ' gold' : '')}>
+                      {STAGE_LABELS[stage]}
                     </div>
-                    {showConnectors && <BracketConnectors count={stageMatches.length} />}
+                    <div className="ko-bracket__matches">
+                      {stageMatches.map(m => {
+                        const myBets2 = bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending');
+                        return (
+                          <KnockoutNode
+                            key={m.id}
+                            match={m}
+                            onTap={handleTap}
+                            myBets={myBets2}
+                            poolData={poolMap[m.id]}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}

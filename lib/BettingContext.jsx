@@ -103,7 +103,6 @@ export function BettingProvider({ children }) {
   const [h2hOpen, setH2hOpen] = useState(false);
   const [thirdPlaceQualOpen, setThirdPlaceQualOpen] = useState(false);
   const [poolMap, setPoolMap] = useState({});
-  const [isDesktop, setIsDesktop] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
 
   const balance = computeBalance(bets);
@@ -199,12 +198,6 @@ export function BettingProvider({ children }) {
 
   useEffect(() => { refreshPools(); }, [refreshPools]);
 
-  useEffect(() => {
-    const check = () => setIsDesktop(window.innerWidth >= 1024);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
 
   const matches = useMemo(() => {
     const groupMatches = MATCHES.map(m => {
@@ -308,7 +301,7 @@ export function BettingProvider({ children }) {
     totalWon, totalLost, totalOpen,
     matches, scheduleMap, poolMap, allUsers,
     cupWinnerDeadlineTs, myCupWinnerBet,
-    betSheet, toast, isDesktop,
+    betSheet, toast,
     // actions
     openBet, closeBet, cancelBet, confirmBet,
     handleLogout, handleOpenSpecialBet,
@@ -327,7 +320,7 @@ export function BettingProvider({ children }) {
     totalWon, totalLost, totalOpen,
     matches, scheduleMap, poolMap, allUsers,
     cupWinnerDeadlineTs, myCupWinnerBet,
-    betSheet, toast, isDesktop,
+    betSheet, toast,
     openBet, closeBet, cancelBet, confirmBet,
     handleLogout, handleOpenSpecialBet,
     refreshData, refreshPools, refreshCupWinnerBet,

@@ -8,7 +8,6 @@ import CupWinnerBetModal from '@/components/CupWinnerBetModal';
 import ContinentBetModal from '@/components/ContinentBetModal';
 import H2HBetModal from '@/components/H2HBetModal';
 import ThirdPlaceQualifierBetModal from '@/components/ThirdPlaceQualifierBetModal';
-import DesktopApp from '@/components/desktop/DesktopApp';
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -37,7 +36,7 @@ class ErrorBoundary extends Component {
 function TabsShell({ children }) {
   const {
     user, loading, balance, realisedBalance, pendingStake, pendingCount, bestCaseWin, betsLoaded,
-    betSheet, toast, isDesktop,
+    betSheet, toast,
     openBet, closeBet, confirmBet, cancelBet, handleLogout, handleOpenSpecialBet,
     setToast, matches, bets, poolMap, allUsers,
     myCupWinnerBet, cupWinnerDeadlineTs,
@@ -51,39 +50,6 @@ function TabsShell({ children }) {
   const theme = 'midnight';
 
   if (loading || !user) return null;
-
-  if (isDesktop) {
-    return (
-      <div data-theme={theme}>
-        <DesktopApp
-          balance={balance} openBet={openBet}
-          matches={matches} user={user}
-          onLogout={handleLogout}
-          bets={bets} onCancelBet={cancelBet}
-          poolMap={poolMap} allUsers={allUsers}
-          myCupWinnerBet={myCupWinnerBet}
-          onOpenCupWinner={() => setCupWinnerOpen(true)}
-          cupWinnerDeadlineTs={cupWinnerDeadlineTs}
-          onOpenSpecialBet={handleOpenSpecialBet}
-          onToast={setToast}
-        />
-        {toast && <Toast message={toast} onDone={() => setToast(null)} />}
-        {betSheet && (
-          <PlaceBetSheet
-            match={betSheet.match}
-            pick={betSheet.pick}
-            poolInfo={poolMap[betSheet.match.id] || null}
-            existingBets={bets.filter(b => (b.match_id || b.matchId) === betSheet.match.id && b.status === 'pending')}
-            onClose={closeBet}
-            onConfirm={confirmBet}
-          />
-        )}
-        <CupWinnerBetModal open={cupWinnerOpen} onClose={() => setCupWinnerOpen(false)} user={user} myCupWinnerBet={myCupWinnerBet} onPlaced={() => { refreshCupWinnerBet(); refreshData(); }} deadlineTs={cupWinnerDeadlineTs} />
-        <ContinentBetModal open={continentOpen} onClose={() => setContinentOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
-        <H2HBetModal open={h2hOpen} onClose={() => setH2hOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
-      </div>
-    );
-  }
 
   return (
     <div className="stage">

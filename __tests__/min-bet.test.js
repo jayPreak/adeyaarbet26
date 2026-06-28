@@ -9,14 +9,14 @@ describe('getMinBet', () => {
     expect(getMinBet('F6')).toBe(50);
   });
 
-  test('R32 matches return 200', () => {
-    expect(getMinBet('R32-1')).toBe(200);
-    expect(getMinBet('R32-16')).toBe(200);
+  test('R32 matches return 50', () => {
+    expect(getMinBet('R32-1')).toBe(50);
+    expect(getMinBet('R32-16')).toBe(50);
   });
 
-  test('R16 matches return 200', () => {
-    expect(getMinBet('R16-1')).toBe(200);
-    expect(getMinBet('R16-8')).toBe(200);
+  test('R16 matches return 100', () => {
+    expect(getMinBet('R16-1')).toBe(100);
+    expect(getMinBet('R16-8')).toBe(100);
   });
 
   test('QF matches return 200', () => {
@@ -24,13 +24,17 @@ describe('getMinBet', () => {
     expect(getMinBet('QF-4')).toBe(200);
   });
 
-  test('SF matches return 200', () => {
-    expect(getMinBet('SF-1')).toBe(200);
-    expect(getMinBet('SF-2')).toBe(200);
+  test('SF matches return 300', () => {
+    expect(getMinBet('SF-1')).toBe(300);
+    expect(getMinBet('SF-2')).toBe(300);
   });
 
-  test('Final (FIN-1) returns 200', () => {
-    expect(getMinBet('FIN-1')).toBe(200);
+  test('Final (FIN-1) returns 500', () => {
+    expect(getMinBet('FIN-1')).toBe(500);
+  });
+
+  test('3rd place (3RD-1) returns 500', () => {
+    expect(getMinBet('3RD-1')).toBe(500);
   });
 
   test('null/undefined returns 50', () => {

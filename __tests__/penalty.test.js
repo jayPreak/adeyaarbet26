@@ -245,11 +245,11 @@ describe('getMinBet — group stage matches', () => {
     expect(getMinBet('L6')).toBe(50);
   });
 
-  test('knockout matches have 200 minimum', () => {
-    expect(getMinBet('R32-1')).toBe(200);
-    expect(getMinBet('R16-4')).toBe(200);
+  test('knockout matches have stage-based minimums', () => {
+    expect(getMinBet('R32-1')).toBe(50);
+    expect(getMinBet('R16-4')).toBe(100);
     expect(getMinBet('QF-2')).toBe(200);
-    expect(getMinBet('SF-1')).toBe(200);
-    expect(getMinBet('FIN-1')).toBe(200);
+    expect(getMinBet('SF-1')).toBe(300);
+    expect(getMinBet('FIN-1')).toBe(500);
   });
 });
