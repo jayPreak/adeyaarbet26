@@ -62,9 +62,28 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
   const isFinished = match.status === 'finished';
   const isLive = match.status === 'live';
   const hasBet = myBets.length > 0;
+  const myBet = myBets[0];
+  const betWon = myBets.some(b => b.status === 'won');
+  const betLost = myBets.some(b => b.status === 'lost');
+
+  const homePool = poolData?.bySide?.home || 0;
+  const awayPool = poolData?.bySide?.away || 0;
+  const totalPool = poolData?.total || 0;
+  const homePct = totalPool > 0 ? Math.round((homePool / totalPool) * 100) : 0;
+  const awayPct = totalPool > 0 ? 100 - homePct : 0;
+
+  const winner = isFinished && match.score
+    ? (match.score[0] > match.score[1] ? 'home' : match.score[1] > match.score[0] ? 'away' : null)
+    : null;
+
+  const borderColor = betWon ? 'var(--win)' : betLost ? 'var(--loss)' : isLive ? 'var(--live)' : hasBet ? 'var(--gold)' : 'var(--line)';
 
   return (
-    <button className="ko-node" onClick={(e) => { e.stopPropagation(); onTap(match); }}>
+    <button
+      className="ko-node"
+      onClick={(e) => { e.stopPropagation(); onTap(match); }}
+      style={{ borderColor }}
+    >
       {isLive && (
         <div className="ko-node__live">
           <span className="ko-node__live-dot" />
@@ -72,27 +91,48 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
         </div>
       )}
 
-      <div className="ko-node__team">
+      <div className="ko-node__team" style={isFinished && winner === 'home' ? { background: 'rgba(0,255,133,0.06)', borderRadius: 4, margin: '-2px -4px', padding: '2px 4px' } : undefined}>
         <div className="ko-node__team-info">
           <span className="ko-node__flag">{home ? home.flag : '🏳️'}</span>
-          <span className="ko-node__name">{home ? home.name : formatPlaceholder(match.placeholderA)}</span>
+          <span className="ko-node__name" style={isFinished && winner === 'home' ? { color: 'var(--win)' } : undefined}>
+            {home ? home.name : formatPlaceholder(match.placeholderA)}
+          </span>
         </div>
         {(isFinished || isLive) && match.score && (
-          <span className={'ko-node__score' + (isLive ? ' live' : '')}>{match.score[0]}</span>
+          <span className={'ko-node__score' + (isLive ? ' live' : '')} style={isFinished && winner === 'home' ? { color: 'var(--win)' } : undefined}>
+            {match.score[0]}
+          </span>
         )}
       </div>
 
       <div className="ko-node__divider" />
 
-      <div className="ko-node__team">
+      <div className="ko-node__team" style={isFinished && winner === 'away' ? { background: 'rgba(0,255,133,0.06)', borderRadius: 4, margin: '-2px -4px', padding: '2px 4px' } : undefined}>
         <div className="ko-node__team-info">
           <span className="ko-node__flag">{away ? away.flag : '🏳️'}</span>
-          <span className="ko-node__name">{away ? away.name : formatPlaceholder(match.placeholderB)}</span>
+          <span className="ko-node__name" style={isFinished && winner === 'away' ? { color: 'var(--win)' } : undefined}>
+            {away ? away.name : formatPlaceholder(match.placeholderB)}
+          </span>
         </div>
         {(isFinished || isLive) && match.score && (
-          <span className={'ko-node__score' + (isLive ? ' live' : '')}>{match.score[1]}</span>
+          <span className={'ko-node__score' + (isLive ? ' live' : '')} style={isFinished && winner === 'away' ? { color: 'var(--win)' } : undefined}>
+            {match.score[1]}
+          </span>
         )}
       </div>
+
+      {/* Pool percentage bar */}
+      {totalPool > 0 && (
+        <div className="ko-node__pool-bar">
+          <div className="ko-node__pool-home" style={{ width: `${homePct}%` }} />
+          <div className="ko-node__pool-away" style={{ width: `${awayPct}%` }} />
+          <div className="ko-node__pool-labels">
+            <span>{homePct}%</span>
+            <span>{fmtMoney(totalPool)}</span>
+            <span>{awayPct}%</span>
+          </div>
+        </div>
+      )}
 
       <div className="ko-node__footer">
         <div className="ko-node__time">
@@ -105,10 +145,10 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
           {isFinished && <span>Full time</span>}
         </div>
         <div className="ko-node__meta">
-          {hasBet && <span className="ko-node__badge">BET</span>}
-          {poolData && poolData.total > 0 && (
-            <span className="ko-node__pool">{fmtMoney(poolData.total)}</span>
-          )}
+          {betWon && <span className="ko-node__badge won">WON</span>}
+          {betLost && <span className="ko-node__badge lost">LOST</span>}
+          {hasBet && !betWon && !betLost && <span className="ko-node__badge">{fmtMoney(myBet.amount)}</span>}
+          {!hasBet && totalPool === 0 && <span style={{ fontSize: 9, color: 'var(--ink-3)' }}>Tap to bet ›</span>}
         </div>
       </div>
     </button>

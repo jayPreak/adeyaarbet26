@@ -18,25 +18,32 @@ export async function GET(request) {
     .from('bets')
     .select('id, user_id, pick, amount, status, payout, profiles(display_name, avatar_url)')
     .eq('match_id', MATCH_ID)
-    .eq('kind', KIND)
-    .neq('status', 'cancelled');
+    .eq('kind', KIND);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const pending = (bets || []).filter(b => b.status === 'pending');
-  const total = pending.reduce((s, b) => s + b.amount, 0);
-  const bettorCount = new Set(pending.map(b => b.user_id)).size;
+  const activeBets = (bets || []).filter(b => b.status === 'pending' || b.status === 'cancelled');
+  const uniqueByUser = {};
+  for (const b of activeBets) {
+    if (!uniqueByUser[b.user_id] || b.status === 'pending') {
+      uniqueByUser[b.user_id] = b;
+    }
+  }
+  const displayBets = Object.values(uniqueByUser);
+  const total = displayBets.reduce((s, b) => s + b.amount, 0);
+  const bettorCount = displayBets.length;
 
-  const picks = pending.map(b => ({
+  const picks = displayBets.map(b => ({
     userId: b.user_id,
     displayName: b.profiles?.display_name || '?',
     avatarUrl: b.profiles?.avatar_url || null,
     pick: b.pick,
     amount: b.amount,
+    status: b.status,
   }));
 
   const myBet = userId
-    ? (pending.find(b => b.user_id === userId) || null)
+    ? (displayBets.find(b => b.user_id === userId) || null)
     : null;
 
   // Hide individual picks until the deadline has passed to prevent copying

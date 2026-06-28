@@ -388,7 +388,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
         <div className="match-card__odds">
           {[
             { key: 'home', label: home.code },
-            { key: 'draw', label: 'X' },
+            ...(!match.knockout ? [{ key: 'draw', label: 'X' }] : []),
             { key: 'away', label: away.code },
           ].map(o => {
             const odds = poolData?.total > 0 ? sideOdds(poolData, o.key) : null;

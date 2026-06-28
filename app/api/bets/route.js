@@ -33,6 +33,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields: userId, matchId, pick, amount' }, { status: 400 });
     }
 
+    const isKnockout = /^(R32|R16|QF|SF|FIN|3RD)-/.test(matchId);
+    if (isKnockout && pick === 'draw') {
+      return NextResponse.json({ error: 'Draw is not possible in knockout matches' }, { status: 400 });
+    }
+
     const { error: authError } = await verifyUser(userId);
     if (authError) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

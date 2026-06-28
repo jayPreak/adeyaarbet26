@@ -617,7 +617,16 @@ body {
 .ko-node__time { display: flex; flex-direction: column; gap: 1px; font-size: 9px; color: var(--ink-3); }
 .ko-node__meta { display: flex; align-items: center; gap: 4px; }
 .ko-node__badge { font-size: 8px; font-weight: 700; color: var(--gold); background: var(--gold-soft); padding: 2px 5px; border-radius: 4px; }
+.ko-node__badge.won { color: var(--win); background: rgba(0,255,133,0.12); }
+.ko-node__badge.lost { color: var(--loss); background: rgba(255,61,127,0.12); }
 .ko-node__pool { font-size: 8px; color: var(--ink-3); }
+
+.ko-node__pool-bar { display: flex; height: 4px; border-radius: 2px; overflow: hidden; margin-top: 6px; gap: 1px; }
+.ko-node__pool-home { background: var(--win); border-radius: 2px 0 0 2px; min-width: 2px; }
+.ko-node__pool-away { background: var(--loss); border-radius: 0 2px 2px 0; min-width: 2px; }
+.ko-node__pool-labels { display: flex; justify-content: space-between; font-size: 8px; color: var(--ink-3); margin-top: 2px; }
+.ko-node__pool-labels span:first-child { color: var(--win); }
+.ko-node__pool-labels span:last-child { color: var(--loss); }
 
 /* Connector lines between rounds */
 .ko-connectors {
