@@ -99,7 +99,7 @@ function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs,
               <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>{fmtMoney(myBet.amount)}</span>
             </div>
           )}
-          {!myBet && (
+          {!myBet && countdown !== 'closed' && (
             <div style={{ marginTop: 2, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,180,50,0.08)', border: '1px dashed rgba(255,180,50,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ffb432', animation: 'pulse-dot 1.5s ease-in-out infinite' }} />
               <span style={{ fontSize: 11, fontWeight: 700, color: '#ffb432' }}>You're not in yet!</span>
