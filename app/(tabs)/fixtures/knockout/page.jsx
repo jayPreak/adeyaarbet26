@@ -235,10 +235,14 @@ export default function KnockoutPage() {
 
   const thirdPlace = byStage['3rd'] || [];
   const saved = useMemo(() => loadViewState(), []);
-  const mountedRef = useRef(false);
+  const readyRef = useRef(false);
+  const wrapperRef = useRef(null);
 
   useEffect(() => {
-    const t = setTimeout(() => { mountedRef.current = true; }, 300);
+    if (saved && wrapperRef.current) {
+      wrapperRef.current.setTransform(saved.positionX, saved.positionY, saved.scale, 0);
+    }
+    const t = setTimeout(() => { readyRef.current = true; }, 500);
     return () => clearTimeout(t);
   }, []);
 
@@ -249,6 +253,7 @@ export default function KnockoutPage() {
       </div>
       <div className="ko-canvas">
         <TransformWrapper
+          ref={wrapperRef}
           initialScale={saved?.scale || 0.65}
           initialPositionX={saved?.positionX || 0}
           initialPositionY={saved?.positionY || 0}
@@ -256,7 +261,7 @@ export default function KnockoutPage() {
           maxScale={2.5}
           limitToBounds={false}
           doubleClick={{ disabled: true }}
-          onTransformed={(_, state) => { if (mountedRef.current) saveViewState({ scale: state.scale, positionX: state.positionX, positionY: state.positionY }); }}
+          onTransformed={(_, state) => { if (readyRef.current) saveViewState({ scale: state.scale, positionX: state.positionX, positionY: state.positionY }); }}
         >
           <ZoomControls />
           <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }} contentStyle={{ padding: 16 }}>
