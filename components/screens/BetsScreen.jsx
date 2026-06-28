@@ -89,7 +89,7 @@ export function NetWorthGraph({ bets, compact }) {
     return { points: pts, minY: Math.min(...ys), maxY: Math.max(...ys) };
   }, [bets, range]);
 
-  const SVG_W = 600, H = 140, PX = 16, PY = 20, Y_AXIS_W = 38;
+  const SVG_W = 600, H = 160, PX = 16, PY = 28, Y_AXIS_W = 38;
 
   if (points.length < 2) {
     const zeroY = PY + (H - PY * 2) / 2;
@@ -254,27 +254,26 @@ export function NetWorthGraph({ bets, compact }) {
         </TransformComponent>
       </TransformWrapper>
 
-      <div style={{ textAlign: 'center', fontSize: 9, color: 'var(--ink-3)', marginTop: 4, opacity: 0.6 }}>Pinch to zoom · Tap node for details</div>
-
-      {/* Tooltip */}
-      {tooltip && tooltip.bet && (
+      {/* Tooltip — below chart, not overlaying nodes */}
+      {tooltip && tooltip.bet ? (
         <div style={{
-          position: 'absolute', top: 40, left: '50%', transform: 'translateX(-50%)',
-          padding: '8px 12px', borderRadius: 8,
-          background: '#1a1d24', border: '1px solid rgba(255,255,255,0.15)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)', whiteSpace: 'nowrap', zIndex: 10,
+          margin: '6px 14px 0', padding: '6px 10px', borderRadius: 6,
+          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>
             {tooltip.bet.matchLabel}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--ink-2)' }}>
+          </span>
+          <span style={{ fontSize: 11 }}>
             {tooltip.bet.status === 'won' ? (
-              <span style={{ color: 'var(--win)' }}>Won {fmtMoney(tooltip.bet.payout)} (+{tooltip.bet.roi}%)</span>
+              <span style={{ color: 'var(--win)' }}>+{fmtMoney(tooltip.bet.payout)} ({tooltip.bet.roi}%)</span>
             ) : (
-              <span style={{ color: 'var(--loss)' }}>Lost {fmtMoney(tooltip.bet.amount)} ({tooltip.bet.roi}%)</span>
+              <span style={{ color: 'var(--loss)' }}>−{fmtMoney(tooltip.bet.amount)}</span>
             )}
-          </div>
+          </span>
         </div>
+      ) : (
+        <div style={{ textAlign: 'center', fontSize: 9, color: 'var(--ink-3)', marginTop: 4, opacity: 0.6 }}>Pinch to zoom · Tap node for details</div>
       )}
     </div>
   );
