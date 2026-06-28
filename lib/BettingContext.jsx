@@ -108,9 +108,15 @@ export function BettingProvider({ children }) {
 
   const balance = computeBalance(bets);
   const realisedBalance = computeRealisedBalance(bets.filter(b => b.match_id !== '_topup'));
-  const pendingBets = bets.filter(b => b.match_id !== '_topup' && b.kind !== 'penalty' && b.status === 'pending');
+  const realBets = bets.filter(b => b.match_id !== '_topup' && b.kind !== 'penalty' && b.status !== 'cancelled');
+  const penaltyBets = bets.filter(b => b.kind === 'penalty' && b.status !== 'cancelled');
+  const pendingBets = realBets.filter(b => b.status === 'pending');
   const pendingStake = pendingBets.reduce((s, b) => s + b.amount, 0);
   const pendingCount = pendingBets.length;
+  const totalWon = realBets.filter(b => b.status === 'won').reduce((s, b) => s + ((b.payout || 0) - b.amount), 0);
+  const totalLost = realBets.filter(b => b.status === 'lost').reduce((s, b) => s + b.amount, 0)
+    + penaltyBets.filter(b => b.status === 'lost').reduce((s, b) => s + b.amount, 0);
+  const totalOpen = pendingStake;
   const bestCaseWin = pendingBets.reduce((s, b) => {
     const pool = poolMap[b.match_id];
     if (!pool || !pool.total) return s + b.amount;
@@ -297,7 +303,9 @@ export function BettingProvider({ children }) {
   const value = useMemo(() => ({
     user, loading, refreshUser,
     bets, betsLoaded, balance, realisedBalance,
+    realBets, penaltyBets,
     pendingBets, pendingStake, pendingCount, bestCaseWin,
+    totalWon, totalLost, totalOpen,
     matches, scheduleMap, poolMap, allUsers,
     cupWinnerDeadlineTs, myCupWinnerBet,
     betSheet, toast, isDesktop,
@@ -314,7 +322,9 @@ export function BettingProvider({ children }) {
   }), [
     user, loading, refreshUser,
     bets, betsLoaded, balance, realisedBalance,
+    realBets, penaltyBets,
     pendingBets, pendingStake, pendingCount, bestCaseWin,
+    totalWon, totalLost, totalOpen,
     matches, scheduleMap, poolMap, allUsers,
     cupWinnerDeadlineTs, myCupWinnerBet,
     betSheet, toast, isDesktop,

@@ -1,30 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
 import { useBetting } from '@/lib/BettingContext';
 import { fmtNet } from '@/lib/currency';
 import { NetWorthGraph, SettlementCard, PenaltiesCard, AchievementBadges } from '@/components/screens/BetsScreen';
 import { SettlementPlan } from '@/components/screens/LeaderboardScreen';
 
 export default function AccountOverviewPage() {
-  const { user, bets, bestCaseWin, scheduleMap } = useBetting();
-
-  const realBets = useMemo(() => bets.filter(b => b.match_id !== '_topup' && b.kind !== 'penalty' && b.status !== 'cancelled'), [bets]);
-  const penaltyBets = useMemo(() => bets.filter(b => b.kind === 'penalty' && b.status !== 'cancelled'), [bets]);
-
-  const totalOpen = useMemo(
-    () => realBets.filter(b => b.status === 'pending').reduce((s, b) => s + b.amount, 0),
-    [realBets]
-  );
-  const totalWon = useMemo(
-    () => realBets.filter(b => b.status === 'won').reduce((s, b) => s + ((b.payout || 0) - b.amount), 0),
-    [realBets]
-  );
-  const totalLost = useMemo(
-    () => realBets.filter(b => b.status === 'lost').reduce((s, b) => s + b.amount, 0),
-    [realBets]
-  );
-  const pendingCount = realBets.filter(b => b.status === 'pending').length;
+  const { user, bets, penaltyBets, totalWon, totalLost, totalOpen, pendingCount, bestCaseWin, scheduleMap } = useBetting();
 
   return (
     <>
