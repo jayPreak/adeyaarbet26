@@ -470,20 +470,21 @@ body {
 /* ── Bottom sheet ──────────────────────────────────────────── */
 .sheet-backdrop {
   position: fixed; inset: 0; z-index: 90;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   display: flex; align-items: flex-end; justify-content: center;
   animation: fadeIn 0.18s ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .sheet {
-  width: 100%; background: var(--surface, #111317);
+  width: 100%; background: rgba(17,19,23,0.88);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   color: var(--ink, #F2F3F5);
   border-radius: 28px 28px 0 0; padding: 14px 20px 0;
   max-height: 92dvh; overflow: hidden;
   display: flex; flex-direction: column;
   animation: slideUp 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
-  border-top: 1px solid var(--line);
+  border-top: 1px solid rgba(255,255,255,0.1);
 }
 .sheet ::-webkit-scrollbar { width: 4px; }
 .sheet ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
