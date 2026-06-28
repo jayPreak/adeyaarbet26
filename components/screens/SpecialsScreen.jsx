@@ -615,8 +615,9 @@ function ThirdPlaceDetail({ pool, picks, myBet, user, allUsers, onBack, onPlace 
   const total = pool?.total || 0;
   const bettorCount = pool?.bettorCount || 0;
   const closed = Date.now() >= new Date('2026-06-26T18:59:00Z').getTime();
+  const allRefunded = closed && picks.length > 0 && picks.every(p => p.status === 'cancelled');
 
-  const myPotentialWin = myBet && total > 0 ? total : 0;
+  const myPotentialWin = myBet && total > 0 && !allRefunded ? total : 0;
 
   const bettorIds = new Set(picks.map(p => p.userId));
   const notBet = allUsers.filter(u => !bettorIds.has(u.id));
@@ -632,7 +633,23 @@ function ThirdPlaceDetail({ pool, picks, myBet, user, allUsers, onBack, onPlace 
       </div>
 
       <div style={{ padding: '0 16px' }}>
+        {/* Refund banner */}
+        {allRefunded && (
+          <div style={{
+            marginBottom: 14, padding: '12px 14px', borderRadius: 10,
+            background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.25)',
+          }}>
+            <div style={{ fontSize: 13, color: 'var(--win)', fontWeight: 700, marginBottom: 2 }}>
+              Refunded — nobody got all 8 correct
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.4 }}>
+              All stakes have been returned. No one won or lost money on this bet.
+            </div>
+          </div>
+        )}
+
         {/* Rules banner */}
+        {!allRefunded && (
         <div style={{
           marginBottom: 14, padding: '12px 14px', borderRadius: 10,
           background: 'rgba(255,193,7,0.06)', border: '1px solid rgba(255,193,7,0.18)',
@@ -642,6 +659,7 @@ function ThirdPlaceDetail({ pool, picks, myBet, user, allUsers, onBack, onPlace 
             If you get any wrong, your stake is refunded (no loss). Winners split the entire pool.
           </div>
         </div>
+        )}
 
         {/* Pool summary */}
         <div style={{
@@ -649,17 +667,19 @@ function ThirdPlaceDetail({ pool, picks, myBet, user, allUsers, onBack, onPlace 
           borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
         }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>
+            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--font-mono)', color: allRefunded ? 'var(--ink-3)' : 'var(--gold)' }}>
               {fmtMoney(total)}
             </div>
-            <div style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', fontWeight: 600 }}>Total Pool</div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', fontWeight: 600 }}>
+              {allRefunded ? 'Refunded' : 'Total Pool'}
+            </div>
           </div>
           <div style={{ width: 1, background: 'rgba(255,255,255,0.08)' }} />
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--ink)' }}>{bettorCount}</div>
             <div style={{ fontSize: 10, color: 'var(--ink-3)', textTransform: 'uppercase', fontWeight: 600 }}>Players</div>
           </div>
-          {myBet && (
+          {myBet && !allRefunded && (
             <>
               <div style={{ width: 1, background: 'rgba(255,255,255,0.08)' }} />
               <div style={{ textAlign: 'center' }}>
@@ -678,9 +698,12 @@ function ThirdPlaceDetail({ pool, picks, myBet, user, allUsers, onBack, onPlace 
         {myBet && (
           <div style={{
             marginBottom: 16, padding: '14px 16px', borderRadius: 12,
-            background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.15)',
+            background: allRefunded ? 'rgba(255,255,255,0.04)' : 'rgba(74,222,128,0.08)',
+            border: `1px solid ${allRefunded ? 'rgba(255,255,255,0.08)' : 'rgba(74,222,128,0.15)'}`,
           }}>
-            <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600, marginBottom: 8 }}>YOUR PICKS · {fmtMoney(myBet.amount)} staked</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600, marginBottom: 8 }}>
+              YOUR PICKS · {fmtMoney(myBet.amount)} {allRefunded ? 'refunded' : 'staked'}
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {myBet.pick.split(',').map(code => {
                 const team = getTeam(code);
@@ -742,7 +765,11 @@ function ThirdPlaceDetail({ pool, picks, myBet, user, allUsers, onBack, onPlace 
                         {fmtMoney(p.amount)}
                       </span>
                     </div>
-                    {total > 0 && (
+                    {allRefunded ? (
+                      <span style={{ fontSize: 11, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>
+                        refunded
+                      </span>
+                    ) : total > 0 && (
                       <span style={{ fontSize: 11, color: 'var(--win)', fontFamily: 'var(--font-mono)' }}>
                         wins {fmtMoney(total)}
                       </span>

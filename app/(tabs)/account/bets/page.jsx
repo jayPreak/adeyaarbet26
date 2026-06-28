@@ -5,23 +5,34 @@ import { useBetting } from '@/lib/BettingContext';
 import { fmtMoney } from '@/lib/currency';
 import { BetCard } from '@/components';
 
+const KO_RE = /^(R32|R16|QF|SF|FIN|3RD)-/;
+
 export default function AccountBetsPage() {
   const { user, bets, cancelBet, scheduleMap, cupWinnerDeadlineTs, poolMap, allUsers } = useBetting();
   const [betFilter, setBetFilter] = useState('open');
+  const [subFilter, setSubFilter] = useState('all');
 
   const realBets = useMemo(() => bets.filter(b => b.match_id !== '_topup' && b.kind !== 'penalty' && b.status !== 'cancelled'), [bets]);
 
   const filtered = useMemo(() => {
+    let list;
     if (betFilter === 'open') {
-      return realBets.filter(b => b.status === 'pending').sort((a, b) => {
+      list = realBets.filter(b => b.status === 'pending').sort((a, b) => {
         const tsA = new Date(scheduleMap[a.match_id || a.matchId] || '2099-01-01').getTime();
         const tsB = new Date(scheduleMap[b.match_id || b.matchId] || '2099-01-01').getTime();
         return tsA - tsB;
       });
+    } else {
+      list = realBets.filter(b => b.status === 'won' || b.status === 'lost')
+        .sort((a, b) => new Date(b.resolved_at || b.created_at) - new Date(a.resolved_at || a.created_at));
     }
-    return realBets.filter(b => b.status === 'won' || b.status === 'lost')
-      .sort((a, b) => new Date(b.resolved_at || b.created_at) - new Date(a.resolved_at || a.created_at));
-  }, [realBets, betFilter, scheduleMap]);
+    if (betFilter === 'completed' && subFilter !== 'all') {
+      if (subFilter === 'group') list = list.filter(b => b.kind === 'match' && !KO_RE.test(b.match_id));
+      else if (subFilter === 'knockout') list = list.filter(b => b.kind === 'match' && KO_RE.test(b.match_id));
+      else if (subFilter === 'special') list = list.filter(b => b.kind !== 'match');
+    }
+    return list;
+  }, [realBets, betFilter, subFilter, scheduleMap]);
 
   const totalOpen = useMemo(
     () => realBets.filter(b => b.status === 'pending').reduce((s, b) => s + b.amount, 0),
@@ -64,7 +75,7 @@ export default function AccountBetsPage() {
         </div>
       </div>
 
-      <div className="chip-row" style={{ marginBottom: 12, marginTop: 12 }}>
+      <div className="chip-row" style={{ marginBottom: betFilter === 'completed' ? 6 : 12, marginTop: 12 }}>
         {[
           { id: 'open', label: `Open · ${realBets.filter(b => b.status === 'pending').length}` },
           { id: 'completed', label: `Completed · ${realBets.filter(b => b.status === 'won' || b.status === 'lost').length}` },
@@ -72,12 +83,32 @@ export default function AccountBetsPage() {
           <button
             key={t.id}
             className={'chip ' + (betFilter === t.id ? 'active' : '')}
-            onClick={() => setBetFilter(t.id)}
+            onClick={() => { setBetFilter(t.id); setSubFilter('all'); }}
           >
             {t.label}
           </button>
         ))}
       </div>
+
+      {betFilter === 'completed' && (
+        <div className="chip-row" style={{ marginBottom: 12 }}>
+          {[
+            { id: 'all', label: 'All' },
+            { id: 'group', label: 'Group' },
+            { id: 'knockout', label: 'Knockout' },
+            { id: 'special', label: 'Specials' },
+          ].map(t => (
+            <button
+              key={t.id}
+              className={'chip ' + (subFilter === t.id ? 'active' : '')}
+              style={{ fontSize: 11, padding: '4px 10px' }}
+              onClick={() => setSubFilter(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {filtered.length === 0 && (
