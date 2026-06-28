@@ -46,7 +46,8 @@ export function NetWorthGraph({ bets, compact }) {
     const filtered = allPts.slice(startIdx);
     if (filtered.length === 0) return { points: [], minY: 0, maxY: 0 };
 
-    const pts = [{ x: 0, y: baseY, bet: null }];
+    const firstTs = filtered.length > 0 ? new Date(filtered[0].bet.resolved_at || filtered[0].bet.created_at).getTime() : 0;
+    const pts = [{ x: 0, y: baseY, bet: null, ts: firstTs }];
 
     filtered.forEach((entry, i) => {
       const b = entry.bet;
@@ -72,6 +73,7 @@ export function NetWorthGraph({ bets, compact }) {
       pts.push({
         x: i + 1,
         y: entry.running,
+        ts: new Date(b.resolved_at || b.created_at).getTime(),
         bet: {
           matchLabel,
           amount: b.amount,
@@ -88,7 +90,7 @@ export function NetWorthGraph({ bets, compact }) {
 
   const NODE_SPACING = 28;
   const MIN_W = 320;
-  const H = 120, PX = 16, PY = 20;
+  const H = 140, PX = 16, PY = 20;
   const W = Math.max(MIN_W, PX * 2 + (points.length - 1) * NODE_SPACING);
   const scrollRef = useRef(null);
 
@@ -115,11 +117,12 @@ export function NetWorthGraph({ bets, compact }) {
       </div>
     );
   }
-  const chartW = W - PX * 2, chartH = H - PY * 2;
+  const Y_AXIS_W = 38;
+  const chartW = W - Y_AXIS_W - PX, chartH = H - PY * 2;
   const yRange = maxY - minY || 1;
 
   const toSvg = (pt) => ({
-    sx: PX + (pt.x / (points.length - 1)) * chartW,
+    sx: Y_AXIS_W + (pt.x / (points.length - 1)) * chartW,
     sy: PY + (1 - (pt.y - minY) / yRange) * chartH,
   });
 
@@ -189,8 +192,19 @@ export function NetWorthGraph({ bets, compact }) {
           style={{ width: W, height: H, display: 'block', cursor: 'pointer' }}
           onClick={handleTap}
         >
+          {/* Y-axis labels */}
+          <text x={Y_AXIS_W - 4} y={PY + 3} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.4)" fontFamily="var(--font-mono)">
+            {maxY >= 0 ? '+' : ''}{Math.round(maxY)}
+          </text>
+          <text x={Y_AXIS_W - 4} y={PY + chartH + 3} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.4)" fontFamily="var(--font-mono)">
+            {minY >= 0 ? '+' : ''}{Math.round(minY)}
+          </text>
+          {minY < 0 && maxY > 0 && (
+            <text x={Y_AXIS_W - 4} y={zeroY + 3} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.3)" fontFamily="var(--font-mono)">0</text>
+          )}
+
           {/* Zero line */}
-          <line x1={PX} y1={zeroY} x2={W - PX} y2={zeroY} stroke="rgba(255,255,255,0.1)" strokeDasharray="3,3" />
+          <line x1={Y_AXIS_W} y1={zeroY} x2={W - PX} y2={zeroY} stroke="rgba(255,255,255,0.1)" strokeDasharray="3,3" />
 
           {/* Path */}
           <path d={pathD} fill="none" stroke={isUp ? '#4ade80' : '#f87171'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -209,6 +223,30 @@ export function NetWorthGraph({ bets, compact }) {
               />
             );
           })}
+
+          {/* X-axis date labels */}
+          {(() => {
+            const labelCount = Math.min(5, points.length);
+            const step = Math.max(1, Math.floor((points.length - 1) / (labelCount - 1)));
+            const indices = [];
+            for (let i = 0; i < points.length; i += step) indices.push(i);
+            if (indices[indices.length - 1] !== points.length - 1) indices.push(points.length - 1);
+            const fmtDate = (ts) => {
+              if (!ts) return '';
+              const d = new Date(ts);
+              return `${d.getDate()}/${d.getMonth() + 1}`;
+            };
+            return indices.map(idx => {
+              const pt = points[idx];
+              if (!pt.ts) return null;
+              const { sx } = toSvg(pt);
+              return (
+                <text key={idx} x={sx} y={H - 4} textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.35)" fontFamily="var(--font-mono)">
+                  {fmtDate(pt.ts)}
+                </text>
+              );
+            });
+          })()}
         </svg>
       </div>
       {W > MIN_W && (
