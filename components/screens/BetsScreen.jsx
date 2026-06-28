@@ -7,26 +7,47 @@ import { getSpecial } from '@/lib/specials';
 import { BetCard } from '@/components';
 import { SettlementPlan } from '@/components/screens/LeaderboardScreen';
 
-export function NetWorthGraph({ bets }) {
+const RANGE_OPTIONS = [
+  { id: '1w', label: '1W', days: 7 },
+  { id: '2w', label: '2W', days: 14 },
+  { id: 'all', label: 'All', days: null },
+];
+
+export function NetWorthGraph({ bets, compact }) {
   const [tooltip, setTooltip] = useState(null);
+  const [range, setRange] = useState('all');
   const svgRef = useRef(null);
 
   const { points, minY, maxY } = useMemo(() => {
-    const resolved = bets
+    const rangeDays = RANGE_OPTIONS.find(r => r.id === range)?.days;
+    const cutoff = rangeDays ? Date.now() - rangeDays * 86400000 : 0;
+
+    const allResolved = bets
       .filter(b => b.match_id !== '_topup' && (b.status === 'won' || b.status === 'lost'))
       .sort((a, b) => new Date(a.resolved_at || a.created_at) - new Date(b.resolved_at || b.created_at));
 
-    if (resolved.length === 0) return { points: [], minY: 0, maxY: 0 };
+    if (allResolved.length === 0) return { points: [], minY: 0, maxY: 0 };
 
     let running = 0;
-    const pts = [{ x: 0, y: 0, bet: null }];
+    let startIdx = 0;
 
-    resolved.forEach((b, i) => {
-      if (b.status === 'won') {
-        running += (b.payout || 0) - b.amount;
-      } else {
-        running -= b.amount;
-      }
+    // Compute running total; find where filtered range begins
+    const allPts = allResolved.map((b, i) => {
+      if (b.status === 'won') running += (b.payout || 0) - b.amount;
+      else running -= b.amount;
+      const ts = new Date(b.resolved_at || b.created_at).getTime();
+      if (rangeDays && ts < cutoff) startIdx = i + 1;
+      return { running, bet: b };
+    });
+
+    const baseY = startIdx > 0 ? allPts[startIdx - 1].running : 0;
+    const filtered = allPts.slice(startIdx);
+    if (filtered.length === 0) return { points: [], minY: 0, maxY: 0 };
+
+    const pts = [{ x: 0, y: baseY, bet: null }];
+
+    filtered.forEach((entry, i) => {
+      const b = entry.bet;
       const roi = b.status === 'won'
         ? Math.round(((b.payout - b.amount) / b.amount) * 100)
         : -100;
@@ -48,7 +69,7 @@ export function NetWorthGraph({ bets }) {
 
       pts.push({
         x: i + 1,
-        y: running,
+        y: entry.running,
         bet: {
           matchLabel,
           amount: b.amount,
@@ -83,11 +104,11 @@ export function NetWorthGraph({ bets }) {
     );
   }
   const chartW = W - PX * 2, chartH = H - PY * 2;
-  const range = maxY - minY || 1;
+  const yRange = maxY - minY || 1;
 
   const toSvg = (pt) => ({
     sx: PX + (pt.x / (points.length - 1)) * chartW,
-    sy: PY + (1 - (pt.y - minY) / range) * chartH,
+    sy: PY + (1 - (pt.y - minY) / yRange) * chartH,
   });
 
   const pathD = points.map((pt, i) => {
@@ -95,7 +116,7 @@ export function NetWorthGraph({ bets }) {
     return `${i === 0 ? 'M' : 'L'}${sx},${sy}`;
   }).join(' ');
 
-  const zeroY = PY + (1 - (0 - minY) / range) * chartH;
+  const zeroY = PY + (1 - (0 - minY) / yRange) * chartH;
 
   const handleTap = (e) => {
     if (!svgRef.current) return;
@@ -125,7 +146,27 @@ export function NetWorthGraph({ bets }) {
   return (
     <div style={{ margin: '0 16px 12px', padding: '12px 0', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', position: 'relative' }}>
       <div style={{ padding: '0 14px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Net Worth</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Net Worth</div>
+          {!compact && (
+            <div style={{ display: 'flex', gap: 2 }}>
+              {RANGE_OPTIONS.map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => { setRange(r.id); setTooltip(null); }}
+                  style={{
+                    padding: '2px 6px', borderRadius: 4, fontSize: 9, fontWeight: 600,
+                    border: 'none', cursor: 'pointer',
+                    background: range === r.id ? 'rgba(255,255,255,0.12)' : 'transparent',
+                    color: range === r.id ? 'var(--ink)' : 'var(--ink-3)',
+                  }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: isUp ? 'var(--win)' : 'var(--loss)' }}>
           {lastPt.y >= 0 ? '+' : ''}{fmtMoney(lastPt.y)}
         </div>

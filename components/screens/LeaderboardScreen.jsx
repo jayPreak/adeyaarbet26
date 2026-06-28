@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
+import { NetWorthGraph } from '@/components/screens/BetsScreen';
 
 const TABS = [
   { id: 'total', label: 'Rankings' },
@@ -109,14 +110,18 @@ function SubTabs({ active, onChange }) {
   );
 }
 
-function LeaderRow({ rank, user, entry, isMe, valueMain, valueSub, valueColor }) {
+function LeaderRow({ rank, user, entry, isMe, valueMain, valueSub, valueColor, onTap }) {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 14px', marginBottom: 6, borderRadius: 12,
-      background: isMe ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
-      border: isMe ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(255,255,255,0.04)',
-    }}>
+    <div
+      onClick={() => onTap?.(entry)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '12px 14px', marginBottom: 6, borderRadius: 12,
+        background: isMe ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+        border: isMe ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(255,255,255,0.04)',
+        cursor: 'pointer',
+      }}
+    >
       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: rank <= 3 ? 'var(--gold)' : 'var(--ink-3)', width: 18, fontWeight: rank <= 3 ? 700 : 400 }}>
         {rank <= 3 ? MEDALS[rank - 1] : rank}
       </span>
@@ -132,6 +137,90 @@ function LeaderRow({ rank, user, entry, isMe, valueMain, valueSub, valueColor })
       </div>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: valueColor || 'var(--ink)' }}>
         {valueMain}
+      </div>
+    </div>
+  );
+}
+
+export function UserProfileModal({ entry, onClose }) {
+  const [bets, setBets] = useState(null);
+
+  useEffect(() => {
+    if (!entry) return;
+    fetch(`/api/bets?user_id=${entry.id}`)
+      .then(r => r.json())
+      .then(data => setBets(Array.isArray(data) ? data : []))
+      .catch(() => setBets([]));
+  }, [entry]);
+
+  if (!entry) return null;
+
+  const resolved = (bets || []).filter(b => b.match_id !== '_topup' && b.kind !== 'penalty' && (b.status === 'won' || b.status === 'lost'));
+  const won = resolved.filter(b => b.status === 'won');
+  const lost = resolved.filter(b => b.status === 'lost');
+  const winRate = resolved.length ? Math.round(100 * won.length / resolved.length) : 0;
+  const totalWagered = resolved.reduce((s, b) => s + b.amount, 0);
+  const biggestWin = won.length ? Math.max(...won.map(b => (b.payout || 0) - b.amount)) : 0;
+  const pendingCount = (bets || []).filter(b => b.status === 'pending' && b.kind !== 'penalty' && b.match_id !== '_topup').length;
+
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()} style={{ maxHeight: '85vh', overflow: 'auto' }}>
+        <div className="sheet-handle" />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <div className="lb-avatar" style={{
+            width: 48, height: 48, fontSize: 20,
+            ...(entry.avatar_url ? { backgroundImage: `url(${entry.avatar_url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
+          }}>
+            {!entry.avatar_url && (entry.display_name || entry.username || '?')[0]}
+          </div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{entry.display_name || entry.username}</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>@{entry.username || entry.display_name?.toLowerCase().replace(/\s/g, '')}</div>
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+          <div style={{ textAlign: 'center', padding: '10px 0', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>{winRate}%</div>
+            <div style={{ fontSize: 9, color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase' }}>Win Rate</div>
+          </div>
+          <div style={{ textAlign: 'center', padding: '10px 0', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>{resolved.length}</div>
+            <div style={{ fontSize: 9, color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase' }}>Settled</div>
+          </div>
+          <div style={{ textAlign: 'center', padding: '10px 0', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>{biggestWin > 0 ? fmtMoney(biggestWin) : '—'}</div>
+            <div style={{ fontSize: 9, color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase' }}>Best Win</div>
+          </div>
+        </div>
+
+        {/* Graph */}
+        {bets === null ? (
+          <div style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)', fontSize: 12 }}>Loading...</div>
+        ) : (
+          <NetWorthGraph bets={bets} />
+        )}
+
+        {/* Extra stats */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 14px', marginTop: 8, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>Total Wagered</div>
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>{fmtMoney(totalWagered)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>Record</div>
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--ink)' }}>
+              <span style={{ color: 'var(--win)' }}>{won.length}W</span> / <span style={{ color: 'var(--loss)' }}>{lost.length}L</span>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>Open Bets</div>
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{pendingCount}</div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -215,6 +304,7 @@ export function SettlementPlan({ user }) {
 }
 
 export function TotalWinsTab({ rankings, user }) {
+  const [profileUser, setProfileUser] = useState(null);
   const sorted = [...rankings].sort((a, b) => (b.realisedBalance || 0) - (a.realisedBalance || 0));
   const hasAnyResolved = sorted.some(r => r.realisedBalance !== 0);
 
@@ -239,11 +329,13 @@ export function TotalWinsTab({ rankings, user }) {
             valueMain={fmtNet(val)}
             valueSub={null}
             valueColor={val > 0 ? 'var(--win)' : val < 0 ? 'var(--loss)' : 'var(--ink-3)'}
+            onTap={setProfileUser}
           />
         );
       })}
       </div>
       <SettlementPlan user={user} />
+      {profileUser && <UserProfileModal entry={profileUser} onClose={() => setProfileUser(null)} />}
     </div>
   );
 }
