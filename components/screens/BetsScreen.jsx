@@ -32,13 +32,18 @@ export function NetWorthGraph({ bets }) {
         : -100;
 
       let matchLabel = b.match_id;
-      const isSpecialBet = b.kind && b.kind !== 'match';
-      if (isSpecialBet) {
+      const isSpecialBet = b.kind && b.kind !== 'match' && b.kind !== 'penalty';
+      const isPenalty = b.kind === 'penalty';
+      if (isPenalty) {
+        const m = getMatch(b.match_id);
+        matchLabel = m ? `Penalty: ${getTeam(m.home).code} v ${getTeam(m.away).code}` : `Penalty: ${b.match_id}`;
+      } else if (isSpecialBet) {
         const def = getSpecial(b.kind);
         matchLabel = def?.title || b.kind;
       } else {
         const m = getMatch(b.match_id);
         if (m) matchLabel = `${getTeam(m.home).code} v ${getTeam(m.away).code}`;
+        else if (/^(R32|R16|QF|SF|FIN|3RD)-/.test(b.match_id)) matchLabel = b.match_id.replace('-', ' Match ');
       }
 
       pts.push({
@@ -477,9 +482,14 @@ export function SettlementCard({ user, bets = [] }) {
         <div style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 10 }}>
           <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 8, fontWeight: 600 }}>Breakdown</div>
           {resolvedBets.map(b => {
-            const isSpecial = b.kind && b.kind !== 'match';
+            const isSpecial = b.kind && b.kind !== 'match' && b.kind !== 'penalty';
+            const isPenalty = b.kind === 'penalty';
             let label;
-            if (isSpecial) {
+            if (isPenalty) {
+              const m = getMatch(b.match_id);
+              const matchName = m ? `${getTeam(m.home).code} vs ${getTeam(m.away).code}` : b.match_id;
+              label = `⚠️ Penalty · ${matchName} (no bet placed)`;
+            } else if (isSpecial) {
               const def = getSpecial(b.kind);
               const pickLabel = def?.formatPick?.(b.pick) || b.pick;
               label = `${def?.title || b.kind} · ${pickLabel}`;
