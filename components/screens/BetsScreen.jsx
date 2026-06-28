@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 import { getMatch, getTeam } from '@/lib/data';
 import { getSpecial } from '@/lib/specials';
@@ -17,7 +18,7 @@ const RANGE_OPTIONS = [
 
 export function NetWorthGraph({ bets, compact }) {
   const [tooltip, setTooltip] = useState(null);
-  const [range, setRange] = useState('1w');
+  const [range, setRange] = useState('all');
   const svgRef = useRef(null);
 
   const { points, minY, maxY } = useMemo(() => {
@@ -88,17 +89,7 @@ export function NetWorthGraph({ bets, compact }) {
     return { points: pts, minY: Math.min(...ys), maxY: Math.max(...ys) };
   }, [bets, range]);
 
-  const NODE_SPACING = 28;
-  const MIN_W = 320;
-  const H = 140, PX = 16, PY = 20;
-  const W = Math.max(MIN_W, PX * 2 + (points.length - 1) * NODE_SPACING);
-  const scrollRef = useRef(null);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
-    }
-  }, [points.length, range]);
+  const SVG_W = 600, H = 140, PX = 16, PY = 20, Y_AXIS_W = 38;
 
   if (points.length < 2) {
     const zeroY = PY + (H - PY * 2) / 2;
@@ -108,8 +99,8 @@ export function NetWorthGraph({ bets, compact }) {
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Net Worth</div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--ink-3)' }}>{CURRENCY_SYMBOL}0</div>
         </div>
-        <svg viewBox={`0 0 ${MIN_W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-          <line x1={PX} y1={zeroY} x2={MIN_W - PX} y2={zeroY} stroke="rgba(255,255,255,0.1)" strokeDasharray="3,3" />
+        <svg viewBox={`0 0 ${SVG_W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+          <line x1={PX} y1={zeroY} x2={SVG_W - PX} y2={zeroY} stroke="rgba(255,255,255,0.1)" strokeDasharray="3,3" />
         </svg>
         <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--ink-3)', padding: '0 14px 4px' }}>
           Graph updates as bets settle
@@ -117,8 +108,8 @@ export function NetWorthGraph({ bets, compact }) {
       </div>
     );
   }
-  const Y_AXIS_W = 38;
-  const chartW = W - Y_AXIS_W - PX, chartH = H - PY * 2;
+
+  const chartW = SVG_W - Y_AXIS_W - PX, chartH = H - PY * 2;
   const yRange = maxY - minY || 1;
 
   const toSvg = (pt) => ({
@@ -137,7 +128,7 @@ export function NetWorthGraph({ bets, compact }) {
     if (!svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
     const tapX = e.clientX - rect.left;
-    const x = tapX * (W / rect.width);
+    const x = tapX * (SVG_W / rect.width);
 
     let closest = null, closestDist = Infinity;
     points.forEach((pt) => {
@@ -156,6 +147,21 @@ export function NetWorthGraph({ bets, compact }) {
 
   const lastPt = points[points.length - 1];
   const isUp = lastPt.y >= 0;
+
+  const fmtDate = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return `${d.getDate()}/${d.getMonth() + 1}`;
+  };
+
+  const xLabels = useMemo(() => {
+    const labelCount = Math.min(5, points.length);
+    const step = Math.max(1, Math.floor((points.length - 1) / (labelCount - 1)));
+    const indices = [];
+    for (let i = 0; i < points.length; i += step) indices.push(i);
+    if (indices[indices.length - 1] !== points.length - 1) indices.push(points.length - 1);
+    return indices;
+  }, [points.length]);
 
   return (
     <div style={{ margin: '0 16px 12px', padding: '12px 0', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', position: 'relative' }}>
@@ -185,79 +191,76 @@ export function NetWorthGraph({ bets, compact }) {
           {lastPt.y >= 0 ? '+' : ''}{fmtMoney(lastPt.y)}
         </div>
       </div>
-      <div ref={scrollRef} style={{ overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${W} ${H}`}
-          style={{ width: W, height: H, display: 'block', cursor: 'pointer' }}
-          onClick={handleTap}
-        >
-          {/* Y-axis labels */}
-          <text x={Y_AXIS_W - 4} y={PY + 3} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.4)" fontFamily="var(--font-mono)">
-            {maxY >= 0 ? '+' : ''}{Math.round(maxY)}
-          </text>
-          <text x={Y_AXIS_W - 4} y={PY + chartH + 3} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.4)" fontFamily="var(--font-mono)">
-            {minY >= 0 ? '+' : ''}{Math.round(minY)}
-          </text>
-          {minY < 0 && maxY > 0 && (
-            <text x={Y_AXIS_W - 4} y={zeroY + 3} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.3)" fontFamily="var(--font-mono)">0</text>
-          )}
 
-          {/* Zero line */}
-          <line x1={Y_AXIS_W} y1={zeroY} x2={W - PX} y2={zeroY} stroke="rgba(255,255,255,0.1)" strokeDasharray="3,3" />
+      <TransformWrapper
+        initialScale={1}
+        minScale={1}
+        maxScale={5}
+        limitToBounds={true}
+        panning={{ lockAxisY: true }}
+        doubleClick={{ disabled: true }}
+      >
+        <TransformComponent wrapperStyle={{ width: '100%', overflow: 'hidden', borderRadius: 8 }} contentStyle={{ width: '100%' }}>
+          <svg
+            ref={svgRef}
+            viewBox={`0 0 ${SVG_W} ${H}`}
+            style={{ width: '100%', height: 'auto', display: 'block', cursor: 'pointer', touchAction: 'pan-y pinch-zoom' }}
+            onClick={handleTap}
+          >
+            {/* Y-axis labels */}
+            <text x={Y_AXIS_W - 4} y={PY + 3} textAnchor="end" fontSize="9" fill="rgba(255,255,255,0.45)" fontFamily="var(--font-mono)">
+              {maxY >= 0 ? '+' : ''}{Math.round(maxY)}
+            </text>
+            <text x={Y_AXIS_W - 4} y={PY + chartH + 3} textAnchor="end" fontSize="9" fill="rgba(255,255,255,0.45)" fontFamily="var(--font-mono)">
+              {minY >= 0 ? '+' : ''}{Math.round(minY)}
+            </text>
+            {minY < 0 && maxY > 0 && (
+              <text x={Y_AXIS_W - 4} y={zeroY + 3} textAnchor="end" fontSize="9" fill="rgba(255,255,255,0.3)" fontFamily="var(--font-mono)">0</text>
+            )}
 
-          {/* Path */}
-          <path d={pathD} fill="none" stroke={isUp ? '#4ade80' : '#f87171'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            {/* Zero line */}
+            <line x1={Y_AXIS_W} y1={zeroY} x2={SVG_W - PX} y2={zeroY} stroke="rgba(255,255,255,0.1)" strokeDasharray="3,3" />
 
-          {/* Keypoints */}
-          {points.filter(pt => pt.bet).map((pt, i) => {
-            const { sx, sy } = toSvg(pt);
-            const isActive = tooltip === pt;
-            return (
-              <circle
-                key={i}
-                cx={sx} cy={sy} r={isActive ? 5 : 3}
-                fill={pt.bet.status === 'won' ? '#4ade80' : '#f87171'}
-                stroke={isActive ? '#fff' : 'none'}
-                strokeWidth={isActive ? 1.5 : 0}
-              />
-            );
-          })}
+            {/* Path */}
+            <path d={pathD} fill="none" stroke={isUp ? '#4ade80' : '#f87171'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 
-          {/* X-axis date labels */}
-          {(() => {
-            const labelCount = Math.min(5, points.length);
-            const step = Math.max(1, Math.floor((points.length - 1) / (labelCount - 1)));
-            const indices = [];
-            for (let i = 0; i < points.length; i += step) indices.push(i);
-            if (indices[indices.length - 1] !== points.length - 1) indices.push(points.length - 1);
-            const fmtDate = (ts) => {
-              if (!ts) return '';
-              const d = new Date(ts);
-              return `${d.getDate()}/${d.getMonth() + 1}`;
-            };
-            return indices.map(idx => {
+            {/* Keypoints */}
+            {points.filter(pt => pt.bet).map((pt, i) => {
+              const { sx, sy } = toSvg(pt);
+              const isActive = tooltip === pt;
+              return (
+                <circle
+                  key={i}
+                  cx={sx} cy={sy} r={isActive ? 5 : 3}
+                  fill={pt.bet.status === 'won' ? '#4ade80' : '#f87171'}
+                  stroke={isActive ? '#fff' : 'none'}
+                  strokeWidth={isActive ? 1.5 : 0}
+                />
+              );
+            })}
+
+            {/* X-axis date labels */}
+            {xLabels.map(idx => {
               const pt = points[idx];
-              if (!pt.ts) return null;
+              if (!pt || !pt.ts) return null;
               const { sx } = toSvg(pt);
               return (
-                <text key={idx} x={sx} y={H - 4} textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.35)" fontFamily="var(--font-mono)">
+                <text key={idx} x={sx} y={H - 4} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.35)" fontFamily="var(--font-mono)">
                   {fmtDate(pt.ts)}
                 </text>
               );
-            });
-          })()}
-        </svg>
-      </div>
-      {W > MIN_W && (
-        <div style={{ textAlign: 'center', fontSize: 9, color: 'var(--ink-3)', marginTop: 4, opacity: 0.6 }}>← scroll →</div>
-      )}
+            })}
+          </svg>
+        </TransformComponent>
+      </TransformWrapper>
+
+      <div style={{ textAlign: 'center', fontSize: 9, color: 'var(--ink-3)', marginTop: 4, opacity: 0.6 }}>Pinch to zoom · Tap node for details</div>
 
       {/* Tooltip */}
       {tooltip && tooltip.bet && (
         <div style={{
-          position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
-          marginBottom: 4, padding: '8px 12px', borderRadius: 8,
+          position: 'absolute', top: 40, left: '50%', transform: 'translateX(-50%)',
+          padding: '8px 12px', borderRadius: 8,
           background: '#1a1d24', border: '1px solid rgba(255,255,255,0.15)',
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)', whiteSpace: 'nowrap', zIndex: 10,
         }}>
