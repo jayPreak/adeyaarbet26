@@ -562,6 +562,92 @@ body {
 .bracket-team__name { display: flex; align-items: center; gap: 6px; font-weight: 500; }
 .bracket-score { font-family: var(--font-mono); font-weight: 700; }
 
+/* ── Knockout Bracket (tree with connectors) ──────────────── */
+.ko-canvas {
+  position: relative; overflow: hidden;
+  height: calc(100vh - 220px); min-height: 400px;
+}
+.ko-canvas__controls {
+  position: absolute; top: 8px; right: 12px; z-index: 10;
+  display: flex; gap: 4px;
+}
+.ko-canvas__btn {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--surface-2); border: 1px solid var(--line);
+  color: var(--ink-2); font-size: 14px; font-weight: 700;
+  cursor: pointer; display: grid; place-items: center;
+}
+.ko-canvas__btn:active { background: var(--surface-3); }
+
+.ko-bracket { display: flex; align-items: center; }
+.ko-bracket__stage-group { display: flex; align-items: center; }
+.ko-bracket__round { display: flex; flex-direction: column; gap: 0; }
+.ko-bracket__title {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+  color: var(--ink-3); text-transform: uppercase; padding: 0 4px 8px;
+}
+.ko-bracket__title.gold { color: var(--gold); }
+.ko-bracket__matches { display: flex; flex-direction: column; justify-content: space-around; gap: 8px; }
+
+/* Node */
+.ko-node {
+  display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px 12px;
+  cursor: pointer; text-align: left; width: 180px;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.ko-node:active { transform: scale(0.97); }
+.ko-node:hover { border-color: var(--gold); }
+
+.ko-node__live { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; font-size: 9px; font-weight: 700; color: var(--live); text-transform: uppercase; letter-spacing: 0.08em; }
+.ko-node__live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--live); animation: livePulse 1.2s infinite; }
+@keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.ko-node__team { display: flex; align-items: center; justify-content: space-between; padding: 3px 0; }
+.ko-node__team-info { display: flex; align-items: center; gap: 6px; }
+.ko-node__flag { font-size: 14px; }
+.ko-node__name { font-size: 11px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.ko-node__score { font-family: var(--font-mono); font-weight: 700; font-size: 12px; color: var(--ink); }
+.ko-node__score.live { color: var(--live); }
+
+.ko-node__divider { height: 1px; background: var(--line); margin: 2px 0; }
+
+.ko-node__footer { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--line); }
+.ko-node__time { display: flex; flex-direction: column; gap: 1px; font-size: 9px; color: var(--ink-3); }
+.ko-node__meta { display: flex; align-items: center; gap: 4px; }
+.ko-node__badge { font-size: 8px; font-weight: 700; color: var(--gold); background: var(--gold-soft); padding: 2px 5px; border-radius: 4px; }
+.ko-node__pool { font-size: 8px; color: var(--ink-3); }
+
+/* Connector lines between rounds */
+.ko-connectors {
+  display: flex; flex-direction: column; justify-content: space-around;
+  width: 28px; min-width: 28px; align-self: stretch;
+}
+.ko-connector-pair {
+  flex: 1; display: flex; flex-direction: column; position: relative;
+  justify-content: center;
+}
+.ko-connector-line {
+  position: absolute; right: 0; width: 50%;
+  border-right: 1.5px solid var(--line-strong);
+}
+.ko-connector-top {
+  top: 25%; bottom: 50%;
+  border-top: 1.5px solid var(--line-strong);
+  border-top-right-radius: 4px;
+}
+.ko-connector-bot {
+  top: 50%; bottom: 25%;
+  border-bottom: 1.5px solid var(--line-strong);
+  border-bottom-right-radius: 4px;
+}
+.ko-connector-merge {
+  position: absolute; left: 0; top: 50%;
+  width: 50%; height: 0;
+  border-top: 1.5px solid var(--line-strong);
+}
+
 /* ── Leaderboard ───────────────────────────────────────────── */
 .podium { display: grid; grid-template-columns: 1fr 1.1fr 1fr; align-items: end; gap: 8px; padding: 0 20px; margin-bottom: 20px; }
 .podium-block { display: flex; flex-direction: column; align-items: center; }

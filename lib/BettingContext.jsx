@@ -48,6 +48,43 @@ function inferStatus(match) {
   return 'upcoming';
 }
 
+const KNOCKOUT_STAGE_MAP = { R32: 'R32', R16: 'R16', QF: 'QF', SF: 'SF', Final: 'FIN', '3rd': '3RD' };
+
+function buildKnockoutMatches(knockoutData, scheduleMap) {
+  if (!knockoutData || !knockoutData.length) return [];
+  const byStage = {};
+  for (const m of knockoutData) {
+    if (!byStage[m.stage]) byStage[m.stage] = [];
+    byStage[m.stage].push(m);
+  }
+  const result = [];
+  for (const [stage, matches] of Object.entries(byStage)) {
+    const prefix = KNOCKOUT_STAGE_MAP[stage];
+    if (!prefix) continue;
+    for (let i = 0; i < matches.length; i++) {
+      const m = matches[i];
+      const staticId = `${prefix}-${i + 1}`;
+      const kickoffTs = scheduleMap[staticId] || m.date || null;
+      const status = m.status === 0 ? 'finished' : m.status === 3 ? 'live' : 'upcoming';
+      result.push({
+        id: staticId,
+        home: m.home || null,
+        away: m.away || null,
+        stage: stage,
+        kickoffTs,
+        status,
+        score: (m.homeScore != null && m.awayScore != null) ? [m.homeScore, m.awayScore] : null,
+        homePen: m.homePen,
+        awayPen: m.awayPen,
+        placeholderA: m.placeholderA,
+        placeholderB: m.placeholderB,
+        knockout: true,
+      });
+    }
+  }
+  return result;
+}
+
 export function BettingProvider({ children }) {
   const { user, loading, refreshUser } = useUser();
   const [betSheet, setBetSheet] = useState(null);
@@ -57,6 +94,7 @@ export function BettingProvider({ children }) {
   const [cancelling, setCancelling] = useState(null);
   const [placing, setPlacing] = useState(false);
   const [fifaData, setFifaData] = useState(null);
+  const [knockoutData, setKnockoutData] = useState(null);
   const [scheduleMap, setScheduleMap] = useState({});
   const [cupWinnerDeadlineTs, setCupWinnerDeadlineTs] = useState(null);
   const [cupWinnerOpen, setCupWinnerOpen] = useState(false);
@@ -115,6 +153,10 @@ export function BettingProvider({ children }) {
       .then(r => r.json())
       .then(setFifaData)
       .catch(() => {});
+    fetch('/api/fifa/knockout')
+      .then(r => r.json())
+      .then(setKnockoutData)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -158,11 +200,16 @@ export function BettingProvider({ children }) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const matches = useMemo(() => MATCHES.map(m => {
-    const merged = mergeWithFifa(m, fifaData);
-    const kickoffTs = scheduleMap[m.id] || null;
-    return kickoffTs ? { ...merged, kickoffTs } : merged;
-  }), [fifaData, scheduleMap]);
+  const matches = useMemo(() => {
+    const groupMatches = MATCHES.map(m => {
+      const merged = mergeWithFifa(m, fifaData);
+      const kickoffTs = scheduleMap[m.id] || null;
+      return kickoffTs ? { ...merged, kickoffTs } : merged;
+    });
+
+    const koMatches = buildKnockoutMatches(knockoutData, scheduleMap);
+    return [...groupMatches, ...koMatches];
+  }, [fifaData, knockoutData, scheduleMap]);
 
   const openBet = useCallback((match, pick) => setBetSheet({ match, pick }), []);
   const closeBet = useCallback(() => setBetSheet(null), []);

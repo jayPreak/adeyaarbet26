@@ -337,7 +337,8 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
   const isFinished = match.status === 'finished';
   const bettingOpen = useBettingOpen(match);
 
-  const stageLabel = match.group ? `Group ${match.group}` : 'Knockout';
+  const STAGE_NAMES = { R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarterfinal', SF: 'Semifinal', Final: 'Final', '3rd': '3rd Place' };
+  const stageLabel = match.group ? `Group ${match.group}` : (STAGE_NAMES[match.stage] || 'Knockout');
   const city = match.venue?.split(',').pop()?.trim();
   const wonBet = myBets.find(b => b.status === 'won');
   const lostBet = myBets.find(b => b.status === 'lost');
@@ -355,7 +356,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
       background: myResult === 'won' ? 'rgba(74,222,128,0.04)' : 'rgba(248,113,113,0.04)',
     } : undefined}>
       <div className="match-card__head">
-        <span>{stageLabel}{city ? ` · ${city}` : ''}</span>
+        <span>{stageLabel}{match.knockout && match.id ? ` · Match ${match.id.split('-')[1]}` : ''}{city ? ` · ${city}` : ''}</span>
         {isLive ? <LiveDot minute={match.minute} /> :
          isFinished ? <span style={{ color: 'var(--ink-3)' }}>FT</span> :
          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{fmtCountdown(match.kickoffTs)}</span>}
