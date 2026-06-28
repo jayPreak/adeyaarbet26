@@ -269,9 +269,8 @@ export function BettingProvider({ children }) {
         refreshPools();
       }
       setBetSheet(null);
-      const match = getMatch(matchId);
-      const team = pick === 'home' ? getTeam(match.home) :
-                   pick === 'away' ? getTeam(match.away) : null;
+      const m = liveMatch || getMatch(matchId);
+      const team = m && pick !== 'draw' ? getTeam(m[pick === 'home' ? 'home' : 'away']) : null;
       setToast(`Bet placed · ${fmtMoney(amount)} on ${team ? team.name : 'Draw'}`);
     } catch (err) {
       setBetSheet(null);
