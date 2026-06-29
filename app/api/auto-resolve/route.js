@@ -45,8 +45,8 @@ function extractScorerIds(liveData) {
   const allPlayers = Array.isArray(liveData.Players)
     ? liveData.Players
     : [
-        ...(liveData.Home?.Players || []),
-        ...(liveData.Away?.Players || []),
+        ...(liveData.HomeTeam?.Players || []),
+        ...(liveData.AwayTeam?.Players || []),
       ];
 
   const playerTeam = {};
