@@ -163,7 +163,7 @@ export default function NewsPage() {
         <div>
           {articles.map(a => <NewsCard key={a.id} article={a} />)}
           <div style={{ padding: '16px', textAlign: 'center', fontSize: 11, color: 'var(--ink-3)' }}>
-            News refreshes every 15 minutes · Powered by Currents API
+            News refreshes automatically every 90 minutes · Powered by Currents API
           </div>
         </div>
       )}
