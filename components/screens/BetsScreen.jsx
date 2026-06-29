@@ -5,6 +5,7 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 import { getMatch, getTeam } from '@/lib/data';
 import { getSpecial } from '@/lib/specials';
+import { useBetting } from '@/lib/BettingContext';
 import { BetCard } from '@/components';
 import { SettlementPlan } from '@/components/screens/LeaderboardScreen';
 
@@ -17,6 +18,7 @@ const RANGE_OPTIONS = [
 ];
 
 export function NetWorthGraph({ bets, compact }) {
+  const { matches } = useBetting();
   const [tooltip, setTooltip] = useState(null);
   const [range, setRange] = useState('all');
   const svgRef = useRef(null);
@@ -66,9 +68,10 @@ export function NetWorthGraph({ bets, compact }) {
         const def = getSpecial(b.kind);
         matchLabel = def?.title || b.kind;
       } else {
-        const m = getMatch(b.match_id);
-        if (m) matchLabel = `${getTeam(m.home).code} v ${getTeam(m.away).code}`;
-        else if (/^(R32|R16|QF|SF|FIN|3RD)-/.test(b.match_id)) matchLabel = b.match_id.replace('-', ' Match ');
+        const m = getMatch(b.match_id) || matches.find(x => x.id === b.match_id);
+        if (m && m.home && m.away) matchLabel = `${getTeam(m.home).code} v ${getTeam(m.away).code}`;
+        else if (m && (m.home || m.away)) matchLabel = `${m.home ? getTeam(m.home).code : 'TBD'} v ${m.away ? getTeam(m.away).code : 'TBD'}`;
+        else if (/^(R32|R16|QF|SF|FIN|3RD)-/.test(b.match_id)) matchLabel = b.match_id.replace('-', ' ');
       }
 
       pts.push({
@@ -521,6 +524,7 @@ export function AchievementBadges({ user }) {
 }
 
 export function SettlementCard({ user, bets = [] }) {
+  const { matches } = useBetting();
   const [myPosition, setMyPosition] = useState(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
 
@@ -591,14 +595,22 @@ export function SettlementCard({ user, bets = [] }) {
               const pickLabel = def?.formatPick?.(b.pick) || b.pick;
               label = `${def?.title || b.kind} · ${pickLabel}`;
             } else {
-              const m = getMatch(b.match_id);
-              if (m) {
+              const m = getMatch(b.match_id) || matches.find(x => x.id === b.match_id);
+              if (m && m.home && m.away) {
                 const h = getTeam(m.home);
                 const a = getTeam(m.away);
                 const pickLabel = b.pick === 'home' ? h?.name : b.pick === 'away' ? a?.name : 'Draw';
                 label = `${h?.code} vs ${a?.code} · ${pickLabel}`;
+              } else if (m && (m.home || m.away)) {
+                const pickLabel = b.pick === 'home'
+                  ? (m.home ? getTeam(m.home).name : 'Home')
+                  : b.pick === 'away'
+                    ? (m.away ? getTeam(m.away).name : 'Away')
+                    : 'Draw';
+                label = `${m.home ? getTeam(m.home).code : 'TBD'} vs ${m.away ? getTeam(m.away).code : 'TBD'} · ${pickLabel}`;
               } else {
-                label = `${b.match_id} · ${b.pick}`;
+                const pickLabel = b.pick === 'home' ? 'Home' : b.pick === 'away' ? 'Away' : 'Draw';
+                label = `${b.match_id.replace('-', ' ')} · ${pickLabel}`;
               }
             }
             return (

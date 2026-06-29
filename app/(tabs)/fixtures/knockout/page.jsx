@@ -270,6 +270,18 @@ export default function KnockoutPage() {
 
   const edges = useMemo(() => buildEdges(byStage), [byStage]);
 
+  const betStatusByMatch = useMemo(() => {
+    const map = {};
+    for (const b of bets) {
+      if (b.status === 'cancelled') continue;
+      const mid = b.match_id || b.matchId;
+      if (!map[mid]) map[mid] = b.status;
+      if (b.status === 'won') map[mid] = 'won';
+      else if (b.status === 'lost' && map[mid] !== 'won') map[mid] = 'lost';
+    }
+    return map;
+  }, [bets]);
+
   const computePaths = useCallback(() => {
     const container = bracketRef.current;
     if (!container || !edges.length) { setPaths([]); return; }
@@ -278,10 +290,14 @@ export default function KnockoutPage() {
       const fromEl = container.querySelector(`#ko-node-${CSS.escape(fromId)}`);
       const toEl = container.querySelector(`#ko-node-${CSS.escape(toId)}`);
       const p = computeSvgPath(fromEl, toEl, container);
-      if (p) result.push(p);
+      if (p) {
+        const status = betStatusByMatch[fromId];
+        const color = status === 'won' ? 'var(--win)' : status === 'lost' ? 'var(--loss)' : null;
+        result.push({ d: p, color });
+      }
     }
     setPaths(result);
-  }, [edges]);
+  }, [edges, betStatusByMatch]);
 
   // Recompute paths after layout
   useLayoutEffect(() => {
@@ -342,8 +358,8 @@ export default function KnockoutPage() {
             <div className="ko-bracket" ref={bracketRef} style={{ position: 'relative' }}>
               {/* SVG overlay for connector lines */}
               <svg className="ko-bracket__svg">
-                {paths.map((d, i) => (
-                  <path key={i} d={d} fill="none" stroke="var(--line-strong, rgba(255,255,255,0.15))" strokeWidth="1.5" />
+                {paths.map((p, i) => (
+                  <path key={i} d={p.d} fill="none" stroke={p.color || 'rgba(255,255,255,0.15)'} strokeWidth="1.5" opacity={p.color ? 0.7 : 1} />
                 ))}
               </svg>
 
@@ -358,7 +374,7 @@ export default function KnockoutPage() {
                     </div>
                     <div className="ko-bracket__matches">
                       {stageMatches.map(m => {
-                        const myBets2 = bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending');
+                        const myBets2 = bets.filter(b => (b.match_id || b.matchId) === m.id && b.status !== 'cancelled');
                         return (
                           <KnockoutNode
                             key={m.id}
@@ -380,7 +396,7 @@ export default function KnockoutPage() {
                 <div className="ko-bracket__title">3rd Place</div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {thirdPlace.map(m => {
-                    const myBets2 = bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending');
+                    const myBets2 = bets.filter(b => (b.match_id || b.matchId) === m.id && b.status !== 'cancelled');
                     return <KnockoutNode key={m.id} match={m} onTap={handleTap} myBets={myBets2} poolData={poolMap[m.id]} />;
                   })}
                 </div>
