@@ -1,12 +1,13 @@
 'use client';
 
-import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, fmtCountdown, getMatchKickoffTs, MATCH_BET_CUTOFF_MS } from '@/lib/data';
+import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, fmtCountdown, getMatchKickoffTs, MATCH_BET_CUTOFF_MS, LINEUP_ANNOUNCE_MS } from '@/lib/data';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET, getMinBet } from '@/lib/currency';
 import { getSpecial } from '@/lib/specials';
 import { poolOdds, sideOdds, fmtDecimalOdds, fmtImpliedProb } from '@/lib/odds';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import LineupSheet from './LineupSheet';
 
 // ── Betting window ───────────────────────────────────────────
 // Betting closes MATCH_BET_CUTOFF_MS (30s) before kickoff — mirrors the
@@ -69,6 +70,12 @@ export const Icon = {
   close: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <path d="M6 6l12 12M18 6L6 18"/>
+    </svg>
+  ),
+  newspaper: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/>
+      <path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/>
     </svg>
   ),
 };
@@ -200,6 +207,7 @@ export function TabBar({ active, onChange }) {
     { id: 'fixtures', path: '/fixtures/upcoming', label: 'Match Bets', icon: Icon.ball },
     { id: 'specials', path: '/specials',          label: 'Special Bets', icon: Icon.star },
     { id: 'leaders',  path: '/leaders/rankings',  label: 'Leaderboards', icon: Icon.trophy },
+    { id: 'news',     path: '/news',              label: 'News',       icon: Icon.newspaper },
     { id: 'account',  path: '/account/overview',  label: 'Account',    icon: Icon.receipt },
   ];
 
@@ -336,6 +344,10 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
   const bettingOpen = useBettingOpen(match);
+  const [lineupOpen, setLineupOpen] = useState(false);
+
+  const kickoffTs = getMatchKickoffTs(match);
+  const lineupAvailable = kickoffTs != null && Date.now() >= kickoffTs - LINEUP_ANNOUNCE_MS;
 
   const STAGE_NAMES = { R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarterfinal', SF: 'Semifinal', Final: 'Final', '3rd': '3rd Place' };
   const stageLabel = match.group ? `Group ${match.group}` : (STAGE_NAMES[match.stage] || 'Knockout');
@@ -451,6 +463,27 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
           <span>No bet placed</span>
         </div>
       )}
+
+      {lineupAvailable && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setLineupOpen(true); }}
+          style={{
+            width: '100%', marginTop: 4, padding: '8px 0',
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)',
+            borderRadius: 8, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            color: 'var(--ink-2)', fontSize: 12, fontWeight: 600,
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/>
+            <rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>
+          </svg>
+          View Lineup
+        </button>
+      )}
+
+      <LineupSheet match={match} open={lineupOpen} onClose={() => setLineupOpen(false)} />
     </div>
   );
 }
