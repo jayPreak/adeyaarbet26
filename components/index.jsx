@@ -204,9 +204,9 @@ export function TabBar({ active, onChange }) {
   const pathname = usePathname();
   const tabs = [
     { id: 'home',     path: '/home',              label: 'Home',       icon: Icon.home },
-    { id: 'fixtures', path: '/fixtures/upcoming', label: 'Match Bets', icon: Icon.ball },
-    { id: 'specials', path: '/specials',          label: 'Special Bets', icon: Icon.star },
-    { id: 'leaders',  path: '/leaders/rankings',  label: 'Leaderboards', icon: Icon.trophy },
+    { id: 'fixtures', path: '/fixtures/upcoming', label: 'Matches',  icon: Icon.ball },
+    { id: 'specials', path: '/specials',          label: 'Specials', icon: Icon.star },
+    { id: 'leaders',  path: '/leaders/rankings',  label: 'Leaders',  icon: Icon.trophy },
     { id: 'news',     path: '/news',              label: 'News',       icon: Icon.newspaper },
     { id: 'account',  path: '/account/overview',  label: 'Account',    icon: Icon.receipt },
   ];
