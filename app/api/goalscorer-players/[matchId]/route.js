@@ -88,6 +88,8 @@ function parsePlayers(liveData, matchId, homeCode, awayCode) {
       team_code: teamCode,
       jersey_num: p.ShirtNumber != null ? String(p.ShirtNumber) : null,
       position: p.Position != null ? p.Position : null,
+      lineup_status: p.Status ?? 1,
+      captain: p.Captain === true,
     });
   }
   return players;
@@ -171,7 +173,7 @@ function groupPlayers(rows) {
   const [homeCode, awayCode] = teams;
 
   for (const p of sorted) {
-    const enriched = { ...p, position_label: POSITION_LABELS[p.position] || '' };
+    const enriched = { ...p, position_label: POSITION_LABELS[p.position] || '', is_starter: (p.lineup_status ?? 1) === 1 };
     if (p.team_code === homeCode) home.push(enriched);
     else away.push(enriched);
   }
