@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
-import { FRIENDS, getMatch, getTeam } from '@/lib/data';
+import { FRIENDS, getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { computeBalance, computeRealisedBalance } from '@/lib/ledger';
 
 
@@ -85,6 +85,7 @@ export async function GET() {
         let matchLabel = b.match_id;
         let pickLabel = b.pick;
         const m = getMatch(b.match_id);
+        const stageTag = fmtKnockoutStage(b.match_id);
         if (m) {
           const h = getTeam(m.home);
           const a = getTeam(m.away);
@@ -101,6 +102,9 @@ export async function GET() {
         } else if (b.match_id?.startsWith('HT_')) {
           matchLabel = 'Halftime';
           pickLabel = b.pick?.toUpperCase();
+        } else if (stageTag) {
+          matchLabel = stageTag;
+          pickLabel = b.pick === 'home' ? 'Home' : b.pick === 'away' ? 'Away' : 'Draw';
         }
         return {
           matchLabel,
@@ -132,6 +136,7 @@ export async function GET() {
       let matchLabel = b.match_id;
       let pickLabel = b.pick;
       const m = getMatch(b.match_id);
+      const stageTag = fmtKnockoutStage(b.match_id);
       if (m) {
         const h = getTeam(m.home);
         const a = getTeam(m.away);
@@ -143,6 +148,9 @@ export async function GET() {
         matchLabel = 'Cup Winner';
         const pt = getTeam(b.pick);
         if (pt) pickLabel = pt.name;
+      } else if (stageTag) {
+        matchLabel = stageTag;
+        pickLabel = b.pick === 'home' ? 'Home' : b.pick === 'away' ? 'Away' : 'Draw';
       }
       return {
         userId: b.user_id,
@@ -167,6 +175,7 @@ export async function GET() {
       let matchLabel = b.match_id;
       let pickLabel = b.pick;
       const m = getMatch(b.match_id);
+      const stageTag = fmtKnockoutStage(b.match_id);
       if (m) {
         const h = getTeam(m.home);
         const a = getTeam(m.away);
@@ -178,6 +187,9 @@ export async function GET() {
         matchLabel = 'Cup Winner';
         const pt = getTeam(b.pick);
         if (pt) pickLabel = pt.name;
+      } else if (stageTag) {
+        matchLabel = stageTag;
+        pickLabel = b.pick === 'home' ? 'Home' : b.pick === 'away' ? 'Away' : 'Draw';
       }
       return {
         userId: b.user_id,

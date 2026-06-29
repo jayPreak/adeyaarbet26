@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
-import { getMatch, getTeam } from '@/lib/data';
+import { getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { getSpecial } from '@/lib/specials';
 import { useBetting } from '@/lib/BettingContext';
 import { BetCard } from '@/components';
@@ -69,9 +69,15 @@ export function NetWorthGraph({ bets, compact }) {
         matchLabel = def?.title || b.kind;
       } else {
         const m = getMatch(b.match_id) || matches.find(x => x.id === b.match_id);
-        if (m && m.home && m.away) matchLabel = `${getTeam(m.home).code} v ${getTeam(m.away).code}`;
-        else if (m && (m.home || m.away)) matchLabel = `${m.home ? getTeam(m.home).code : 'TBD'} v ${m.away ? getTeam(m.away).code : 'TBD'}`;
-        else if (/^(R32|R16|QF|SF|FIN|3RD)-/.test(b.match_id)) matchLabel = b.match_id.replace('-', ' ');
+        const stageTag = fmtKnockoutStage(b.match_id);
+        if (m && m.home && m.away) {
+          const base = `${getTeam(m.home).code} v ${getTeam(m.away).code}`;
+          matchLabel = stageTag ? `${stageTag}: ${base}` : base;
+        } else if (m && (m.home || m.away)) {
+          matchLabel = `${stageTag || ''}: ${m.home ? getTeam(m.home).code : 'TBD'} v ${m.away ? getTeam(m.away).code : 'TBD'}`;
+        } else if (stageTag) {
+          matchLabel = stageTag;
+        }
       }
 
       pts.push({
@@ -596,21 +602,24 @@ export function SettlementCard({ user, bets = [] }) {
               label = `${def?.title || b.kind} · ${pickLabel}`;
             } else {
               const m = getMatch(b.match_id) || matches.find(x => x.id === b.match_id);
+              const stageTag = fmtKnockoutStage(b.match_id);
               if (m && m.home && m.away) {
                 const h = getTeam(m.home);
                 const a = getTeam(m.away);
                 const pickLabel = b.pick === 'home' ? h?.name : b.pick === 'away' ? a?.name : 'Draw';
-                label = `${h?.code} vs ${a?.code} · ${pickLabel}`;
+                label = stageTag
+                  ? `${stageTag} · ${h?.code} vs ${a?.code} · ${pickLabel}`
+                  : `${h?.code} vs ${a?.code} · ${pickLabel}`;
               } else if (m && (m.home || m.away)) {
                 const pickLabel = b.pick === 'home'
                   ? (m.home ? getTeam(m.home).name : 'Home')
                   : b.pick === 'away'
                     ? (m.away ? getTeam(m.away).name : 'Away')
                     : 'Draw';
-                label = `${m.home ? getTeam(m.home).code : 'TBD'} vs ${m.away ? getTeam(m.away).code : 'TBD'} · ${pickLabel}`;
+                label = `${stageTag || ''} · ${m.home ? getTeam(m.home).code : 'TBD'} vs ${m.away ? getTeam(m.away).code : 'TBD'} · ${pickLabel}`;
               } else {
                 const pickLabel = b.pick === 'home' ? 'Home' : b.pick === 'away' ? 'Away' : 'Draw';
-                label = `${b.match_id.replace('-', ' ')} · ${pickLabel}`;
+                label = `${stageTag || b.match_id.replace('-', ' ')} · ${pickLabel}`;
               }
             }
             return (

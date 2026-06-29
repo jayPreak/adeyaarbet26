@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getMatch, getTeam } from '@/lib/data';
+import { getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { CURRENCY_SYMBOL } from '@/lib/currency';
 import { HeroMatch, SectionHead, MatchCard } from '@/components';
 
@@ -291,10 +291,11 @@ function formatActivityText(a, fifaIdMap, matchesById) {
   const match = (!isSpecial && matchId)
     ? (getMatch(matchId) || matchesById?.[matchId] || fifaIdMap?.[matchId] || null)
     : null;
+  const stageTag = fmtKnockoutStage(matchId);
   const matchLabel = specialLabel
     || (match && (match.home || match.away)
-      ? `${match.home ? getTeam(match.home).name : (match.placeholderA || 'TBD')} vs ${match.away ? getTeam(match.away).name : (match.placeholderB || 'TBD')}`
-      : (matchId?.replace('-', ' ') || ''));
+      ? (stageTag ? `${stageTag}: ` : '') + `${match.home ? getTeam(match.home).name : (match.placeholderA || 'TBD')} vs ${match.away ? getTeam(match.away).name : (match.placeholderB || 'TBD')}`
+      : (stageTag || matchId?.replace('-', ' ') || ''));
 
   if (a.type === 'bet_placed' && a.payload) {
     const pickCode = a.payload.team || a.payload.pick;
