@@ -65,7 +65,7 @@ export async function GET() {
     url: a.url,
     author: a.author || null,
     image: a.image && a.image !== 'None' ? a.image : null,
-    published: a.published,
+    published: a.published ? a.published.replace(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) \+/, '$1T$2+') : null,
     category: Array.isArray(a.category) ? a.category : [],
   }));
 

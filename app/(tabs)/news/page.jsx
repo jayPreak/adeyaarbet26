@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 
 function timeAgo(iso) {
   if (!iso) return '';
-  const diff = Date.now() - new Date(iso).getTime();
+  const normalized = iso.replace(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) \+/, '$1T$2+');
+  const diff = Date.now() - new Date(normalized).getTime();
+  if (isNaN(diff)) return '';
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
