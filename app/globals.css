@@ -251,14 +251,16 @@ body {
   padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
 }
 .tabbar__btn {
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 6px 2px 5px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 8px 4px 7px;
   border-radius: 14px;
   color: var(--ink-3);
-  font-size: 8.5px; font-weight: 600; letter-spacing: 0.02em;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.02em;
 }
-.tabbar__btn svg { width: 18px; height: 18px; }
+.tabbar__btn svg { width: 22px; height: 22px; }
+.tabbar__btn span { display: none; }
 .tabbar__btn.active { color: var(--gold); background: var(--gold-soft); }
+.tabbar__btn.active span { display: block; }
 
 /* ── Cards ─────────────────────────────────────────────────── */
 .card {
