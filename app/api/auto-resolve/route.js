@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import supabaseAnon from '@/lib/supabase';
 import supabaseAdmin from '@/lib/supabase-admin';
 import { FIFA_MATCHES_URL, TEAM_CODE_ALIAS } from '@/lib/schedule-sync';
-import { MATCHES, GROUPS } from '@/lib/data';
+import { MATCHES, GROUPS, BRACKET } from '@/lib/data';
 import { computeThirdPlaceQualifiers } from '@/lib/third-place-qualifiers';
 
 export const dynamic = 'force-dynamic';
@@ -131,22 +131,60 @@ export async function GET() {
 
   const lookup = buildLookup();
 
+  // Build knockout lookup: map FIFA stage IDs to our static ID prefixes
+  const KNOCKOUT_STAGE_MAP = {
+    '289287': 'R32',
+    '289288': 'R16',
+    '289289': 'QF',
+    '289290': 'SF',
+    '289291': 'FIN',
+    '289292': '3RD',
+  };
+
   const finished = [];
+  // Group matches by stage for knockout ordering
+  const knockoutByStage = {};
+
   for (const fm of fifaResults) {
     if (fm.MatchStatus !== 0) continue;
     const group = groupLetter(fm);
-    if (!group) continue;
-    const key = `${group}|${teamCode(fm.Home)}|${teamCode(fm.Away)}`;
-    const matchId = lookup[key];
-    if (!matchId) continue;
-    const winner = determineWinner(fm);
-    if (!winner) continue;
-    finished.push({
-      matchId,
-      winner,
-      fifa_id_stage: fm.IdStage ? String(fm.IdStage) : null,
-      fifa_id_match: fm.IdMatch ? String(fm.IdMatch) : null,
-    });
+    if (group) {
+      // Group match
+      const key = `${group}|${teamCode(fm.Home)}|${teamCode(fm.Away)}`;
+      const matchId = lookup[key];
+      if (!matchId) continue;
+      const winner = determineWinner(fm);
+      if (!winner) continue;
+      finished.push({
+        matchId,
+        winner,
+        fifa_id_stage: fm.IdStage ? String(fm.IdStage) : null,
+        fifa_id_match: fm.IdMatch ? String(fm.IdMatch) : null,
+      });
+    } else {
+      // Knockout match — group by stage for index-based ID assignment
+      const prefix = KNOCKOUT_STAGE_MAP[fm.IdStage];
+      if (!prefix) continue;
+      if (!knockoutByStage[prefix]) knockoutByStage[prefix] = [];
+      knockoutByStage[prefix].push(fm);
+    }
+  }
+
+  // Sort knockout matches by date and assign static IDs by index
+  for (const [prefix, matches] of Object.entries(knockoutByStage)) {
+    matches.sort((a, b) => new Date(a.Date) - new Date(b.Date));
+    for (let i = 0; i < matches.length; i++) {
+      const fm = matches[i];
+      const staticId = `${prefix}-${i + 1}`;
+      const winner = determineWinner(fm);
+      if (!winner) continue;
+      finished.push({
+        matchId: staticId,
+        winner,
+        fifa_id_stage: fm.IdStage ? String(fm.IdStage) : null,
+        fifa_id_match: fm.IdMatch ? String(fm.IdMatch) : null,
+      });
+    }
   }
 
   if (finished.length === 0) return NextResponse.json({ resolved: [], penalties: penaltiesResult });
