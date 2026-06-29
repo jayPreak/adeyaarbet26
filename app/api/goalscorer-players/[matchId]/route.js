@@ -61,13 +61,13 @@ async function findFifaIds(matchId, staticMatch) {
 }
 
 function parsePlayers(liveData, matchId, homeCode, awayCode) {
-  const homeTeamId = liveData.Home?.IdTeam ? String(liveData.Home.IdTeam) : null;
-  // Try both flat Players[] and nested Home/Away.Players[]
+  const homeTeamId = liveData.HomeTeam?.IdTeam ? String(liveData.HomeTeam.IdTeam) : null;
+  // FIFA live endpoint uses HomeTeam/AwayTeam (not Home/Away)
   const allPlayers = Array.isArray(liveData.Players)
     ? liveData.Players
     : [
-        ...(liveData.Home?.Players || []),
-        ...(liveData.Away?.Players || []),
+        ...(liveData.HomeTeam?.Players || []),
+        ...(liveData.AwayTeam?.Players || []),
       ];
 
   const players = [];
@@ -86,7 +86,7 @@ function parsePlayers(liveData, matchId, homeCode, awayCode) {
       player_id: String(p.IdPlayer),
       player_name: name,
       team_code: teamCode,
-      jersey_num: p.JerseyNum != null ? String(p.JerseyNum) : null,
+      jersey_num: p.ShirtNumber != null ? String(p.ShirtNumber) : null,
       position: p.Position != null ? p.Position : null,
     });
   }
@@ -137,8 +137,8 @@ export async function GET(request, { params }) {
   }
 
   // For knockout matches, derive team codes from live FIFA data
-  const homeCode = staticMatch?.home || normCode(liveData.Home?.Abbreviation) || 'HOME';
-  const awayCode = staticMatch?.away || normCode(liveData.Away?.Abbreviation) || 'AWAY';
+  const homeCode = staticMatch?.home || normCode(liveData.HomeTeam?.Abbreviation) || 'HOME';
+  const awayCode = staticMatch?.away || normCode(liveData.AwayTeam?.Abbreviation) || 'AWAY';
   const players = parsePlayers(liveData, matchId, homeCode, awayCode);
 
   if (players.length === 0) {
