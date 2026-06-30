@@ -204,8 +204,8 @@ export default function AdeYaarApp() {
   }, []);
 
   const matches = MATCHES.map(m => {
-    const merged = mergeWithFifa(m, fifaData);
     const kickoffTs = scheduleMap[m.id] || null;
+    const merged = mergeWithFifa(kickoffTs ? { ...m, kickoffTs } : m, fifaData);
     return kickoffTs ? { ...merged, kickoffTs } : merged;
   });
 
