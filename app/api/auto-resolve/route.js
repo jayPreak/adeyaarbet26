@@ -35,6 +35,13 @@ function determineWinner(fifaMatch) {
   if (homeScore == null || awayScore == null) return null;
   if (homeScore > awayScore) return 'home';
   if (awayScore > homeScore) return 'away';
+  // Tied after 90/120 min — check penalty shootout scores
+  const homePen = fifaMatch.HomeTeamPenaltyScore;
+  const awayPen = fifaMatch.AwayTeamPenaltyScore;
+  if (homePen != null && awayPen != null) {
+    if (homePen > awayPen) return 'home';
+    if (awayPen > homePen) return 'away';
+  }
   return 'draw';
 }
 
