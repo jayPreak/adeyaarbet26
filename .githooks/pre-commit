@@ -1,2 +1,5 @@
 #!/bin/sh
+# Ensure Node 18+ is on PATH for jest (os.availableParallelism requires Node 18.14+)
+NVM_NODE_BIN=$(ls -d ~/.nvm/versions/node/v1[89]*/bin 2>/dev/null | sort -V | tail -1)
+[ -n "$NVM_NODE_BIN" ] && export PATH="$NVM_NODE_BIN:$PATH"
 make test
