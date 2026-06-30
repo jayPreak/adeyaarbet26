@@ -47,7 +47,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
               id: a.id,
               username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
               avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap, matchesById),
+              text: formatActivityText(a, fifaIdMap, matchesById, allUsers),
               createdAt: a.created_at,
             })));
         }
@@ -68,7 +68,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
               id: a.id,
               username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
               avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap, matchesById),
+              text: formatActivityText(a, fifaIdMap, matchesById, allUsers),
               createdAt: a.created_at,
             }));
           setFullActivity(mapped);
@@ -92,7 +92,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
               id: a.id,
               username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
               avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap, matchesById),
+              text: formatActivityText(a, fifaIdMap, matchesById, allUsers),
               createdAt: a.created_at,
             }));
           setFullActivity(prev => [...prev, ...mapped]);
@@ -277,6 +277,8 @@ function formatSpecialMatchLabel(matchId) {
   if (matchId === 'MESSI_V_RONALDO') return 'Messi vs Ronaldo';
   if (matchId === 'GOLDEN_BOOT') return 'Golden Boot';
   if (matchId === 'THIRD_QUALIFIERS') return '3rd Place Qualifiers';
+  if (matchId === 'R32_BIGGEST_LOSER') return 'R32 Flop';
+  if (matchId === 'R32_BIGGEST_WINNER') return 'R32 Bagholder';
   if (matchId?.startsWith('HT_')) {
     const slug = matchId.slice(3).toLowerCase().replace(/_/g, ' ');
     return slug.replace(/\b\w/g, c => c.toUpperCase());
@@ -284,7 +286,7 @@ function formatSpecialMatchLabel(matchId) {
   return null;
 }
 
-function formatActivityText(a, fifaIdMap, matchesById) {
+function formatActivityText(a, fifaIdMap, matchesById, allUsers) {
   const matchId = a.payload?.match_id;
   const specialLabel = formatSpecialMatchLabel(matchId);
   const isSpecial = !!specialLabel;
@@ -305,6 +307,9 @@ function formatActivityText(a, fifaIdMap, matchesById) {
     } else if (matchId === 'CONTINENT') {
       const confLabels = { UEFA: 'Europe', CONMEBOL: 'S. America', CONCACAF: 'N/C America', CAF: 'Africa', AFC: 'Asia', OFC: 'Oceania' };
       pickLabel = confLabels[pickCode] || pickCode;
+    } else if (matchId === 'R32_BIGGEST_LOSER' || matchId === 'R32_BIGGEST_WINNER') {
+      const u = allUsers?.find(u => u.id === pickCode);
+      pickLabel = u?.display_name || u?.username || pickCode;
     } else if (matchId?.startsWith('HT_')) {
       pickLabel = pickCode === 'yes' ? 'YES' : pickCode === 'no' ? 'NO' : pickCode;
     } else if (match) {

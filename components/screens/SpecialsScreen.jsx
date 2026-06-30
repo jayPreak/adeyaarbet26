@@ -876,6 +876,23 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       })
       .catch(() => {});
 
+    // R32 Flop
+    fetch(`/api/special-bet?match_id=R32_BIGGEST_LOSER&kind=r32_loser${user?.id ? `&user_id=${user.id}` : ''}`)
+      .then(r => r.json())
+      .then(data => {
+        setPoolsData(prev => ({ ...prev, r32_loser: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0 } }));
+        setMyBetsData(prev => ({ ...prev, r32_loser: data.myBets?.[0] || null }));
+      })
+      .catch(() => {});
+
+    // R32 Bagholder
+    fetch(`/api/special-bet?match_id=R32_BIGGEST_WINNER&kind=r32_winner${user?.id ? `&user_id=${user.id}` : ''}`)
+      .then(r => r.json())
+      .then(data => {
+        setPoolsData(prev => ({ ...prev, r32_winner: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0 } }));
+        setMyBetsData(prev => ({ ...prev, r32_winner: data.myBets?.[0] || null }));
+      })
+      .catch(() => {});
 
   }, [user, bets]);
 
@@ -1024,6 +1041,27 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
               highlight="All 8 must be correct"
               bettorCount={tpqPool?.bettorCount || 0}
+              totalFriends={allUsers.length}
+            />
+          );
+        }
+
+        // R32 Flop / Bagholder — navigate to dedicated page
+        if (special.id === 'r32_loser' || special.id === 'r32_winner') {
+          const r32Pool = poolsData[special.id];
+          const r32MyBet = myBetsData[special.id] || null;
+          const href = special.id === 'r32_loser' ? '/specials/r32-flop' : '/specials/r32-bagholder';
+          return (
+            <SpecialCard
+              key={special.id}
+              special={special}
+              poolData={{ total: r32Pool?.total || 0, byTeam: {} }}
+              onOpen={() => window.location.href = href}
+              deadlineTs={new Date(special.deadlineTs).getTime()}
+              myBet={r32MyBet}
+              resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
+              highlight={special.id === 'r32_loser' ? 'Who flopped hardest?' : 'Who profited most?'}
+              bettorCount={r32Pool?.bettorCount || 0}
               totalFriends={allUsers.length}
             />
           );

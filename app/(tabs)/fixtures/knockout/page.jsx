@@ -200,23 +200,44 @@ function computeSvgPath(fromEl, toEl, container) {
   return `M${x1},${y1} L${midX - 8},${y1} Q${midX},${y1} ${midX},${y1 + Math.sign(y2 - y1) * 8} L${midX},${y2 - Math.sign(y2 - y1) * 8} Q${midX},${y2} ${midX + 8},${y2} L${x2},${y2}`;
 }
 
-// Build the edge list: each pair in stage N feeds into one node in stage N+1
-function buildEdges(byStage) {
+// Build the edge list using FIFA MatchNumber + placeholder references (W73 = winner of match #73)
+function buildEdges(byStage, allKnockout) {
   const edges = [];
-  const stages = STAGE_ORDER.filter(s => byStage[s]?.length);
 
-  for (let i = 0; i < stages.length - 1; i++) {
-    const cur = byStage[stages[i]];
-    const next = byStage[stages[i + 1]];
-    // Pair consecutive matches: match 0,1 → next 0; match 2,3 → next 1, etc.
-    for (let j = 0; j < next.length; j++) {
-      const srcA = cur[j * 2];
-      const srcB = cur[j * 2 + 1];
-      const dest = next[j];
-      if (srcA && dest) edges.push([srcA.id, dest.id]);
-      if (srcB && dest) edges.push([srcB.id, dest.id]);
+  // Map FIFA MatchNumber → our static ID
+  const matchNumToId = {};
+  for (const m of allKnockout) {
+    if (m.matchNumber) matchNumToId[m.matchNumber] = m.id;
+  }
+
+  // For each match with placeholders (W73, W75, etc.), link from source match
+  for (const m of allKnockout) {
+    for (const ph of [m.placeholderA, m.placeholderB]) {
+      if (!ph) continue;
+      const wMatch = ph.match(/^W(\d+)$/);
+      if (wMatch) {
+        const srcId = matchNumToId[parseInt(wMatch[1])];
+        if (srcId) edges.push([srcId, m.id]);
+      }
     }
   }
+
+  // Fallback: positional pairing if no placeholder-based edges
+  if (edges.length === 0) {
+    const stages = STAGE_ORDER.filter(s => byStage[s]?.length);
+    for (let i = 0; i < stages.length - 1; i++) {
+      const cur = byStage[stages[i]];
+      const next = byStage[stages[i + 1]];
+      for (let j = 0; j < next.length; j++) {
+        const srcA = cur[j * 2];
+        const srcB = cur[j * 2 + 1];
+        const dest = next[j];
+        if (srcA && dest) edges.push([srcA.id, dest.id]);
+        if (srcB && dest) edges.push([srcB.id, dest.id]);
+      }
+    }
+  }
+
   return edges;
 }
 
@@ -268,7 +289,7 @@ export default function KnockoutPage() {
     return grouped;
   }, [knockoutMatches]);
 
-  const edges = useMemo(() => buildEdges(byStage), [byStage]);
+  const edges = useMemo(() => buildEdges(byStage, knockoutMatches), [byStage, knockoutMatches]);
 
   const betStatusByMatch = useMemo(() => {
     const map = {};

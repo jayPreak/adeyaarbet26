@@ -70,6 +70,8 @@ function buildKnockoutMatches(knockoutData, scheduleMap) {
       const status = m.status === 0 ? 'finished' : m.status === 3 ? 'live' : 'upcoming';
       result.push({
         id: staticId,
+        fifaId: m.id || null,
+        matchNumber: m.matchNumber || null,
         home: m.home || null,
         away: m.away || null,
         stage: stage,

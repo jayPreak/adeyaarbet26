@@ -1106,7 +1106,11 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
 
   if (isSpecial) {
     const specialDef = getSpecial(bet.kind);
-    const pickLabel = specialDef?.formatPick?.(bet.pick) || bet.pick;
+    let pickLabel = specialDef?.formatPick?.(bet.pick) || bet.pick;
+    if ((bet.kind === 'r32_loser' || bet.kind === 'r32_winner') && allUsers?.length) {
+      const u = allUsers.find(u => u.id === bet.pick);
+      if (u) pickLabel = u.display_name || u.username || pickLabel;
+    }
     const isTeamPick = specialDef?.optionType === 'team';
     const specialDeadlinePassed = cupWinnerDeadlineTs && Date.now() >= cupWinnerDeadlineTs;
     const canCancel = bet.status === 'pending' && onCancelBet && !specialDeadlinePassed;
@@ -1124,6 +1128,8 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
             bet.kind === 'h2h' ? 'Messi vs Ronaldo' :
             bet.kind === 'golden_boot' ? 'Golden Boot' :
             bet.kind === 'goalscorer' ? 'Goalscorer' :
+            bet.kind === 'r32_loser' ? 'R32 Flop' :
+            bet.kind === 'r32_winner' ? 'R32 Bagholder' :
             bet.kind
           }</span>
           <span className={'bet-card__status ' + bet.status}>{bet.status}</span>
