@@ -382,7 +382,12 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
 
         <div className="match-card__vs">
           {(isLive || isFinished) && match.score ? (
-            <div className="match-card__score">{match.score[0]}–{match.score[1]}</div>
+            <div style={{ textAlign: 'center' }}>
+              <div className="match-card__score">{match.score[0]}–{match.score[1]}</div>
+              {isFinished && match.homePen != null && match.awayPen != null && (
+                <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>pen {match.homePen}–{match.awayPen}</div>
+              )}
+            </div>
           ) : (
             <div className="match-card__vs-time">{fmtKickoffIST(match.kickoffTs)}</div>
           )}
@@ -1198,7 +1203,7 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
           <Flag code={match.home} size="sm" />
           <span style={{ fontWeight: 500, fontSize: 13 }}>{home.code}</span>
           <span className="mono" style={{ color: 'var(--ink-3)', fontSize: 11 }}>
-            {match.score ? `${match.score[0]}–${match.score[1]}` : 'v'}
+            {match.score ? `${match.score[0]}–${match.score[1]}${match.homePen != null && match.awayPen != null ? ` (pen ${match.homePen}–${match.awayPen})` : ''}` : 'v'}
           </span>
           <span style={{ fontWeight: 500, fontSize: 13 }}>{away.code}</span>
           <Flag code={match.away} size="sm" />

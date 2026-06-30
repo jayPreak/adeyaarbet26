@@ -73,7 +73,9 @@ function mergeWithFifa(staticMatch, fifaResults) {
     ? [fifa.HomeTeamScore, fifa.AwayTeamScore]
     : null;
   const minute = fifa.MatchMinute ?? null;
-  return { ...staticMatch, venue, fifaId: fifa.IdMatch, status, score, minute };
+  const homePen = fifa.HomeTeamPenaltyScore ?? null;
+  const awayPen = fifa.AwayTeamPenaltyScore ?? null;
+  return { ...staticMatch, venue, fifaId: fifa.IdMatch, status, score, minute, homePen, awayPen };
 }
 
 // Fallback when FIFA data is unavailable: if kickoff was 3+ hours ago, treat as finished
