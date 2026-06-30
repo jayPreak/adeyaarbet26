@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const CACHE_KEY = 'wc26_news';
-const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes — ~96 calls/day well within 1000/day free tier
+const CACHE_TTL_MS = 90 * 60 * 1000; // 90 minutes — refreshes lazily on first request after cache expires
 const CURRENTS_BASE = 'https://api.currentsapi.services/v1';
 
 export async function GET() {
