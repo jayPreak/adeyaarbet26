@@ -277,8 +277,8 @@ function formatSpecialMatchLabel(matchId) {
   if (matchId === 'MESSI_V_RONALDO') return 'Messi vs Ronaldo';
   if (matchId === 'GOLDEN_BOOT') return 'Golden Boot';
   if (matchId === 'THIRD_QUALIFIERS') return '3rd Place Qualifiers';
-  if (matchId === 'R32_BIGGEST_LOSER') return 'R32 Flop';
-  if (matchId === 'R32_BIGGEST_WINNER') return 'R32 Bagholder';
+  if (matchId === 'R32_BIGGEST_LOSER') return 'KO Flop';
+  if (matchId === 'R32_BIGGEST_WINNER') return 'KO Bagholder';
   if (matchId?.startsWith('HT_')) {
     const slug = matchId.slice(3).toLowerCase().replace(/_/g, ' ');
     return slug.replace(/\b\w/g, c => c.toUpperCase());

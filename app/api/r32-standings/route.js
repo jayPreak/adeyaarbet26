@@ -6,13 +6,24 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   if (!supabase) return NextResponse.json({ standings: [] });
 
-  const { data: bets, error } = await supabase
+  const { data: r32Bets } = await supabase
     .from('bets')
     .select('user_id, match_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)')
     .like('match_id', 'R32-%')
     .eq('kind', 'match')
     .neq('status', 'cancelled')
     .order('created_at', { ascending: false });
+
+  const { data: r16Bets } = await supabase
+    .from('bets')
+    .select('user_id, match_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)')
+    .like('match_id', 'R16-%')
+    .eq('kind', 'match')
+    .neq('status', 'cancelled')
+    .order('created_at', { ascending: false });
+
+  const bets = [...(r32Bets || []), ...(r16Bets || [])];
+  const error = null;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

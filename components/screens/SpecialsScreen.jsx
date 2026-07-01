@@ -1060,7 +1060,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               deadlineTs={new Date(special.deadlineTs).getTime()}
               myBet={r32MyBet}
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
-              highlight={special.id === 'r32_loser' ? 'Who flopped hardest?' : 'Who profited most?'}
+              highlight={special.id === 'r32_loser' ? 'R32 + R16 biggest loser' : 'R32 + R16 biggest winner'}
               bettorCount={r32Pool?.bettorCount || 0}
               totalFriends={allUsers.length}
             />

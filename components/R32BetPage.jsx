@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useBetting } from '@/lib/BettingContext';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
+import { getTeam } from '@/lib/data';
 
-const DEADLINE = new Date('2026-07-01T12:30:00Z').getTime();
+const DEADLINE = new Date('2026-07-03T12:30:00Z').getTime();
 const MIN_BET = 50;
 
 function useCountdown(target) {
@@ -23,12 +24,12 @@ function useCountdown(target) {
 }
 
 export default function R32BetPage({ variant = 'flop' }) {
-  const { user, refreshData } = useBetting();
+  const { user, refreshData, matches } = useBetting();
   const isFlop = variant === 'flop';
-  const title = isFlop ? '🫠 R32 Flop' : '💸 R32 Bagholder';
+  const title = isFlop ? '🫠 KO Flop' : '💸 KO Bagholder';
   const subtitle = isFlop
-    ? 'Pick who loses the most in Round of 32.'
-    : 'Pick who wins the most in Round of 32.';
+    ? 'Pick who loses the most in R32 + R16.'
+    : 'Pick who wins the most in R32 + R16.';
   const matchId = isFlop ? 'R32_BIGGEST_LOSER' : 'R32_BIGGEST_WINNER';
   const kind = isFlop ? 'r32_loser' : 'r32_winner';
 
@@ -171,12 +172,12 @@ export default function R32BetPage({ variant = 'flop' }) {
 
       {/* Standings */}
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-3)', marginBottom: 8, letterSpacing: '0.04em' }}>
-        R32 P&L STANDINGS
+        R32 + R16 P&L STANDINGS
       </div>
 
       {sortedStandings.length === 0 && (
         <div style={{ fontSize: 12, color: 'var(--ink-3)', padding: 20, textAlign: 'center' }}>
-          No R32 bets resolved yet
+          No knockout bets resolved yet
         </div>
       )}
 
@@ -259,28 +260,37 @@ export default function R32BetPage({ variant = 'flop' }) {
                 border: isSelected ? '1px solid rgba(255,215,0,0.3)' : isMyPick ? '1px solid rgba(74,222,128,0.15)' : '1px solid rgba(255,255,255,0.06)',
                 borderTop: 'none',
               }}>
-                {s.history.map((h, j) => (
-                  <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: j < s.history.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                    <span style={{
-                      fontSize: 9, fontWeight: 700, width: 40, textAlign: 'center', borderRadius: 4, padding: '2px 4px',
-                      background: h.status === 'won' ? 'rgba(74,222,128,0.1)' : h.status === 'lost' ? 'rgba(248,113,113,0.1)' : 'rgba(255,215,0,0.08)',
-                      color: h.status === 'won' ? 'var(--win)' : h.status === 'lost' ? 'var(--loss)' : 'var(--gold)',
-                    }}>
-                      {h.status.toUpperCase()}
-                    </span>
-                    <span style={{ fontSize: 11, color: 'var(--ink-2)', flex: 1 }}>
-                      {h.matchId} · {h.pick}
-                    </span>
-                    <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>
-                      {fmtMoney(h.amount)}
-                    </span>
-                    {h.status === 'won' && h.payout && (
-                      <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>
-                        +{fmtMoney(h.payout - h.amount)}
+                {s.history.map((h, j) => {
+                  const m = matches.find(x => x.id === h.matchId);
+                  const pickTeam = m && h.pick !== 'draw'
+                    ? getTeam(m[h.pick === 'home' ? 'home' : 'away'])
+                    : null;
+                  const matchLabel = m && m.home && m.away
+                    ? `${getTeam(m.home)?.code || '?'} v ${getTeam(m.away)?.code || '?'}`
+                    : h.matchId;
+                  return (
+                    <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: j < s.history.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, width: 40, textAlign: 'center', borderRadius: 4, padding: '2px 4px',
+                        background: h.status === 'won' ? 'rgba(74,222,128,0.1)' : h.status === 'lost' ? 'rgba(248,113,113,0.1)' : 'rgba(255,215,0,0.08)',
+                        color: h.status === 'won' ? 'var(--win)' : h.status === 'lost' ? 'var(--loss)' : 'var(--gold)',
+                      }}>
+                        {h.status.toUpperCase()}
                       </span>
-                    )}
-                  </div>
-                ))}
+                      <span style={{ fontSize: 11, color: 'var(--ink-2)', flex: 1 }}>
+                        {matchLabel} · {pickTeam?.name || h.pick}
+                      </span>
+                      <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>
+                        {fmtMoney(h.amount)}
+                      </span>
+                      {h.status === 'won' && h.payout && (
+                        <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>
+                          +{fmtMoney(h.payout - h.amount)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -291,7 +301,7 @@ export default function R32BetPage({ variant = 'flop' }) {
       {!myBet && !closed && selectedUser && (
         <div style={{ marginTop: 16, padding: '14px', borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
           <div style={{ fontSize: 12, color: 'var(--ink-2)', marginBottom: 8 }}>
-            Betting <strong style={{ color: 'var(--ink)' }}>{standings.find(s => s.userId === selectedUser)?.displayName || selectedUser}</strong> {isFlop ? 'loses' : 'wins'} the most in R32
+            Betting <strong style={{ color: 'var(--ink)' }}>{standings.find(s => s.userId === selectedUser)?.displayName || selectedUser}</strong> {isFlop ? 'loses' : 'wins'} the most in R32 + R16
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             {[50, 100, 200, 500].map(v => (

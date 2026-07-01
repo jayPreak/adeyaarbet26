@@ -1128,8 +1128,8 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
             bet.kind === 'h2h' ? 'Messi vs Ronaldo' :
             bet.kind === 'golden_boot' ? 'Golden Boot' :
             bet.kind === 'goalscorer' ? 'Goalscorer' :
-            bet.kind === 'r32_loser' ? 'R32 Flop' :
-            bet.kind === 'r32_winner' ? 'R32 Bagholder' :
+            bet.kind === 'r32_loser' ? 'KO Flop' :
+            bet.kind === 'r32_winner' ? 'KO Bagholder' :
             bet.kind
           }</span>
           <span className={'bet-card__status ' + bet.status}>{bet.status}</span>
