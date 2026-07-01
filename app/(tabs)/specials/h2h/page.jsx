@@ -5,9 +5,10 @@ import { useBetting } from '@/lib/BettingContext';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
 
 export default function H2HPage() {
-  const { user, bets, refreshData } = useBetting();
+  const { user, bets, refreshData, allUsers } = useBetting();
   const [goalData, setGoalData] = useState(null);
   const [poolData, setPoolData] = useState(null);
+  const [picks, setPicks] = useState([]);
   const [myBet, setMyBet] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -25,6 +26,7 @@ export default function H2HPage() {
       .then(r => r.json())
       .then(d => {
         setPoolData(d.pool || null);
+        setPicks(d.picks || []);
         setMyBet(d.myBets?.[0] || null);
       })
       .catch(() => {});
@@ -36,14 +38,30 @@ export default function H2HPage() {
   const ronaldoAssists = goalData?.ronaldo?.assists || 0;
 
   const totalPool = poolData?.total || 0;
+  const bettorCount = poolData?.bettorCount || 0;
   const messiPool = poolData?.byOption?.messi || 0;
   const ronaldoPool = poolData?.byOption?.ronaldo || 0;
 
+  const myPotentialWin = myBet && totalPool > 0
+    ? Math.floor((myBet.amount / (myBet.pick === 'messi' ? messiPool : ronaldoPool)) * totalPool)
+    : 0;
+
   return (
     <div style={{ padding: '16px', maxWidth: 480 }}>
-      <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>⚔️ Messi vs Ronaldo</div>
-      <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 20 }}>
-        Most World Cup goals wins. Live tracker.
+      {/* Header with back */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <button
+          onClick={() => window.history.back()}
+          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--ink-2)', fontSize: 14, cursor: 'pointer', padding: '6px 10px', borderRadius: 8, fontWeight: 600 }}
+        >
+          ←
+        </button>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>⚔️ Messi vs Ronaldo</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+            Most World Cup goals wins. Live tracker.
+          </div>
+        </div>
       </div>
 
       {/* Score cards */}
@@ -92,7 +110,7 @@ export default function H2HPage() {
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ink-3)', marginBottom: 4 }}>
             <span>Messi {totalPool > 0 ? Math.round((messiPool / totalPool) * 100) : 0}%</span>
-            <span>Pool: {fmtMoney(totalPool)}</span>
+            <span>Pool: {fmtMoney(totalPool)} · {bettorCount} bet{bettorCount !== 1 ? 's' : ''}</span>
             <span>Ronaldo {totalPool > 0 ? Math.round((ronaldoPool / totalPool) * 100) : 0}%</span>
           </div>
           <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', display: 'flex' }}>
@@ -102,18 +120,84 @@ export default function H2HPage() {
         </div>
       )}
 
-      {/* My bet */}
+      {/* My bet + potential win */}
       {myBet && (
         <div style={{ marginBottom: 20, padding: '12px 14px', borderRadius: 10, background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
-          <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600, marginBottom: 2 }}>YOUR BET</div>
+          <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600, marginBottom: 4 }}>YOUR BET</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 14, fontWeight: 700 }}>
               {myBet.pick === 'messi' ? '🇦🇷 Messi' : '🇵🇹 Ronaldo'} · {fmtMoney(myBet.amount)}
             </span>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{myBet.status}</span>
           </div>
+          {myPotentialWin > 0 && (
+            <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.12)' }}>
+              <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>If {myBet.pick === 'messi' ? 'Messi' : 'Ronaldo'} wins</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--win)', fontFamily: 'var(--font-mono)' }}>
+                {fmtMoney(myPotentialWin)} <span style={{ fontSize: 11, opacity: 0.8 }}>(+{Math.round(((myPotentialWin - myBet.amount) / myBet.amount) * 100)}%)</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Everyone's picks */}
+      {picks.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-3)', marginBottom: 8, letterSpacing: '0.04em' }}>
+            EVERYONE'S PICKS
+          </div>
+          {picks.map((p, i) => {
+            const potWin = p.amount && totalPool > 0
+              ? Math.floor((p.amount / (p.pick === 'messi' ? messiPool : ronaldoPool)) * totalPool)
+              : 0;
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', marginBottom: 4, borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                  background: p.avatarUrl ? `url(${p.avatarUrl}) center/cover` : 'rgba(255,255,255,0.08)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 9, color: 'var(--ink-3)',
+                }}>
+                  {!p.avatarUrl && (p.displayName?.[0] || '?')}
+                </div>
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--ink-2)' }}>{p.displayName}</span>
+                <span style={{ fontSize: 11 }}>{p.pick === 'messi' ? '🇦🇷' : '🇵🇹'}</span>
+                <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>{fmtMoney(p.amount)}</span>
+                {potWin > 0 && (
+                  <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>→{fmtMoney(potWin)}</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Haven't bet */}
+      {allUsers.length > 0 && (() => {
+        const bettorIds = new Set(picks.map(p => p.userId));
+        const notBet = allUsers.filter(u => !bettorIds.has(u.id));
+        if (notBet.length === 0) return null;
+        return (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>HAVEN'T BET YET ({notBet.length})</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {notBet.map(u => (
+                <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: '50%',
+                    background: u.avatar_url ? `url(${u.avatar_url}) center/cover` : 'rgba(255,255,255,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 8, color: 'var(--ink-3)',
+                  }}>
+                    {!u.avatar_url && (u.display_name?.[0] || '?')}
+                  </div>
+                  <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{u.display_name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Goal timeline */}
       {!loading && (messiGoals.length > 0 || ronaldoGoals.length > 0) && (
