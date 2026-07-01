@@ -145,13 +145,10 @@ export async function GET(request) {
     };
   }
 
-  // Total in play: sum of all non-cancelled, non-topup bets (pending)
-  const totalInPlay = allBets
-    .filter(b => b.match_id !== '_topup' && b.status === 'pending')
-    .reduce((s, b) => s + b.amount, 0);
-  const totalBets = allBets
-    .filter(b => b.match_id !== '_topup' && b.status !== 'cancelled')
-    .length;
+  // Total in play: sum of all non-cancelled, non-topup bets (matches leaderboard's "total staked")
+  const nonCancelledBets = allBets.filter(b => b.match_id !== '_topup' && b.status !== 'cancelled');
+  const totalInPlay = nonCancelledBets.reduce((s, b) => s + b.amount, 0);
+  const totalBets = nonCancelledBets.length;
 
   return NextResponse.json({
     bets: betsRes.data || [],
