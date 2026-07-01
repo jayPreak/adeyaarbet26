@@ -40,14 +40,16 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
   const betWon = myBets.some(b => b.status === 'won');
   const betLost = myBets.some(b => b.status === 'lost');
 
+  const myPick = myBet?.pick; // 'home' | 'away' | 'draw'
+
   const winner = isFinished && match.score
     ? (match.score[0] > match.score[1] ? 'home' : match.score[1] > match.score[0] ? 'away' : null)
     : null;
 
   // Minimal: only live gets a distinct border
   const borderColor = isLive ? 'rgba(255,80,80,0.5)' : 'rgba(255,255,255,0.08)';
-  // Dim finished no-bet matches
-  const nodeOpacity = isFinished && !hasBet ? 0.5 : 1;
+  // Slightly dim finished no-bet matches (0.65 not 0.5 — still readable)
+  const nodeOpacity = isFinished && !hasBet ? 0.65 : 1;
 
   // Tiny left accent for bet status (like a 3px colored strip)
   const accentColor = betWon ? 'var(--win)' : betLost ? 'var(--loss)' : hasBet ? 'var(--gold)' : 'transparent';
@@ -76,11 +78,12 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
           }}>
             {home ? home.name : formatPlaceholder(match.placeholderA)}
           </span>
+          {myPick === 'home' && <span className="ko-node__pick-chip">Pick</span>}
         </div>
         {(isFinished || isLive) && match.score && (
           <span className="ko-node__score" style={{
-            fontWeight: winner === 'home' ? 700 : 400,
-            color: isLive ? 'var(--ink)' : winner === 'home' ? 'var(--ink)' : 'var(--ink-3)',
+            fontWeight: winner === 'home' || winner === 'draw' ? 700 : 400,
+            color: isLive ? 'var(--ink)' : winner === 'home' || winner === 'draw' ? 'var(--ink)' : 'var(--ink-3)',
           }}>
             {match.score[0]}
           </span>
@@ -99,11 +102,12 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
           }}>
             {away ? away.name : formatPlaceholder(match.placeholderB)}
           </span>
+          {myPick === 'away' && <span className="ko-node__pick-chip">Pick</span>}
         </div>
         {(isFinished || isLive) && match.score && (
           <span className="ko-node__score" style={{
-            fontWeight: winner === 'away' ? 700 : 400,
-            color: isLive ? 'var(--ink)' : winner === 'away' ? 'var(--ink)' : 'var(--ink-3)',
+            fontWeight: winner === 'away' || winner === 'draw' ? 700 : 400,
+            color: isLive ? 'var(--ink)' : winner === 'away' || winner === 'draw' ? 'var(--ink)' : 'var(--ink-3)',
           }}>
             {match.score[1]}
           </span>
