@@ -24,7 +24,7 @@ function useCountdown(target) {
 }
 
 export default function R32BetPage({ variant = 'flop' }) {
-  const { user, refreshData, matches } = useBetting();
+  const { user, refreshData, matches, allUsers } = useBetting();
   const isFlop = variant === 'flop';
   const title = isFlop ? '🫠 KO Flop' : '💸 KO Bagholder';
   const subtitle = isFlop
@@ -35,6 +35,7 @@ export default function R32BetPage({ variant = 'flop' }) {
 
   const [standings, setStandings] = useState([]);
   const [poolData, setPoolData] = useState(null);
+  const [picks, setPicks] = useState([]);
   const [myBet, setMyBet] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [expandedUser, setExpandedUser] = useState(null);
@@ -57,6 +58,7 @@ export default function R32BetPage({ variant = 'flop' }) {
       .then(r => r.json())
       .then(d => {
         setPoolData(d.pool || null);
+        setPicks(d.picks || []);
         setMyBet(d.myBets?.[0] || null);
       })
       .catch(() => {});
@@ -117,7 +119,15 @@ export default function R32BetPage({ variant = 'flop' }) {
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>{title}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => window.history.back()}
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--ink-2)', fontSize: 14, cursor: 'pointer', padding: '6px 10px', borderRadius: 8, fontWeight: 600 }}
+            >
+              ←
+            </button>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{title}</div>
+          </div>
           {countdown && (
             <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(74,222,128,0.1)', color: 'var(--win)' }}>
               {countdown}
@@ -167,6 +177,35 @@ export default function R32BetPage({ variant = 'flop' }) {
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Who bet on whom */}
+      {picks.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-3)', marginBottom: 8, letterSpacing: '0.04em' }}>
+            WHO'S BETTING ON WHOM
+          </div>
+          {picks.map((p, i) => {
+            const pickTarget = standings.find(s => s.userId === p.pick) || allUsers.find(u => u.id === p.pick);
+            const pickName = pickTarget?.displayName || pickTarget?.display_name || p.pick;
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', marginBottom: 4, borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                  background: p.avatarUrl ? `url(${p.avatarUrl}) center/cover` : 'rgba(255,255,255,0.08)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 9, color: 'var(--ink-3)',
+                }}>
+                  {!p.avatarUrl && (p.displayName?.[0] || '?')}
+                </div>
+                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--ink-2)' }}>{p.displayName}</span>
+                <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>→</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>{pickName}</span>
+                <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{fmtMoney(p.amount)}</span>
+              </div>
+            );
+          })}
         </div>
       )}
 
