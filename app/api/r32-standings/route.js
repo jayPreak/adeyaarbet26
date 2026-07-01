@@ -6,24 +6,13 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   if (!supabase) return NextResponse.json({ standings: [] });
 
-  const { data: r32Bets } = await supabase
+  const { data: bets, error } = await supabase
     .from('bets')
     .select('user_id, match_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)')
-    .like('match_id', 'R32-%')
     .eq('kind', 'match')
     .neq('status', 'cancelled')
+    .or('match_id.like.R32-%,match_id.like.R16-%')
     .order('created_at', { ascending: false });
-
-  const { data: r16Bets } = await supabase
-    .from('bets')
-    .select('user_id, match_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)')
-    .like('match_id', 'R16-%')
-    .eq('kind', 'match')
-    .neq('status', 'cancelled')
-    .order('created_at', { ascending: false });
-
-  const bets = [...(r32Bets || []), ...(r16Bets || [])];
-  const error = null;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -69,5 +58,8 @@ export async function GET() {
 
   const standings = Object.values(byUser).sort((a, b) => a.net - b.net);
 
-  return NextResponse.json({ standings });
+  return NextResponse.json(
+    { standings },
+    { headers: { 'Cache-Control': 's-maxage=60, stale-while-revalidate=120' } },
+  );
 }
