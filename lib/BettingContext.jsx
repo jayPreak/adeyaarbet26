@@ -108,6 +108,8 @@ export function BettingProvider({ children }) {
   const [thirdPlaceQualOpen, setThirdPlaceQualOpen] = useState(false);
   const [poolMap, setPoolMap] = useState({});
   const [allUsers, setAllUsers] = useState([]);
+  const [totalInPlay, setTotalInPlay] = useState(0);
+  const [totalBets, setTotalBets] = useState(0);
 
   const balance = computeBalance(bets);
   const realisedBalance = computeRealisedBalance(bets.filter(b => b.match_id !== '_topup'));
@@ -180,6 +182,8 @@ export function BettingProvider({ children }) {
         if (data.pools) setPoolMap(data.pools);
         if (data.allUsers) setAllUsers(data.allUsers);
         if (data.myCupWinnerBet) setMyCupWinnerBet(data.myCupWinnerBet);
+        if (data.totalInPlay != null) setTotalInPlay(data.totalInPlay);
+        if (data.totalBets != null) setTotalBets(data.totalBets);
       })
       .catch(() => { setBetsLoaded(true); });
   }, [user]);
@@ -302,7 +306,7 @@ export function BettingProvider({ children }) {
     realBets, penaltyBets,
     pendingBets, pendingStake, pendingCount, bestCaseWin,
     totalWon, totalLost, totalOpen,
-    matches, scheduleMap, poolMap, allUsers,
+    matches, scheduleMap, poolMap, allUsers, totalInPlay, totalBets,
     cupWinnerDeadlineTs, myCupWinnerBet,
     betSheet, toast,
     // actions
@@ -321,7 +325,7 @@ export function BettingProvider({ children }) {
     realBets, penaltyBets,
     pendingBets, pendingStake, pendingCount, bestCaseWin,
     totalWon, totalLost, totalOpen,
-    matches, scheduleMap, poolMap, allUsers,
+    matches, scheduleMap, poolMap, allUsers, totalInPlay, totalBets,
     cupWinnerDeadlineTs, myCupWinnerBet,
     betSheet, toast,
     openBet, closeBet, cancelBet, confirmBet,

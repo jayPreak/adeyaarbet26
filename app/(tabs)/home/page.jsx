@@ -11,7 +11,7 @@ export default function HomePage() {
   const {
     matches, balance, bets, openBet, cancelBet, user,
     poolMap, allUsers, myCupWinnerBet, setCupWinnerOpen, cupWinnerDeadlineTs,
-    setThirdPlaceQualOpen,
+    setThirdPlaceQualOpen, totalInPlay, totalBets,
   } = useBetting();
 
   return (
@@ -29,6 +29,8 @@ export default function HomePage() {
       onOpenCupWinner={() => setCupWinnerOpen(true)}
       cupWinnerDeadlineTs={cupWinnerDeadlineTs}
       onOpenThirdPlaceQual={() => setThirdPlaceQualOpen(true)}
+      totalInPlay={totalInPlay}
+      totalBets={totalBets}
     />
   );
 }

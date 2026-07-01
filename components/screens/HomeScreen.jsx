@@ -15,7 +15,7 @@ function relativeTime(iso) {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenThirdPlaceQual }) {
+export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenThirdPlaceQual, totalInPlay = 0, totalBets = 0 }) {
   const live = matches.filter(m => m.status === 'live');
   const upcoming = matches
     .filter(m => m.status === 'upcoming')
@@ -243,6 +243,26 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
         </>
       )}
 
+
+      {/* Total in play ticker */}
+      {totalInPlay > 0 && (
+        <div style={{
+          margin: '12px 16px 8px', padding: '10px 16px',
+          borderRadius: 10, textAlign: 'center',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
+            Total in play
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, color: 'var(--gold)' }}>
+            {CURRENCY_SYMBOL}{totalInPlay.toLocaleString('en-IN')}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
+            {totalBets} bets across {allUsers.length} players
+          </div>
+        </div>
+      )}
 
       {/* Friend activity */}
       <SectionHead title="Friend activity" more="See all" onMore={openAllActivity} />

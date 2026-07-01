@@ -765,9 +765,9 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
     }, 70);
   }
 
-  const home = getTeam(match.home);
-  const away = getTeam(match.away);
-  const sideName = side === 'home' ? home.name : side === 'away' ? away.name : 'Draw';
+  const home = match.home ? getTeam(match.home) : null;
+  const away = match.away ? getTeam(match.away) : null;
+  const sideName = side === 'home' ? (home?.name || 'Home') : side === 'away' ? (away?.name || 'Away') : 'Draw';
 
   const existingPick = existingBets.length > 0 ? existingBets[0].pick : null;
   const existingTotal = existingBets.reduce((s, b) => s + b.amount, 0);
@@ -866,11 +866,11 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
           <div className="row between center" style={{ gap: 10 }}>
             <div className="row center" style={{ gap: 8 }}>
               <Flag code={match.home} />
-              <span style={{ fontWeight: 600 }}>{home.name}</span>
+              <span style={{ fontWeight: 600 }}>{home?.name || 'TBD'}</span>
             </div>
             <span className="mono" style={{ color: 'var(--ink-3)' }}>vs</span>
             <div className="row center" style={{ gap: 8 }}>
-              <span style={{ fontWeight: 600 }}>{away.name}</span>
+              <span style={{ fontWeight: 600 }}>{away?.name || 'TBD'}</span>
               <Flag code={match.away} />
             </div>
           </div>
@@ -888,9 +888,9 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
         </div>
         <div className="match-card__odds" style={{ marginBottom: pool.total > 0 ? 8 : 18 }}>
           {[
-            { k: 'home', l: home.name },
+            { k: 'home', l: home?.name || 'Home' },
             ...(!match.group ? [] : [{ k: 'draw', l: 'Draw' }]),
-            { k: 'away', l: away.name },
+            { k: 'away', l: away?.name || 'Away' },
           ].map(o => {
             const odds = pool.total > 0 ? sideOdds(pool, o.k) : null;
             return (
@@ -901,7 +901,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
                 onClick={() => setSide(o.k)}
               >
                 <span className="odds-btn__label">
-                  {o.l.length > 8 ? (o.k === 'home' ? home.code : o.k === 'away' ? away.code : 'X') : o.l}
+                  {o.l.length > 8 ? (o.k === 'home' ? (home?.code || '?') : o.k === 'away' ? (away?.code || '?') : 'X') : o.l}
                 </span>
                 {pool.total > 0 && (
                   <span style={{ display: 'block', marginTop: 4, fontSize: 13, fontWeight: 800, color: side === o.k ? 'var(--gold)' : 'var(--ink-2)' }}>
@@ -931,7 +931,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
             background: 'rgba(231, 76, 60, 0.08)', border: '1px solid rgba(231, 76, 60, 0.2)',
             fontSize: 12, color: 'var(--loss)', lineHeight: 1.4,
           }}>
-            You have {fmtMoney(existingTotal)} on <b>{existingPick === 'home' ? home.name : existingPick === 'away' ? away.name : 'Draw'}</b>.
+            You have {fmtMoney(existingTotal)} on <b>{existingPick === 'home' ? (home?.name || 'Home') : existingPick === 'away' ? (away?.name || 'Away') : 'Draw'}</b>.
             Switching to <b>{sideName}</b> will cancel your previous bet and refund it.
           </div>
         )}
@@ -1026,7 +1026,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
         <button
           className="btn primary block lg"
           style={{ flexShrink: 0, marginTop: 12 }}
-          disabled={submitting || !bettingOpen || (existingPick === side) || amount < minBet}
+          disabled={submitting || !bettingOpen || (existingPick === side) || amount < minBet || (!match.home || !match.away)}
           onClick={async () => {
             setSubmitting(true);
             try { await onConfirm({ matchId: match.id, pick: side, amount }); }
@@ -1034,7 +1034,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
             finally { setSubmitting(false); }
           }}
         >
-          {submitting ? 'Placing...' : !bettingOpen ? 'Betting closed' : (existingPick === side) ? 'Already placed — cancel to change' : amount < minBet ? `Min bet ${CURRENCY_SYMBOL}${minBet}` : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
+          {submitting ? 'Placing...' : (!match.home || !match.away) ? 'Teams not decided yet' : !bettingOpen ? 'Betting closed' : (existingPick === side) ? 'Already placed — cancel to change' : amount < minBet ? `Min bet ${CURRENCY_SYMBOL}${minBet}` : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
         </button>
       </div>
     </div>

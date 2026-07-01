@@ -145,6 +145,14 @@ export async function GET(request) {
     };
   }
 
+  // Total in play: sum of all non-cancelled, non-topup bets (pending)
+  const totalInPlay = allBets
+    .filter(b => b.match_id !== '_topup' && b.status === 'pending')
+    .reduce((s, b) => s + b.amount, 0);
+  const totalBets = allBets
+    .filter(b => b.match_id !== '_topup' && b.status !== 'cancelled')
+    .length;
+
   return NextResponse.json({
     bets: betsRes.data || [],
     schedule,
@@ -154,5 +162,7 @@ export async function GET(request) {
     pools,
     allUsers,
     myCupWinnerBet: cupWinnerRes.data?.[0] || null,
+    totalInPlay,
+    totalBets,
   });
 }
