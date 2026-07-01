@@ -143,43 +143,6 @@ export function BettingProvider({ children }) {
       .catch(() => { setBetsLoaded(true); });
   }, [user]);
 
-  useEffect(() => { refreshData(); }, [refreshData]);
-
-  useEffect(() => {
-    if (!user) return;
-    const key = 'adeyaar_auto_resolve_ts';
-    const last = parseInt(sessionStorage.getItem(key) || '0', 10);
-    if (Date.now() - last < 60000) return;
-    sessionStorage.setItem(key, String(Date.now()));
-    fetch('/api/auto-resolve')
-      .then(r => r.json())
-      .then(data => {
-        if (data.resolved?.length > 0) {
-          refreshData();
-          refreshPools();
-        }
-      })
-      .catch(() => {});
-  }, [user]);
-
-  useEffect(() => {
-    fetch('/api/fifa/matches')
-      .then(r => r.json())
-      .then(setFifaData)
-      .catch(() => {});
-    fetch('/api/fifa/knockout')
-      .then(r => r.json())
-      .then(setKnockoutData)
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetch('/api/schedule')
-      .then(r => r.json())
-      .then(d => { setScheduleMap(d.schedule || {}); setCupWinnerDeadlineTs(d.cupWinnerDeadlineTs ?? null); })
-      .catch(() => {});
-  }, []);
-
   const refreshCupWinnerBet = useCallback(() => {
     if (!user) return;
     fetch(`/api/cup-winner-bet?user_id=${user.id}`)
@@ -187,8 +150,6 @@ export function BettingProvider({ children }) {
       .then(data => setMyCupWinnerBet(data?.myBet || null))
       .catch(() => {});
   }, [user]);
-
-  useEffect(() => { refreshCupWinnerBet(); }, [refreshCupWinnerBet]);
 
   const refreshPools = useCallback(() => {
     if (!user) return;
@@ -205,7 +166,41 @@ export function BettingProvider({ children }) {
       .catch(() => {});
   }, [user]);
 
-  useEffect(() => { refreshPools(); }, [refreshPools]);
+  // Single consolidated fetch on load — replaces 6 separate calls
+  useEffect(() => {
+    if (!user) return;
+    fetch(`/api/init?user_id=${user.id}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.bets) { setBets(data.bets); setBetsLoaded(true); }
+        if (data.schedule) setScheduleMap(data.schedule);
+        if (data.cupWinnerDeadlineTs !== undefined) setCupWinnerDeadlineTs(data.cupWinnerDeadlineTs);
+        if (data.fifaMatches) setFifaData(data.fifaMatches);
+        if (data.knockout) setKnockoutData(data.knockout);
+        if (data.pools) setPoolMap(data.pools);
+        if (data.allUsers) setAllUsers(data.allUsers);
+        if (data.myCupWinnerBet) setMyCupWinnerBet(data.myCupWinnerBet);
+      })
+      .catch(() => { setBetsLoaded(true); });
+  }, [user]);
+
+  // Auto-resolve: throttled, fire-and-forget after init
+  useEffect(() => {
+    if (!user) return;
+    const key = 'adeyaar_auto_resolve_ts';
+    const last = parseInt(sessionStorage.getItem(key) || '0', 10);
+    if (Date.now() - last < 60000) return;
+    sessionStorage.setItem(key, String(Date.now()));
+    fetch('/api/auto-resolve')
+      .then(r => r.json())
+      .then(data => {
+        if (data.resolved?.length > 0) {
+          refreshData();
+          refreshPools();
+        }
+      })
+      .catch(() => {});
+  }, [user]);
 
 
   const matches = useMemo(() => {

@@ -1014,7 +1014,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               key={special.id}
               special={special}
               poolData={{ total: h2hTotal, byTeam: h2hPool?.byTeam || {} }}
-              onOpen={() => setExpanded(special.id)}
+              onOpen={() => window.location.href = '/specials/h2h'}
               deadlineTs={new Date(special.deadlineTs).getTime()}
               myBet={h2hMyBet}
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
