@@ -1,12 +1,13 @@
 'use client';
 
-import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, fmtCountdown, getMatchKickoffTs, MATCH_BET_CUTOFF_MS, LINEUP_ANNOUNCE_MS } from '@/lib/data';
+import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, fmtCountdown, getMatchKickoffTs, MATCH_BET_CUTOFF_MS, LINEUP_ANNOUNCE_MS, fmtKnockoutStage } from '@/lib/data';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET, getMinBet } from '@/lib/currency';
 import { getSpecial } from '@/lib/specials';
 import { poolOdds, sideOdds, fmtDecimalOdds, fmtImpliedProb } from '@/lib/odds';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useBetting } from '@/lib/BettingContext';
 import LineupSheet from './LineupSheet';
 
 // ── Betting window ───────────────────────────────────────────
@@ -1062,17 +1063,19 @@ export function Toast({ message, onDone }) {
 export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, poolData, allUsers = [], userId }) {
   const matchId = bet.match_id || bet.matchId;
   const isSpecial = bet.kind && bet.kind !== 'match';
-  const match = !isSpecial ? getMatch(matchId) : null;
+  const { matches: allMatches } = useBetting();
+  const match = !isSpecial ? (getMatch(matchId) || allMatches.find(m => m.id === matchId)) : null;
   // Called unconditionally (Rules of Hooks) before any early return.
   const bettingOpen = useBettingOpen(kickoffTs);
 
   if (!isSpecial && !match) {
     const pickLabel = bet.pick === 'home' ? 'Home' : bet.pick === 'away' ? 'Away' : bet.pick === 'draw' ? 'Draw' : bet.pick;
+    const stageTag = fmtKnockoutStage(matchId);
     const canCancel = bet.status === 'pending' && onCancelBet;
     return (
       <div className="bet-card">
         <div className="bet-card__head">
-          <span>Match bet</span>
+          <span>{stageTag || 'Match bet'}</span>
           <span className={'bet-card__status ' + bet.status}>{bet.status}</span>
         </div>
         <div className="bet-card__pick">

@@ -200,40 +200,22 @@ function computeSvgPath(fromEl, toEl, container) {
   return `M${x1},${y1} L${midX - 8},${y1} Q${midX},${y1} ${midX},${y1 + Math.sign(y2 - y1) * 8} L${midX},${y2 - Math.sign(y2 - y1) * 8} Q${midX},${y2} ${midX + 8},${y2} L${x2},${y2}`;
 }
 
-// Build the edge list using FIFA MatchNumber + placeholder references (W73 = winner of match #73)
-function buildEdges(byStage, allKnockout) {
+// Build bracket edges by matching teams across stages.
+// For each match in a later stage, find the earlier-stage match that produced each team.
+function buildEdges(byStage) {
   const edges = [];
+  const stages = STAGE_ORDER.filter(s => byStage[s]?.length);
 
-  // Map FIFA MatchNumber → our static ID
-  const matchNumToId = {};
-  for (const m of allKnockout) {
-    if (m.matchNumber) matchNumToId[m.matchNumber] = m.id;
-  }
+  for (let i = 1; i < stages.length; i++) {
+    const children = byStage[stages[i - 1]];
+    const parents = byStage[stages[i]];
 
-  // For each match with placeholders (W73, W75, etc.), link from source match
-  for (const m of allKnockout) {
-    for (const ph of [m.placeholderA, m.placeholderB]) {
-      if (!ph) continue;
-      const wMatch = ph.match(/^W(\d+)$/);
-      if (wMatch) {
-        const srcId = matchNumToId[parseInt(wMatch[1])];
-        if (srcId) edges.push([srcId, m.id]);
-      }
-    }
-  }
-
-  // Fallback: positional pairing if no placeholder-based edges
-  if (edges.length === 0) {
-    const stages = STAGE_ORDER.filter(s => byStage[s]?.length);
-    for (let i = 0; i < stages.length - 1; i++) {
-      const cur = byStage[stages[i]];
-      const next = byStage[stages[i + 1]];
-      for (let j = 0; j < next.length; j++) {
-        const srcA = cur[j * 2];
-        const srcB = cur[j * 2 + 1];
-        const dest = next[j];
-        if (srcA && dest) edges.push([srcA.id, dest.id]);
-        if (srcB && dest) edges.push([srcB.id, dest.id]);
+    for (const parent of parents) {
+      // For each team in this match, find which child match it came from
+      for (const team of [parent.home, parent.away]) {
+        if (!team) continue;
+        const src = children.find(c => c.home === team || c.away === team);
+        if (src) edges.push([src.id, parent.id]);
       }
     }
   }
@@ -286,10 +268,38 @@ export default function KnockoutPage() {
       if (!grouped[stage]) grouped[stage] = [];
       grouped[stage].push(m);
     }
+    // Reorder nodes so paired matches are adjacent (standard bracket tree layout).
+    // Work backwards: for each match in a later stage, find its two feeder matches
+    // in the previous stage and place them adjacent in the order the later stage dictates.
+    const stages = STAGE_ORDER.filter(s => grouped[s]?.length);
+    for (let i = stages.length - 1; i >= 1; i--) {
+      const parentStage = stages[i];
+      const childStage = stages[i - 1];
+      const parents = grouped[parentStage];
+      const children = grouped[childStage];
+      if (!parents?.length || !children?.length) continue;
+
+      const ordered = [];
+      const placed = new Set();
+      for (const parent of parents) {
+        for (const team of [parent.home, parent.away]) {
+          if (!team) continue;
+          const child = children.find(c => !placed.has(c.id) && (c.home === team || c.away === team));
+          if (child) { ordered.push(child); placed.add(child.id); }
+        }
+      }
+      // Append any unmatched children (teams TBD / not yet resolved)
+      for (const c of children) {
+        if (!placed.has(c.id)) ordered.push(c);
+      }
+      if (ordered.length === children.length) {
+        grouped[childStage] = ordered;
+      }
+    }
     return grouped;
   }, [knockoutMatches]);
 
-  const edges = useMemo(() => buildEdges(byStage, knockoutMatches), [byStage, knockoutMatches]);
+  const edges = useMemo(() => buildEdges(byStage), [byStage]);
 
   const betStatusByMatch = useMemo(() => {
     const map = {};
