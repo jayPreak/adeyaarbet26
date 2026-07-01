@@ -146,6 +146,11 @@ export function BettingProvider({ children }) {
   useEffect(() => { refreshData(); }, [refreshData]);
 
   useEffect(() => {
+    if (!user) return;
+    const key = 'adeyaar_auto_resolve_ts';
+    const last = parseInt(sessionStorage.getItem(key) || '0', 10);
+    if (Date.now() - last < 60000) return;
+    sessionStorage.setItem(key, String(Date.now()));
     fetch('/api/auto-resolve')
       .then(r => r.json())
       .then(data => {

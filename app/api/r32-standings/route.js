@@ -8,10 +8,11 @@ export async function GET() {
 
   const { data: bets, error } = await supabase
     .from('bets')
-    .select('user_id, match_id, pick, amount, status, payout, kind, profiles(display_name, avatar_url)')
+    .select('user_id, match_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)')
     .like('match_id', 'R32-%')
     .eq('kind', 'match')
-    .neq('status', 'cancelled');
+    .neq('status', 'cancelled')
+    .order('created_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -28,6 +29,7 @@ export async function GET() {
         pending: 0,
         net: 0,
         bets: 0,
+        history: [],
       };
     }
     const u = byUser[b.user_id];
@@ -40,6 +42,14 @@ export async function GET() {
     } else if (b.status === 'pending') {
       u.pending += b.amount;
     }
+    u.history.push({
+      matchId: b.match_id,
+      pick: b.pick,
+      amount: b.amount,
+      status: b.status,
+      payout: b.payout,
+      createdAt: b.created_at,
+    });
   }
 
   for (const u of Object.values(byUser)) {

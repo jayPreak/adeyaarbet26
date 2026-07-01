@@ -36,6 +36,7 @@ export default function R32BetPage({ variant = 'flop' }) {
   const [poolData, setPoolData] = useState(null);
   const [myBet, setMyBet] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [expandedUser, setExpandedUser] = useState(null);
   const [amount, setAmount] = useState(MIN_BET);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -181,53 +182,108 @@ export default function R32BetPage({ variant = 'flop' }) {
 
       {sortedStandings.map((s, i) => {
         const isSelected = selectedUser === s.userId;
+        const isExpanded = expandedUser === s.userId;
         const poolOnUser = byOption[s.userId] || 0;
         const isMyPick = myBet?.pick === s.userId;
 
         return (
-          <button
-            key={s.userId}
-            onClick={() => !myBet && !closed && setSelectedUser(isSelected ? null : s.userId)}
-            disabled={!!myBet || closed}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 12px', marginBottom: 4, borderRadius: 10,
-              background: isSelected ? 'rgba(255,215,0,0.08)' : isMyPick ? 'rgba(74,222,128,0.06)' : 'rgba(255,255,255,0.03)',
-              border: isSelected ? '1px solid rgba(255,215,0,0.3)' : isMyPick ? '1px solid rgba(74,222,128,0.15)' : '1px solid rgba(255,255,255,0.06)',
-              cursor: myBet || closed ? 'default' : 'pointer', textAlign: 'left',
-            }}
-          >
-            <div style={{ width: 20, fontSize: 12, fontWeight: 700, color: 'var(--ink-3)', textAlign: 'center' }}>
-              {i + 1}
-            </div>
-            <div style={{
-              width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-              background: s.avatarUrl ? `url(${s.avatarUrl}) center/cover` : 'rgba(255,255,255,0.08)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 600, color: 'var(--ink-3)',
-            }}>
-              {!s.avatarUrl && (s.displayName?.[0] || '?')}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{s.displayName}</div>
-              <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>
-                {s.bets} bets · {fmtMoney(s.staked)} staked
+          <div key={s.userId} style={{ marginBottom: 4 }}>
+            <div
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px', borderRadius: isExpanded ? '10px 10px 0 0' : 10,
+                background: isSelected ? 'rgba(255,215,0,0.08)' : isMyPick ? 'rgba(74,222,128,0.06)' : 'rgba(255,255,255,0.03)',
+                border: isSelected ? '1px solid rgba(255,215,0,0.3)' : isMyPick ? '1px solid rgba(74,222,128,0.15)' : '1px solid rgba(255,255,255,0.06)',
+                borderBottom: isExpanded ? 'none' : undefined,
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ width: 20, fontSize: 12, fontWeight: 700, color: 'var(--ink-3)', textAlign: 'center' }}>
+                {i + 1}
               </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: s.net >= 0 ? 'var(--win)' : 'var(--loss)' }}>
-                {s.net >= 0 ? '+' : ''}{fmtMoney(s.net)}
+              <div
+                onClick={() => setExpandedUser(isExpanded ? null : s.userId)}
+                style={{
+                  width: 28, height: 28, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
+                  background: s.avatarUrl ? `url(${s.avatarUrl}) center/cover` : 'rgba(255,255,255,0.08)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 600, color: 'var(--ink-3)',
+                }}
+              >
+                {!s.avatarUrl && (s.displayName?.[0] || '?')}
               </div>
-              {s.pending > 0 && (
-                <div style={{ fontSize: 9, color: 'var(--ink-3)' }}>{fmtMoney(s.pending)} pending</div>
+              <div
+                style={{ flex: 1, cursor: 'pointer' }}
+                onClick={() => setExpandedUser(isExpanded ? null : s.userId)}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+                  {s.displayName}
+                  <span style={{ fontSize: 9, color: 'var(--ink-3)', marginLeft: 4 }}>{isExpanded ? '▲' : '▼'}</span>
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--ink-3)' }}>
+                  {s.bets} bets · {fmtMoney(s.staked)} staked
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: s.net >= 0 ? 'var(--win)' : 'var(--loss)' }}>
+                  {s.net >= 0 ? '+' : ''}{fmtMoney(s.net)}
+                </div>
+                {s.pending > 0 && (
+                  <div style={{ fontSize: 9, color: 'var(--ink-3)' }}>{fmtMoney(s.pending)} pending</div>
+                )}
+              </div>
+              {!myBet && !closed && (
+                <button
+                  onClick={() => setSelectedUser(isSelected ? null : s.userId)}
+                  style={{
+                    padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600,
+                    background: isSelected ? 'var(--gold)' : 'rgba(255,255,255,0.06)',
+                    color: isSelected ? '#000' : 'var(--ink-3)',
+                    border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  {isSelected ? '✓' : 'Pick'}
+                </button>
+              )}
+              {poolOnUser > 0 && (
+                <div style={{ fontSize: 9, color: 'var(--gold)', fontWeight: 600, minWidth: 36, textAlign: 'right' }}>
+                  {fmtMoney(poolOnUser)}
+                </div>
               )}
             </div>
-            {poolOnUser > 0 && (
-              <div style={{ fontSize: 9, color: 'var(--gold)', fontWeight: 600, minWidth: 36, textAlign: 'right' }}>
-                {fmtMoney(poolOnUser)}
+
+            {isExpanded && s.history && (
+              <div style={{
+                padding: '8px 12px 10px', borderRadius: '0 0 10px 10px',
+                background: 'rgba(255,255,255,0.02)',
+                border: isSelected ? '1px solid rgba(255,215,0,0.3)' : isMyPick ? '1px solid rgba(74,222,128,0.15)' : '1px solid rgba(255,255,255,0.06)',
+                borderTop: 'none',
+              }}>
+                {s.history.map((h, j) => (
+                  <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: j < s.history.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, width: 40, textAlign: 'center', borderRadius: 4, padding: '2px 4px',
+                      background: h.status === 'won' ? 'rgba(74,222,128,0.1)' : h.status === 'lost' ? 'rgba(248,113,113,0.1)' : 'rgba(255,215,0,0.08)',
+                      color: h.status === 'won' ? 'var(--win)' : h.status === 'lost' ? 'var(--loss)' : 'var(--gold)',
+                    }}>
+                      {h.status.toUpperCase()}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--ink-2)', flex: 1 }}>
+                      {h.matchId} · {h.pick}
+                    </span>
+                    <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)' }}>
+                      {fmtMoney(h.amount)}
+                    </span>
+                    {h.status === 'won' && h.payout && (
+                      <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>
+                        +{fmtMoney(h.payout - h.amount)}
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
-          </button>
+          </div>
         );
       })}
 
