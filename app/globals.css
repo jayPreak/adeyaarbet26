@@ -593,56 +593,37 @@ body {
 .ko-bracket__title.gold { color: var(--gold); }
 .ko-bracket__matches { display: flex; flex-direction: column; justify-content: space-around; gap: 8px; flex: 1; }
 
-/* Node */
+/* Node — minimal ESPN-style: teams + scores only, color is information */
 .ko-node {
   display: flex; flex-direction: column;
-  background: var(--surface); border: 1.5px solid var(--line);
-  border-radius: 10px; padding: 8px 10px 0; width: 190px;
+  background: rgba(255,255,255,0.02);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 6px; padding: 5px 8px; width: 150px;
   cursor: pointer; text-align: left;
-  transition: border-color 0.15s, transform 0.1s;
+  transition: transform 0.1s;
 }
 .ko-node:active { transform: scale(0.97); }
 
-.ko-node__live { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; font-size: 9px; font-weight: 700; color: var(--live); text-transform: uppercase; letter-spacing: 0.08em; }
-.ko-node__live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--live); animation: livePulse 1.2s infinite; }
+.ko-node__live { display: flex; align-items: center; gap: 3px; margin-bottom: 2px; font-size: 8px; font-weight: 700; color: #ff5050; text-transform: uppercase; letter-spacing: 0.05em; }
+.ko-node__live-dot { width: 4px; height: 4px; border-radius: 50%; background: #ff5050; animation: livePulse 1.2s infinite; }
 @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-.ko-node__team { display: flex; align-items: center; justify-content: space-between; padding: 3px 0; }
-.ko-node__team-info { display: flex; align-items: center; gap: 5px; }
-.ko-node__flag { font-size: 13px; }
-.ko-node__name { font-size: 11px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
-.ko-node__my-pick { font-size: 7px; color: var(--gold); margin-left: -2px; }
-.ko-node__team-right { display: flex; align-items: center; gap: 6px; }
-.ko-node__team-pool { font-size: 9px; font-weight: 500; color: var(--ink-2); font-family: var(--font-mono); }
-.ko-node__score { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--ink); }
-.ko-node__score.live { color: var(--live); }
+.ko-node__team { display: flex; align-items: center; justify-content: space-between; padding: 2px 0; }
+.ko-node__team-info { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.ko-node__flag { font-size: 11px; flex-shrink: 0; }
+.ko-node__name { font-size: 11px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 72px; }
+.ko-node__score { font-family: var(--font-mono); font-size: 12px; color: var(--ink); flex-shrink: 0; min-width: 14px; text-align: right; }
 
-.ko-node__divider { height: 1px; background: var(--line); margin: 2px 0; }
+.ko-node__divider { height: 1px; background: rgba(255,255,255,0.05); margin: 1px 0; }
 
-.ko-node__pool-bar { display: flex; height: 3px; border-radius: 2px; overflow: hidden; margin-top: 6px; gap: 1px; }
-.ko-node__pool-home { background: var(--win); border-radius: 2px 0 0 2px; min-width: 2px; }
-.ko-node__pool-away { background: var(--loss); border-radius: 0 2px 2px 0; min-width: 2px; }
-
-.ko-node__footer-bar {
+.ko-node__footer {
   display: flex; align-items: center; justify-content: space-between;
-  margin: 6px -10px 0; padding: 5px 10px;
-  background: rgba(255,255,255,0.03); border-radius: 0 0 9px 9px;
-  border-top: 1px solid var(--line);
+  padding-top: 3px; margin-top: 1px;
 }
-.ko-node__timer { display: flex; align-items: center; gap: 4px; }
-.ko-node__clock-icon { color: var(--gold); flex-shrink: 0; }
-.ko-node__timer-text { font-size: 9px; font-weight: 500; color: var(--ink-2); }
-.ko-node__countdown { font-size: 9px; font-weight: 600; color: var(--gold); font-family: var(--font-mono); }
-.ko-node__ft { font-size: 9px; font-weight: 700; color: var(--ink-3); letter-spacing: 0.05em; }
-.ko-node__minute { font-size: 9px; font-weight: 700; color: var(--live); font-family: var(--font-mono); }
-
-.ko-node__meta { display: flex; align-items: center; gap: 4px; }
-.ko-node__badge { font-size: 8px; font-weight: 700; padding: 2px 5px; border-radius: 4px; }
-.ko-node__badge.won { color: var(--win); background: rgba(74,222,128,0.12); }
-.ko-node__badge.lost { color: var(--loss); background: rgba(248,113,113,0.12); }
-.ko-node__badge.pending { color: var(--gold); background: rgba(255,215,0,0.1); }
-.ko-node__tap-hint { font-size: 8px; color: var(--ink-3); font-weight: 500; }
-.ko-node__pool-total { font-size: 8px; font-weight: 500; color: var(--ink-3); font-family: var(--font-mono); }
+.ko-node__timer-text { font-size: 9px; font-weight: 500; color: var(--ink-3); }
+.ko-node__ft { font-size: 9px; font-weight: 600; color: var(--ink-3); }
+.ko-node__minute { font-size: 9px; font-weight: 700; color: #ff5050; font-family: var(--font-mono); }
+.ko-node__bet-tag { font-size: 9px; font-weight: 700; font-family: var(--font-mono); }
 
 
 /* ── Leaderboard ───────────────────────────────────────────── */

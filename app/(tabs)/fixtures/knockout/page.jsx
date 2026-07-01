@@ -29,32 +29,6 @@ function formatIST(isoDate) {
   return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true, day: 'numeric', month: 'short' });
 }
 
-function Countdown({ kickoffTs }) {
-  const [diff, setDiff] = useState('');
-
-  useEffect(() => {
-    if (!kickoffTs) return;
-    function update() {
-      const ms = new Date(kickoffTs).getTime() - Date.now();
-      if (ms <= 0) { setDiff(''); return; }
-      const h = Math.floor(ms / 3600000);
-      const m = Math.floor((ms % 3600000) / 60000);
-      const s = Math.floor((ms % 60000) / 1000);
-      if (h > 48) {
-        const days = Math.floor(h / 24);
-        setDiff(`${days}d ${h % 24}h`);
-      } else {
-        setDiff(`${h}h ${m}m ${s}s`);
-      }
-    }
-    update();
-    const id = setInterval(update, 1000);
-    return () => clearInterval(id);
-  }, [kickoffTs]);
-
-  if (!diff) return null;
-  return <span className="ko-node__countdown">{diff}</span>;
-}
 
 function KnockoutNode({ match, onTap, myBets, poolData }) {
   const home = match.home ? getTeam(match.home) : null;
@@ -65,37 +39,25 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
   const myBet = myBets[0];
   const betWon = myBets.some(b => b.status === 'won');
   const betLost = myBets.some(b => b.status === 'lost');
-  const myPick = myBet?.pick;
-
-  const homePool = poolData?.bySide?.home || 0;
-  const awayPool = poolData?.bySide?.away || 0;
-  const totalPool = poolData?.total || 0;
-  const homePct = totalPool > 0 ? Math.round((homePool / totalPool) * 100) : 0;
-  const awayPct = totalPool > 0 ? Math.round((awayPool / totalPool) * 100) : 0;
 
   const winner = isFinished && match.score
     ? (match.score[0] > match.score[1] ? 'home' : match.score[1] > match.score[0] ? 'away' : null)
     : null;
 
-  // Border logic: only highlight what needs attention
-  // - Live: pulsing warm border
-  // - Pending bet: gold (your money is at stake)
-  // - Lost: subtle red
-  // - Won / finished / no bet: default subtle border
-  const borderColor = isLive ? 'rgba(255,140,50,0.6)'
-    : betLost ? 'rgba(248,113,113,0.4)'
-    : hasBet && !betWon && !betLost ? 'rgba(255,215,0,0.5)'
-    : 'rgba(255,255,255,0.08)';
+  // Minimal: only live gets a distinct border
+  const borderColor = isLive ? 'rgba(255,80,80,0.5)' : 'rgba(255,255,255,0.08)';
+  // Dim finished no-bet matches
+  const nodeOpacity = isFinished && !hasBet ? 0.5 : 1;
 
-  // Dim finished matches where user has no bet
-  const nodeOpacity = isFinished && !hasBet ? 0.55 : 1;
+  // Tiny left accent for bet status (like a 3px colored strip)
+  const accentColor = betWon ? 'var(--win)' : betLost ? 'var(--loss)' : hasBet ? 'var(--gold)' : 'transparent';
 
   return (
     <button
       id={`ko-node-${match.id}`}
       className="ko-node"
       onClick={(e) => { e.stopPropagation(); onTap(match); }}
-      style={{ borderColor, opacity: nodeOpacity }}
+      style={{ borderColor, opacity: nodeOpacity, borderLeftColor: accentColor, borderLeftWidth: hasBet || betWon || betLost ? 3 : 1.5 }}
     >
       {isLive && (
         <div className="ko-node__live">
@@ -104,6 +66,7 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
         </div>
       )}
 
+      {/* Home team row */}
       <div className="ko-node__team">
         <div className="ko-node__team-info">
           <span className="ko-node__flag">{home ? home.flag : '🏳️'}</span>
@@ -113,20 +76,20 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
           }}>
             {home ? home.name : formatPlaceholder(match.placeholderA)}
           </span>
-          {myPick === 'home' && <span className="ko-node__my-pick" style={{ color: betWon ? 'var(--win)' : betLost ? 'var(--loss)' : 'var(--gold)' }}>●</span>}
         </div>
-        <div className="ko-node__team-right">
-          {homePool > 0 && <span className="ko-node__team-pool">{fmtMoney(homePool)}</span>}
-          {(isFinished || isLive) && match.score && (
-            <span className={'ko-node__score' + (isLive ? ' live' : '')} style={{ fontWeight: winner === 'home' ? 700 : 400 }}>
-              {match.score[0]}
-            </span>
-          )}
-        </div>
+        {(isFinished || isLive) && match.score && (
+          <span className="ko-node__score" style={{
+            fontWeight: winner === 'home' ? 700 : 400,
+            color: isLive ? 'var(--ink)' : winner === 'home' ? 'var(--ink)' : 'var(--ink-3)',
+          }}>
+            {match.score[0]}
+          </span>
+        )}
       </div>
 
       <div className="ko-node__divider" />
 
+      {/* Away team row */}
       <div className="ko-node__team">
         <div className="ko-node__team-info">
           <span className="ko-node__flag">{away ? away.flag : '🏳️'}</span>
@@ -136,47 +99,31 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
           }}>
             {away ? away.name : formatPlaceholder(match.placeholderB)}
           </span>
-          {myPick === 'away' && <span className="ko-node__my-pick" style={{ color: betWon ? 'var(--win)' : betLost ? 'var(--loss)' : 'var(--gold)' }}>●</span>}
         </div>
-        <div className="ko-node__team-right">
-          {awayPool > 0 && <span className="ko-node__team-pool">{fmtMoney(awayPool)}</span>}
-          {(isFinished || isLive) && match.score && (
-            <span className={'ko-node__score' + (isLive ? ' live' : '')} style={{ fontWeight: winner === 'away' ? 700 : 400 }}>
-              {match.score[1]}
-            </span>
-          )}
-        </div>
+        {(isFinished || isLive) && match.score && (
+          <span className="ko-node__score" style={{
+            fontWeight: winner === 'away' ? 700 : 400,
+            color: isLive ? 'var(--ink)' : winner === 'away' ? 'var(--ink)' : 'var(--ink-3)',
+          }}>
+            {match.score[1]}
+          </span>
+        )}
       </div>
 
-      {totalPool > 0 && (
-        <div className="ko-node__pool-bar">
-          <div className="ko-node__pool-home" style={{ width: `${homePct}%` }} />
-          <div className="ko-node__pool-away" style={{ width: `${awayPct}%` }} />
-        </div>
-      )}
-
-      <div className="ko-node__footer-bar">
-        <div className="ko-node__timer">
-          {!isFinished && !isLive && match.kickoffTs && (
-            <>
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="ko-node__clock-icon">
-                <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M8 4.5V8L10.5 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              <span className="ko-node__timer-text">{formatIST(match.kickoffTs)}</span>
-              <Countdown kickoffTs={match.kickoffTs} />
-            </>
-          )}
-          {isFinished && <span className="ko-node__ft">FT</span>}
-          {isLive && match.minute && <span className="ko-node__minute">{match.minute}'</span>}
-        </div>
-        <div className="ko-node__meta">
-          {betWon && <span className="ko-node__badge won">WON +{fmtMoney((myBet.payout || 0) - myBet.amount)}</span>}
-          {betLost && <span className="ko-node__badge lost">-{fmtMoney(myBet.amount)}</span>}
-          {hasBet && !betWon && !betLost && <span className="ko-node__badge pending">{fmtMoney(myBet.amount)}</span>}
-          {!hasBet && totalPool > 0 && <span className="ko-node__pool-total">{fmtMoney(totalPool)} pool</span>}
-          {!hasBet && totalPool === 0 && !isFinished && <span className="ko-node__tap-hint">Tap to bet</span>}
-        </div>
+      {/* Footer: minimal — just status + time */}
+      <div className="ko-node__footer">
+        {isLive && match.minute && <span className="ko-node__minute">{match.minute}'</span>}
+        {isFinished && <span className="ko-node__ft">FT</span>}
+        {!isFinished && !isLive && match.kickoffTs && (
+          <span className="ko-node__timer-text">{formatIST(match.kickoffTs)}</span>
+        )}
+        {hasBet && (
+          <span className="ko-node__bet-tag" style={{
+            color: betWon ? 'var(--win)' : betLost ? 'var(--loss)' : 'var(--ink-2)',
+          }}>
+            {betWon ? `+${fmtMoney((myBet.payout || 0) - myBet.amount)}` : betLost ? `-${fmtMoney(myBet.amount)}` : fmtMoney(myBet.amount)}
+          </span>
+        )}
       </div>
     </button>
   );
@@ -417,7 +364,8 @@ export default function KnockoutPage() {
           initialPositionY={0}
           minScale={0.3}
           maxScale={2.5}
-          limitToBounds={false}
+          limitToBounds={true}
+          centerZoomedOut={true}
           doubleClick={{ disabled: true }}
           onInit={(ref) => {
             const saved = loadViewState();
