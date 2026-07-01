@@ -9,13 +9,14 @@ const RONALDO_ID = 201200;
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const empty = { messi: { goals: [], assists: 0 }, ronaldo: { goals: [], assists: 0 } };
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
+    const timer = setTimeout(() => controller.abort(), 8000);
 
-    const calRes = await fetch(FIFA_CALENDAR, { signal: controller.signal, next: { revalidate: 300 } }).catch(() => null);
+    const calRes = await fetch(FIFA_CALENDAR, { signal: controller.signal, cache: 'no-store' }).catch(() => null);
     clearTimeout(timer);
-    if (!calRes?.ok) return NextResponse.json({ messi: { goals: [], assists: 0 }, ronaldo: { goals: [], assists: 0 } });
+    if (!calRes?.ok) return NextResponse.json(empty, { headers: { 'Cache-Control': 's-maxage=60, stale-while-revalidate=120' } });
 
     const calData = await calRes.json();
     const results = calData.Results || [];
@@ -28,12 +29,12 @@ export async function GET() {
       return hasScore && (home === 'ARG' || away === 'ARG' || home === 'POR' || away === 'POR');
     });
 
-    // Fetch match details in parallel with individual timeouts
+    // Fetch match details in parallel — no Next.js cache, 6s timeout per match
     const details = await Promise.all(
       targetMatches.map(m => {
         const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 3000);
-        return fetch(`${FIFA_LIVE}/${m.IdStage}/${m.IdMatch}`, { signal: ctrl.signal, next: { revalidate: 600 } })
+        const t = setTimeout(() => ctrl.abort(), 6000);
+        return fetch(`${FIFA_LIVE}/${m.IdStage}/${m.IdMatch}`, { signal: ctrl.signal, cache: 'no-store' })
           .then(r => { clearTimeout(t); return r.ok ? r.json() : null; })
           .catch(() => { clearTimeout(t); return null; });
       })
@@ -56,7 +57,10 @@ export async function GET() {
 
         const goals = team.Goals || [];
         for (const g of goals) {
-          if (g.IdPlayer === MESSI_ID && abbr === 'ARG') {
+          const playerId = typeof g.IdPlayer === 'string' ? parseInt(g.IdPlayer) : g.IdPlayer;
+          const assistId = typeof g.IdAssistPlayer === 'string' ? parseInt(g.IdAssistPlayer) : g.IdAssistPlayer;
+
+          if (playerId === MESSI_ID && abbr === 'ARG') {
             messi.goals.push({
               minute: g.Minute,
               type: g.Type === 1 ? 'penalty' : 'open_play',
@@ -64,7 +68,7 @@ export async function GET() {
               matchId: m.IdMatch,
             });
           }
-          if (g.IdPlayer === RONALDO_ID && abbr === 'POR') {
+          if (playerId === RONALDO_ID && abbr === 'POR') {
             ronaldo.goals.push({
               minute: g.Minute,
               type: g.Type === 1 ? 'penalty' : 'open_play',
@@ -72,15 +76,16 @@ export async function GET() {
               matchId: m.IdMatch,
             });
           }
-          // Count assists
-          if (g.IdAssistPlayer === MESSI_ID && abbr === 'ARG') messi.assists++;
-          if (g.IdAssistPlayer === RONALDO_ID && abbr === 'POR') ronaldo.assists++;
+          if (assistId === MESSI_ID && abbr === 'ARG') messi.assists++;
+          if (assistId === RONALDO_ID && abbr === 'POR') ronaldo.assists++;
         }
       }
     }
 
-    return NextResponse.json({ messi, ronaldo });
+    return NextResponse.json({ messi, ronaldo }, {
+      headers: { 'Cache-Control': 's-maxage=120, stale-while-revalidate=300' },
+    });
   } catch {
-    return NextResponse.json({ messi: { goals: [] }, ronaldo: { goals: [] } });
+    return NextResponse.json(empty);
   }
 }

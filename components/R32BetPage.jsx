@@ -34,6 +34,7 @@ export default function R32BetPage({ variant = 'flop' }) {
   const kind = isFlop ? 'r32_loser' : 'r32_winner';
 
   const [standings, setStandings] = useState([]);
+  const [progress, setProgress] = useState(null);
   const [poolData, setPoolData] = useState(null);
   const [picks, setPicks] = useState([]);
   const [myBet, setMyBet] = useState(null);
@@ -48,7 +49,10 @@ export default function R32BetPage({ variant = 'flop' }) {
   useEffect(() => {
     fetch('/api/r32-standings')
       .then(r => r.json())
-      .then(d => setStandings(d.standings || []))
+      .then(d => {
+        setStandings(d.standings || []);
+        setProgress(d.progress || null);
+      })
       .catch(() => {});
   }, []);
 
@@ -151,10 +155,12 @@ export default function R32BetPage({ variant = 'flop' }) {
             <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>POOL</div>
             <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>{fmtMoney(totalPool)}</div>
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>BETS</div>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{poolData?.bettorCount || 0}</div>
-          </div>
+          {myBet && (
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>IF YOU'RE RIGHT</div>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--win)' }}>{fmtMoney(totalPool)}</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -206,6 +212,35 @@ export default function R32BetPage({ variant = 'flop' }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Progress tracker */}
+      {progress && (
+        <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-3)', letterSpacing: '0.04em' }}>MATCH PROGRESS</span>
+            <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', color: progress.resolved >= progress.total ? 'var(--win)' : 'var(--gold)' }}>
+              {progress.resolved}/{progress.total}
+            </span>
+          </div>
+          <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden', position: 'relative' }}>
+            <div style={{
+              height: '100%', borderRadius: 3, transition: 'width 0.6s ease',
+              width: `${(progress.resolved / progress.total) * 100}%`,
+              background: progress.resolved >= progress.total
+                ? 'var(--win)'
+                : 'linear-gradient(90deg, var(--gold), rgba(255,215,0,0.6))',
+            }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+            <span style={{ fontSize: 10, color: 'var(--ink-3)' }}>
+              {progress.resolved} settled
+            </span>
+            <span style={{ fontSize: 10, color: progress.resolved >= progress.total ? 'var(--win)' : 'var(--ink-3)' }}>
+              {progress.resolved >= progress.total ? '✓ All decided' : `${progress.total - progress.resolved} remaining`}
+            </span>
+          </div>
         </div>
       )}
 

@@ -58,8 +58,15 @@ export async function GET() {
 
   const standings = Object.values(byUser).sort((a, b) => a.net - b.net);
 
+  // Count resolved vs total R32+R16 matches from bets data
+  const matchIds = new Set((bets || []).map(b => b.match_id));
+  const resolvedIds = new Set((bets || []).filter(b => b.status === 'won' || b.status === 'lost').map(b => b.match_id));
+  const totalMatches = 24; // 16 R32 + 8 R16
+  const resolvedMatches = resolvedIds.size;
+  const bettedMatches = matchIds.size;
+
   return NextResponse.json(
-    { standings },
+    { standings, progress: { resolved: resolvedMatches, total: totalMatches, betted: bettedMatches } },
     { headers: { 'Cache-Control': 's-maxage=60, stale-while-revalidate=120' } },
   );
 }
