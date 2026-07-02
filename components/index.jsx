@@ -401,6 +401,12 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
       </div>
 
       {isLive && <WatchLive home={match.home} away={match.away} />}
+      {isLive && (
+        <Link href="/news" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,59,59,0.06)', border: '1px solid rgba(255,59,59,0.15)', textDecoration: 'none', width: 'fit-content' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#ff3b3b' }}>⚡ Live Commentary</span>
+          <span style={{ fontSize: 10, color: 'rgba(255,59,59,0.6)' }}>→</span>
+        </Link>
+      )}
 
       {!isFinished && bettingOpen && (
         <div className={'match-card__odds' + (match.knockout ? ' match-card__odds--2col' : '')}>
@@ -688,6 +694,12 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
       </div>
 
       {isLive && <WatchLive home={match.home} away={match.away} />}
+      {isLive && (
+        <Link href="/news" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8, padding: '8px 14px', borderRadius: 10, background: 'rgba(255,59,59,0.06)', border: '1px solid rgba(255,59,59,0.15)', textDecoration: 'none' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#ff3b3b' }}>⚡ Live Commentary</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,59,59,0.6)' }}>→</span>
+        </Link>
+      )}
 
       {bettingOpen ? (
         <div className="hero__cta-row">
