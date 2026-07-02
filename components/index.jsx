@@ -369,7 +369,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
       background: myResult === 'won' ? 'rgba(74,222,128,0.04)' : 'rgba(248,113,113,0.04)',
     } : undefined}>
       <div className="match-card__head">
-        <span>{stageLabel}{match.knockout && match.id ? ` · Match ${match.id.split('-')[1]}` : ''}{city ? ` · ${city}` : ''}</span>
+        <span>{stageLabel}{match.knockout && match.id ? ` · Match ${match.id.split('-')[1]}` : ''}{city ? ` · ${city}` : ''}{match.knockout && !isFinished ? ` · Min ${CURRENCY_SYMBOL}${getMinBet(match.id)}` : ''}</span>
         {isLive ? <LiveDot minute={match.minute} /> :
          isFinished ? <span style={{ color: 'var(--ink-3)' }}>FT</span> :
          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{fmtCountdown(match.kickoffTs)}</span>}
@@ -652,7 +652,7 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
     <div className="hero">
       <div className="row between center">
         <div className="hero__stage">
-          {isLive ? '★ LIVE' : isFinished ? 'FINISHED' : 'Round of 32 · Featured'}
+          {isLive ? '★ LIVE' : isFinished ? 'FINISHED' : `${match.stage ? { R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarterfinal', SF: 'Semifinal', Final: 'Final' }[match.stage] || match.stage : match.group ? `Group ${match.group}` : 'Featured'} · Min ${CURRENCY_SYMBOL}${getMinBet(match.id)}`}
         </div>
         {isLive && <LiveDot minute={match.minute} />}
         {!isLive && !isFinished && countdown && (

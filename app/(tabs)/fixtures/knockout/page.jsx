@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useLayoutEffect, useCallback } fr
 import { TransformWrapper, TransformComponent, useControls } from 'react-zoom-pan-pinch';
 import { useBetting } from '@/lib/BettingContext';
 import { getTeam } from '@/lib/data';
-import { fmtMoney } from '@/lib/currency';
+import { fmtMoney, getMinBet, CURRENCY_SYMBOL } from '@/lib/currency';
 
 const STAGE_ORDER = ['R32', 'R16', 'QF', 'SF', 'Final'];
 const STAGE_LABELS = {
@@ -399,6 +399,9 @@ export default function KnockoutPage() {
                   <div key={stage} className="ko-bracket__round">
                     <div className={'ko-bracket__title' + (isGold ? ' gold' : '')}>
                       {STAGE_LABELS[stage]}
+                      <span style={{ fontSize: 9, fontWeight: 500, color: 'var(--ink-3)', marginLeft: 6 }}>
+                        min {CURRENCY_SYMBOL}{getMinBet(`${stage}-1`)}
+                      </span>
                     </div>
                     <div className="ko-bracket__matches">
                       {stageMatches.map(m => {
