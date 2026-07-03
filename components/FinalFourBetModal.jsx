@@ -240,39 +240,41 @@ export default function FinalFourBetModal({ open, onClose, user, onPlaced, match
               ))}
             </div>
           )}
+          {!closed && (
+            <div style={{ paddingTop: 8 }}>
+              <div style={{ textAlign: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, marginBottom: 6 }}>
+                {CURRENCY_SYMBOL}{amount.toLocaleString('en-IN')}
+              </div>
+              <input
+                type="range" className="slider"
+                min={100} max={MAX_BET} step={50}
+                value={amount}
+                onChange={e => setAmount(Number(e.target.value))}
+                style={{ marginBottom: 8 }}
+              />
+              <div className="amount-presets" style={{ marginBottom: 10 }}>
+                {presets.map(p => (
+                  <button key={p} className={amount === p ? 'active' : ''} onClick={() => setAmount(p)}>
+                    {CURRENCY_SYMBOL}{p}
+                  </button>
+                ))}
+              </div>
+              {error && (
+                <div style={{ padding: '8px 12px', marginBottom: 8, borderRadius: 8, background: 'rgba(255,61,127,0.08)', border: '1px solid rgba(255,61,127,0.3)', color: 'var(--loss)', fontSize: 12 }}>
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {!closed && (
-          <div style={{ flexShrink: 0, paddingTop: 8 }}>
-            <div style={{ textAlign: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, marginBottom: 6 }}>
-              {CURRENCY_SYMBOL}{amount.toLocaleString('en-IN')}
-            </div>
-            <input
-              type="range" className="slider"
-              min={100} max={MAX_BET} step={50}
-              value={amount}
-              onChange={e => setAmount(Number(e.target.value))}
-              style={{ marginBottom: 8 }}
-            />
-            <div className="amount-presets" style={{ marginBottom: 10 }}>
-              {presets.map(p => (
-                <button key={p} className={amount === p ? 'active' : ''} onClick={() => setAmount(p)}>
-                  {CURRENCY_SYMBOL}{p}
-                </button>
-              ))}
-            </div>
-            {error && (
-              <div style={{ padding: '8px 12px', marginBottom: 8, borderRadius: 8, background: 'rgba(255,61,127,0.08)', border: '1px solid rgba(255,61,127,0.3)', color: 'var(--loss)', fontSize: 12 }}>
-                {error}
-              </div>
-            )}
-            <button className="btn primary block lg" disabled={!canSubmit} onClick={handleSubmit}>
-              {submitting ? 'Placing…'
-                : count < REQUIRED ? `Pick ${REQUIRED - count} more`
-                : myBet ? 'Update picks'
-                : `Bet ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')}`}
-            </button>
-          </div>
+          <button className="btn primary block lg" style={{ flexShrink: 0, marginTop: 10 }} disabled={!canSubmit} onClick={handleSubmit}>
+            {submitting ? 'Placing…'
+              : count < REQUIRED ? `Pick ${REQUIRED - count} more`
+              : myBet ? 'Update picks'
+              : `Bet ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')}`}
+          </button>
         )}
       </div>
     </div>
