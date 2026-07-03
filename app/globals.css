@@ -802,6 +802,10 @@ body {
 
 /* ── z-index layering ──────────────────────────────────────── */
 .app > * { position: relative; z-index: 1; }
+/* Scroll area holds bottom-sheet modals (.sheet-backdrop, z-index:90).
+   It must outrank the sibling .tabbar so those modals — and their pinned
+   action buttons — paint above the bottom nav instead of behind it. */
+.app > .scroll { z-index: 2; }
 
 /* ═══════════════════════════════════════════════════════════════
    DESKTOP SHELL — sidebar layout, multi-column grids
