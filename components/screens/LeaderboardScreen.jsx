@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 import { NetWorthGraph } from '@/components/screens/BetsScreen';
+import { computeAchievements } from '@/lib/achievements';
 
 const TABS = [
   { id: 'total', label: 'Rankings' },
@@ -309,6 +310,39 @@ export function SettlementPlan({ user }) {
   );
 }
 
+export function AchievementsStrip({ rankings, user }) {
+  const badges = computeAchievements(rankings, fmtMoney);
+  if (badges.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.5px', padding: '0 16px 8px' }}>
+        🎖️ Titles
+      </div>
+      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: '0 16px 8px', scrollbarWidth: 'none' }}>
+        {badges.map(b => {
+          const isMe = user && b.userId === user.id;
+          return (
+            <div key={b.id} style={{
+              minWidth: 148, padding: '10px 12px', borderRadius: 12, flexShrink: 0,
+              background: isMe ? 'rgba(255,215,0,0.06)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${isMe ? 'rgba(255,215,0,0.25)' : 'rgba(255,255,255,0.06)'}`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <span style={{ fontSize: 16 }}>{b.emoji}</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--gold)' }}>{b.title}</span>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>
+                {b.userName}{isMe ? ' (you)' : ''}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--ink-3)', lineHeight: 1.35 }}>{b.description}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function TotalWinsTab({ rankings, user }) {
   const [profileUser, setProfileUser] = useState(null);
   const sorted = [...rankings].sort((a, b) => (b.realisedBalance || 0) - (a.realisedBalance || 0));
@@ -317,6 +351,7 @@ export function TotalWinsTab({ rankings, user }) {
   return (
     <div>
       <NetWorthCarousel rankings={rankings} />
+      <AchievementsStrip rankings={rankings} user={user} />
       <div style={{ margin: '0 16px' }}>
       {!hasAnyResolved && (
         <div style={{ padding: '20px 16px 24px', textAlign: 'center' }}>

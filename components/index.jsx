@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useBetting } from '@/lib/BettingContext';
 import LineupSheet from './LineupSheet';
+import MatchPropsSheet from './MatchPropsSheet';
 
 // ── Betting window ───────────────────────────────────────────
 // Betting closes MATCH_BET_CUTOFF_MS (30s) before kickoff — mirrors the
@@ -346,6 +347,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
   const isFinished = match.status === 'finished';
   const bettingOpen = useBettingOpen(match);
   const [lineupOpen, setLineupOpen] = useState(false);
+  const [propsOpen, setPropsOpen] = useState(false);
 
   const kickoffTs = getMatchKickoffTs(match);
   const lineupAvailable = kickoffTs != null && Date.now() >= kickoffTs - LINEUP_ANNOUNCE_MS;
@@ -430,6 +432,21 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
         </div>
       )}
 
+      {!isFinished && bettingOpen && match.home && match.away && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setPropsOpen(true); }}
+          style={{
+            width: '100%', marginTop: 2, padding: '8px 0',
+            background: 'rgba(255,215,0,0.05)', border: '1px dashed rgba(255,215,0,0.3)',
+            borderRadius: 8, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            color: 'var(--gold)', fontSize: 12, fontWeight: 700,
+          }}
+        >
+          🎯 Props: exact score · o/u 2.5{match.knockout ? ' · pens' : ''}
+        </button>
+      )}
+
       {!isFinished && !bettingOpen && (
         <div style={{
           margin: '4px 0', padding: '8px 0', textAlign: 'center',
@@ -496,6 +513,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
       )}
 
       <LineupSheet match={match} open={lineupOpen} onClose={() => setLineupOpen(false)} />
+      <MatchPropsSheet match={match} open={propsOpen} onClose={() => setPropsOpen(false)} />
     </div>
   );
 }
@@ -1145,6 +1163,12 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
             bet.kind === 'goalscorer' ? 'Goalscorer' :
             bet.kind === 'r32_loser' ? 'KO Flop' :
             bet.kind === 'r32_winner' ? 'KO Bagholder' :
+            bet.kind === 'scoreline' ? `Exact Score${fmtKnockoutStage(matchId) ? ` · ${fmtKnockoutStage(matchId)}` : ` · ${matchId}`}` :
+            bet.kind === 'over_under' ? `O/U 2.5${fmtKnockoutStage(matchId) ? ` · ${fmtKnockoutStage(matchId)}` : ` · ${matchId}`}` :
+            bet.kind === 'pens' ? `Penalties? · ${fmtKnockoutStage(matchId) || matchId}` :
+            bet.kind === 'challenge' ? `Duel · ${fmtKnockoutStage(matchId) || matchId}` :
+            bet.kind === 'final_four' ? 'Final Four' :
+            bet.kind === 'total_goals' ? 'Total Goals' :
             bet.kind
           }</span>
           <span className={'bet-card__status ' + bet.status}>{bet.status}</span>

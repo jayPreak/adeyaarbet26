@@ -2,8 +2,28 @@ import { SPECIALS, getSpecial, getSpecialByMatchId, getConfederation, isSpecialB
 
 describe('SPECIALS registry', () => {
   test('has all specials defined', () => {
-    expect(SPECIALS).toHaveLength(6);
-    expect(SPECIALS.map(s => s.id)).toEqual(['cup_winner', 'continent', 'h2h', 'r32_loser', 'r32_winner', 'third_place_qualifiers']);
+    expect(SPECIALS.map(s => s.id)).toEqual([
+      'cup_winner', 'continent', 'h2h', 'r32_loser', 'r32_winner', 'third_place_qualifiers',
+      'final_four', 'total_goals',
+      'scoreline', 'over_under', 'pens', 'challenge',
+    ]);
+  });
+
+  test('per-match prop kinds are hidden from the specials grid', () => {
+    for (const id of ['scoreline', 'over_under', 'pens', 'challenge']) {
+      expect(getSpecial(id).hidden).toBe(true);
+    }
+    expect(getSpecial('final_four').hidden).toBeUndefined();
+    expect(getSpecial('total_goals').hidden).toBeUndefined();
+  });
+
+  test('new specials format picks for humans', () => {
+    expect(getSpecial('scoreline').formatPick('2-1')).toBe('2-1');
+    expect(getSpecial('over_under').formatPick('over')).toBe('Over 2.5 goals');
+    expect(getSpecial('pens').formatPick('yes')).toContain('penalties');
+    expect(getSpecial('total_goals').formatPick('under')).toBe('Under 269.5 goals');
+    expect(getSpecial('final_four').formatPick('ARG,BRA,ENG,FRA')).toBe('Argentina · Brazil · England · France');
+    expect(getSpecial('challenge').formatPick('home')).toBe('Home');
   });
 
   test('each special has required fields', () => {

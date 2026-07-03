@@ -8,4 +8,7 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/$1',
   },
   testMatch: ['**/__tests__/**/*.test.js'],
+  // Stale agent worktrees under .claude/ carry their own __tests__ copies —
+  // never run them as part of this repo's suite.
+  testPathIgnorePatterns: ['/node_modules/', '/.claude/', '/.next/'],
 };

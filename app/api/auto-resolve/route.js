@@ -4,6 +4,7 @@ import supabaseAdmin from '@/lib/supabase-admin';
 import { FIFA_MATCHES_URL, TEAM_CODE_ALIAS } from '@/lib/schedule-sync';
 import { MATCHES, GROUPS, BRACKET } from '@/lib/data';
 import { computeThirdPlaceQualifiers } from '@/lib/third-place-qualifiers';
+import { scorelineBucket, overUnderPick, pensPick } from '@/lib/props';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -178,6 +179,9 @@ export async function GET() {
       finished.push({
         matchId,
         winner,
+        homeScore: fm.HomeTeamScore,
+        awayScore: fm.AwayTeamScore,
+        wentToPens: fm.HomeTeamPenaltyScore != null && fm.AwayTeamPenaltyScore != null,
         fifa_id_stage: fm.IdStage ? String(fm.IdStage) : null,
         fifa_id_match: fm.IdMatch ? String(fm.IdMatch) : null,
       });
@@ -204,6 +208,9 @@ export async function GET() {
       finished.push({
         matchId: staticId,
         winner,
+        homeScore: fm.HomeTeamScore,
+        awayScore: fm.AwayTeamScore,
+        wentToPens: fm.HomeTeamPenaltyScore != null && fm.AwayTeamPenaltyScore != null,
         fifa_id_stage: fm.IdStage ? String(fm.IdStage) : null,
         fifa_id_match: fm.IdMatch ? String(fm.IdMatch) : null,
       });
@@ -223,9 +230,9 @@ export async function GET() {
     .eq('status', 'pending');
 
   const unresolvedIds = new Set((pendingBets || []).map(b => b.match_id));
+  // Props/duels settle independently below, so don't early-return here even
+  // when every match-kind pool is already resolved.
   const toResolve = finished.filter(f => unresolvedIds.has(f.matchId));
-
-  if (toResolve.length === 0) return NextResponse.json({ resolved: [], penalties: penaltiesResult });
 
   const resolved = [];
   const goalscorer = [];
@@ -249,6 +256,64 @@ export async function GET() {
       else if (gsResult?.error) errors.push({ matchId, stage: 'goalscorer', error: gsResult.error });
     } catch (e) {
       errors.push({ matchId, stage: 'resolve', error: e.message });
+    }
+  }
+
+  // ── Match props (scoreline / over_under / pens) + duels ────────────
+  // Settled for every finished match with pending bets, independent of the
+  // match pool — so a FIFA hiccup on one run gets retried on the next.
+  const props = [];
+  const finishedById = Object.fromEntries(finished.map(f => [f.matchId, f]));
+  const finishedIds = Object.keys(finishedById);
+  if (finishedIds.length > 0) {
+    const { data: pendingProps } = await db
+      .from('bets')
+      .select('match_id, kind')
+      .in('match_id', finishedIds)
+      .in('kind', ['scoreline', 'over_under', 'pens'])
+      .eq('status', 'pending');
+
+    const toSettle = new Set((pendingProps || []).map(b => `${b.kind}|${b.match_id}`));
+    for (const key of toSettle) {
+      const [kind, matchId] = key.split('|');
+      const f = finishedById[matchId];
+      const winnerPick =
+        kind === 'scoreline' ? scorelineBucket(f.homeScore, f.awayScore) :
+        kind === 'over_under' ? overUnderPick(f.homeScore, f.awayScore) :
+        pensPick(f.wentToPens);
+      if (!winnerPick) continue;
+      try {
+        const { data, error } = await db.rpc('settle_special', {
+          p_match_id: matchId,
+          p_kind: kind,
+          p_winner: winnerPick,
+        });
+        if (error) errors.push({ matchId, stage: kind, error: error.message });
+        else props.push({ matchId, kind, winner: winnerPick, ...data });
+      } catch (e) {
+        errors.push({ matchId, stage: kind, error: e.message });
+      }
+    }
+
+    // Duels: settle accepted, expire unaccepted
+    const { data: openChallenges } = await db
+      .from('challenges')
+      .select('match_id')
+      .in('match_id', finishedIds)
+      .in('status', ['open', 'accepted']);
+
+    const duelMatchIds = [...new Set((openChallenges || []).map(c => c.match_id))];
+    for (const matchId of duelMatchIds) {
+      try {
+        const { data, error } = await db.rpc('settle_challenges', {
+          p_match_id: matchId,
+          p_winner: finishedById[matchId].winner,
+        });
+        if (error) errors.push({ matchId, stage: 'challenges', error: error.message });
+        else props.push({ matchId, kind: 'challenge', ...data });
+      } catch (e) {
+        errors.push({ matchId, stage: 'challenges', error: e.message });
+      }
     }
   }
 
@@ -276,5 +341,5 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({ resolved, goalscorer, penalties: penaltiesResult, ...(thirdPlaceResult ? { thirdPlace: thirdPlaceResult } : {}), ...(errors.length ? { errors } : {}) });
+  return NextResponse.json({ resolved, goalscorer, penalties: penaltiesResult, ...(props.length ? { props } : {}), ...(thirdPlaceResult ? { thirdPlace: thirdPlaceResult } : {}), ...(errors.length ? { errors } : {}) });
 }

@@ -5,6 +5,9 @@ import { SPECIALS, getSpecial } from '@/lib/specials';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
 import { getTeam } from '@/lib/data';
 import { Flag } from '@/components';
+import { useBetting } from '@/lib/BettingContext';
+import FinalFourBetModal, { qfDeadlineTs } from '@/components/FinalFourBetModal';
+import TotalGoalsBetModal from '@/components/TotalGoalsBetModal';
 
 function useDeadlineCountdown(deadlineTs) {
   const [now, setNow] = useState(Date.now());
@@ -841,11 +844,15 @@ function ThirdPlaceDetail({ pool, picks, myBet, user, allUsers, onBack, onPlace 
 }
 
 export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allUsers = [], matches = [], onToast }) {
+  const { refreshData } = useBetting();
   const [poolsData, setPoolsData] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [picksData, setPicksData] = useState({});
   const [deadlines, setDeadlines] = useState({});
   const [myBetsData, setMyBetsData] = useState({});
+  const [finalFourOpen, setFinalFourOpen] = useState(false);
+  const [totalGoalsOpen, setTotalGoalsOpen] = useState(false);
+  const [duelsSummary, setDuelsSummary] = useState(null);
 
   useEffect(() => {
     // Cup-winner data
@@ -905,6 +912,37 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       .then(data => {
         setPoolsData(prev => ({ ...prev, r32_winner: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0 } }));
         setMyBetsData(prev => ({ ...prev, r32_winner: data.myBets?.[0] || null }));
+      })
+      .catch(() => {});
+
+    // Final Four
+    fetch(`/api/special-bet?match_id=FINAL_FOUR&kind=final_four${user?.id ? `&user_id=${user.id}` : ''}`)
+      .then(r => r.json())
+      .then(data => {
+        setPoolsData(prev => ({ ...prev, final_four: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0 } }));
+        setMyBetsData(prev => ({ ...prev, final_four: data.myBets?.[0] || null }));
+      })
+      .catch(() => {});
+
+    // Total tournament goals
+    fetch(`/api/special-bet?match_id=TOTAL_GOALS&kind=total_goals${user?.id ? `&user_id=${user.id}` : ''}`)
+      .then(r => r.json())
+      .then(data => {
+        setPoolsData(prev => ({ ...prev, total_goals: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, byTeam: data.pool?.byOption || {} } }));
+        setMyBetsData(prev => ({ ...prev, total_goals: data.myBets?.[0] || null }));
+      })
+      .catch(() => {});
+
+    // Duels summary
+    fetch('/api/challenge')
+      .then(r => r.json())
+      .then(data => {
+        const live = (data.challenges || []).filter(c => ['open', 'accepted'].includes(c.status));
+        setDuelsSummary({
+          count: live.length,
+          total: live.reduce((s, c) => s + c.amount * (c.status === 'accepted' ? 2 : 1), 0),
+          incoming: (data.challenges || []).filter(c => c.status === 'open' && c.opponent_id === user?.id).length,
+        });
       })
       .catch(() => {});
 
@@ -991,7 +1029,69 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, padding: '0 16px' }}>
-      {SPECIALS.map(special => {
+      {/* Duels — 1v1 challenges (own page, not a parimutuel pool) */}
+      <SpecialCard
+        special={{
+          id: 'duels',
+          title: 'Duels — 1v1 Challenges',
+          description: 'Challenge a friend head-to-head, winner takes all',
+          emoji: '⚔️',
+          multiPick: false,
+          formatPick: p => p,
+        }}
+        poolData={{ total: duelsSummary?.total || 0, byTeam: {} }}
+        onOpen={() => window.location.href = '/specials/duels'}
+        deadlineTs={null}
+        myBet={null}
+        resolvesTs={null}
+        highlight={duelsSummary?.incoming > 0
+          ? `🔥 ${duelsSummary.incoming} duel${duelsSummary.incoming !== 1 ? 's' : ''} waiting for YOU`
+          : duelsSummary?.count > 0
+            ? `${duelsSummary.count} live duel${duelsSummary.count !== 1 ? 's' : ''}`
+            : 'Call a friend out, winner takes all'}
+        bettorCount={duelsSummary?.count || 0}
+        totalFriends={null}
+      />
+      {SPECIALS.filter(s => !s.hidden).map(special => {
+        // Final Four — opens its own modal
+        if (special.id === 'final_four') {
+          return (
+            <SpecialCard
+              key={special.id}
+              special={special}
+              poolData={{ total: poolsData.final_four?.total || 0, byTeam: {} }}
+              onOpen={() => setFinalFourOpen(true)}
+              deadlineTs={qfDeadlineTs(matches)}
+              myBet={myBetsData.final_four || null}
+              resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
+              highlight="Most correct semifinalists wins"
+              bettorCount={poolsData.final_four?.bettorCount || 0}
+              totalFriends={allUsers.length}
+            />
+          );
+        }
+
+        // Total Goals — opens its own modal
+        if (special.id === 'total_goals') {
+          const tg = poolsData.total_goals;
+          const overAmt = tg?.byTeam?.over || 0;
+          const underAmt = tg?.byTeam?.under || 0;
+          return (
+            <SpecialCard
+              key={special.id}
+              special={special}
+              poolData={{ total: tg?.total || 0, byTeam: tg?.byTeam || {} }}
+              onOpen={() => setTotalGoalsOpen(true)}
+              deadlineTs={qfDeadlineTs(matches)}
+              myBet={myBetsData.total_goals || null}
+              resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
+              highlight={tg?.total > 0 ? `Over ${fmtMoney(overAmt)} · Under ${fmtMoney(underAmt)}` : 'Over/under 269.5 goals'}
+              bettorCount={tg?.bettorCount || 0}
+              totalFriends={allUsers.length}
+            />
+          );
+        }
+
         // Continent card
         if (special.id === 'continent') {
           const contPool = poolsData.continent;
@@ -1102,6 +1202,21 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
         );
       })}
       </div>
+
+      <FinalFourBetModal
+        open={finalFourOpen}
+        onClose={() => setFinalFourOpen(false)}
+        user={user}
+        matches={matches}
+        onPlaced={() => refreshData()}
+      />
+      <TotalGoalsBetModal
+        open={totalGoalsOpen}
+        onClose={() => setTotalGoalsOpen(false)}
+        user={user}
+        matches={matches}
+        onPlaced={() => refreshData()}
+      />
     </div>
   );
 }

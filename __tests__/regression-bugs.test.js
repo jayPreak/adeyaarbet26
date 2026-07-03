@@ -197,9 +197,11 @@ describe('special bet deadlines and resolution times', () => {
     expect(diffDays).toBeLessThanOrEqual(8);
   });
 
-  test('all specials except goalscorer have resolvesTs', () => {
+  test('all specials except goalscorer and per-match props have resolvesTs', () => {
     for (const s of SPECIALS) {
-      if (s.id === 'goalscorer') {
+      if (s.id === 'goalscorer' || s.hidden) {
+        // Per-match props (scoreline/over_under/pens/challenge) resolve at
+        // each match, not at one fixed timestamp.
         expect(s.resolvesTs).toBeFalsy();
       } else {
         expect(s.resolvesTs).toBeTruthy();

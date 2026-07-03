@@ -117,6 +117,16 @@ id, user_id, match_id, pick, amount, status, payout, kind, created_at, resolved_
 | `place_goalscorer_bet(user_id, match_id, pick, amount)` | One per user per match. |
 | `cancel_goalscorer_bet(user_id, match_id)` | Cancel goalscorer bet. |
 | `settle_goalscorer(match_id, winner_ids[])` | Settle goalscorer pool. |
+| `settle_special(match_id, kind, winner)` | Generic single-winner pool settle (scoreline, over_under, pens, total_goals, continent, h2h…). service_role only. |
+| `create_challenge / accept_challenge / decline_challenge / cancel_challenge` | Friend duels (1v1). Stakes are `bets` rows with `kind='challenge'` — never touch them directly; the `challenges` table holds duel metadata. |
+| `settle_challenges(match_id, winner)` | Settles/voids/expires duels on a finished match. service_role only, called by auto-resolve. |
+| `settle_final_four(semifinalists[])` | Most-correct-picks wins the FINAL_FOUR pool. service_role only, run manually after SF matchups are known. |
+
+### Match props & duels (migration 032, added mid-tournament)
+- Kinds `scoreline` / `over_under` / `pens` are per-match specials placed via `place_special_bet` (match_id = static match id). Auto-settled in `auto-resolve/route.js` via `settle_special` using `lib/props.js` pure helpers (scoreline settles on the score after extra time, excluding shootouts; pens = knockout only).
+- Kind `challenge` (duels): money must flow through the challenge RPCs so `challenges` metadata and `bets` stay in sync. Winner's bet gets `payout = 2×amount`. Draw → both refunded (`void`). Unaccepted at kickoff → challenger refunded (`expired`).
+- Kinds `final_four` / `total_goals`: tournament specials gated by `qf_deadline()` (first QF kickoff, read from `match_schedule`). `total_goals` is settled manually at tournament end via `settle_special('TOTAL_GOALS','total_goals','over'|'under')`.
+- Leaderboard "Titles" (achievements) are computed client-side in `lib/achievements.js` from the rankings payload — no DB involvement.
 
 ---
 
