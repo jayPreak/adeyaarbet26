@@ -29,7 +29,12 @@ function teamCode(team) {
   return (c && TEAM_CODE_ALIAS[c]) || c;
 }
 
-function determineWinner(fifaMatch) {
+// Returns 'home' | 'away' | 'draw' | null.
+// For knockout matches (isKnockout=true) a draw is impossible: if the score is
+// level and penalty scores haven't been reported yet, return null so the match
+// stays pending and is retried on a later run — otherwise resolve_match would be
+// called with 'draw', find no winning side, and irreversibly refund the pool.
+function determineWinner(fifaMatch, isKnockout = false) {
   const homeScore = fifaMatch.HomeTeamScore;
   const awayScore = fifaMatch.AwayTeamScore;
   if (homeScore == null || awayScore == null) return null;
@@ -41,7 +46,11 @@ function determineWinner(fifaMatch) {
   if (homePen != null && awayPen != null) {
     if (homePen > awayPen) return 'home';
     if (awayPen > homePen) return 'away';
+    // Level on penalties too — unresolvable; don't guess.
+    return isKnockout ? null : 'draw';
   }
+  // Score level but no penalty data yet: a knockout can't end drawn, so wait.
+  if (isKnockout) return null;
   return 'draw';
 }
 
@@ -149,14 +158,18 @@ export async function GET() {
   };
 
   const finished = [];
-  // Group matches by stage for knockout ordering
+  // Collect ALL knockout matches per stage (finished or not) so the index-based
+  // static-ID assignment matches how the schedule seed and UI number them: they
+  // index every match in a stage by date. Indexing only the finished matches
+  // would shift the numbering whenever results arrive out of date-order (FIFA
+  // API lag) and settle the wrong match's pool.
   const knockoutByStage = {};
 
   for (const fm of fifaResults) {
-    if (fm.MatchStatus !== 0) continue;
     const group = groupLetter(fm);
     if (group) {
-      // Group match
+      // Group match — only process finished ones
+      if (fm.MatchStatus !== 0) continue;
       const key = `${group}|${teamCode(fm.Home)}|${teamCode(fm.Away)}`;
       const matchId = lookup[key];
       if (!matchId) continue;
@@ -169,21 +182,24 @@ export async function GET() {
         fifa_id_match: fm.IdMatch ? String(fm.IdMatch) : null,
       });
     } else {
-      // Knockout match — group by stage for index-based ID assignment
+      // Knockout match — collect regardless of status for stable index-based IDs.
+      // Require a Date so ordering matches the schedule seed (see schedule-sync).
       const prefix = KNOCKOUT_STAGE_MAP[fm.IdStage];
-      if (!prefix) continue;
+      if (!prefix || !fm.Date) continue;
       if (!knockoutByStage[prefix]) knockoutByStage[prefix] = [];
       knockoutByStage[prefix].push(fm);
     }
   }
 
-  // Sort knockout matches by date and assign static IDs by index
+  // Sort each stage by date, assign static IDs by index over ALL matches in the
+  // stage, then resolve only the ones that have actually finished.
   for (const [prefix, matches] of Object.entries(knockoutByStage)) {
     matches.sort((a, b) => new Date(a.Date) - new Date(b.Date));
     for (let i = 0; i < matches.length; i++) {
       const fm = matches[i];
+      if (fm.MatchStatus !== 0) continue; // only resolve finished matches
       const staticId = `${prefix}-${i + 1}`;
-      const winner = determineWinner(fm);
+      const winner = determineWinner(fm, true); // knockout: no draws
       if (!winner) continue;
       finished.push({
         matchId: staticId,

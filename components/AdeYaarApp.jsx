@@ -48,7 +48,9 @@ import DesktopApp from '@/components/desktop/DesktopApp';
 function getFifaStatus(fifa) {
   if (fifa.MatchStatus === 3) return 'live';
   if (fifa.MatchStatus === 0 && fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
-  if (fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'finished';
+  // Scores present but status isn't the explicit finished code (0): the match
+  // has started but isn't over — show it live rather than prematurely FT.
+  if (fifa.HomeTeamScore != null && fifa.AwayTeamScore != null) return 'live';
   return 'upcoming';
 }
 

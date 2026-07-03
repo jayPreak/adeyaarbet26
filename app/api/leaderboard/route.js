@@ -23,7 +23,7 @@ export async function GET() {
 
   const { data: bets, error: bErr } = await supabase
     .from('bets')
-    .select('user_id, amount, status, payout, match_id, pick, kind, created_at');
+    .select('user_id, amount, status, payout, match_id, pick, kind, created_at, resolved_at');
 
   if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 });
 
@@ -68,7 +68,7 @@ export async function GET() {
       // Win rate + streak
       const resolved = userBets
         .filter(b => b.status === 'won' || b.status === 'lost')
-        .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+        .sort((a, b) => ((a.resolved_at || a.created_at) || '').localeCompare((b.resolved_at || b.created_at) || ''));
       const wins = resolved.filter(b => b.status === 'won').length;
       const winRate = resolved.length >= 3 ? Math.round(100 * wins / resolved.length) : null;
       let winStreak = 0, maxStreak = 0;
@@ -163,7 +163,7 @@ export async function GET() {
         stake: b.amount,
         payout: b.payout,
         profit: b.payout - b.amount,
-        resolvedAt: b.created_at,
+        resolvedAt: b.resolved_at || b.created_at,
       };
     })
     .sort((a, b) => b.profit - a.profit)
@@ -200,7 +200,7 @@ export async function GET() {
         pickLabel,
         kind: b.kind || 'match',
         amount: b.amount,
-        resolvedAt: b.created_at,
+        resolvedAt: b.resolved_at || b.created_at,
       };
     })
     .sort((a, b) => b.amount - a.amount)

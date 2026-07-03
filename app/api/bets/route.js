@@ -55,7 +55,7 @@ export async function POST(request) {
       if (msg.includes('Bet exceeds maximum')) {
         return NextResponse.json({ error: msg }, { status: 400 });
       }
-      if (msg.includes('Bet exceeds maximum')) {
+      if (msg.includes('Bet below minimum')) {
         return NextResponse.json({ error: msg }, { status: 400 });
       }
       if (msg.includes('Betting closed for this match')) {
