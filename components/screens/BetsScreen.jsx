@@ -598,7 +598,11 @@ export function SettlementCard({ user, bets = [] }) {
               label = `⚠️ Penalty · ${matchName} (no bet placed)`;
             } else if (isSpecial) {
               const def = getSpecial(b.kind);
-              const pickLabel = def?.formatPick?.(b.pick) || b.pick;
+              let pickLabel = def?.formatPick?.(b.pick) || b.pick;
+              if ((b.kind === 'r32_loser' || b.kind === 'r32_winner') && allUsers?.length) {
+                const u = allUsers.find(u => u.id === b.pick);
+                if (u) pickLabel = u.display_name || u.username || pickLabel;
+              }
               label = `${def?.title || b.kind} · ${pickLabel}`;
             } else {
               const m = getMatch(b.match_id) || matches.find(x => x.id === b.match_id);

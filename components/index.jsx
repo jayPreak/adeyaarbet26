@@ -1,12 +1,13 @@
 'use client';
 
-import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, fmtCountdown, getMatchKickoffTs, MATCH_BET_CUTOFF_MS, LINEUP_ANNOUNCE_MS } from '@/lib/data';
+import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, fmtKickoffIST, fmtCountdown, getMatchKickoffTs, MATCH_BET_CUTOFF_MS, LINEUP_ANNOUNCE_MS, fmtKnockoutStage } from '@/lib/data';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET, getMinBet } from '@/lib/currency';
 import { getSpecial } from '@/lib/specials';
 import { poolOdds, sideOdds, fmtDecimalOdds, fmtImpliedProb } from '@/lib/odds';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useBetting } from '@/lib/BettingContext';
 import LineupSheet from './LineupSheet';
 
 // ── Betting window ───────────────────────────────────────────
@@ -368,7 +369,7 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
       background: myResult === 'won' ? 'rgba(74,222,128,0.04)' : 'rgba(248,113,113,0.04)',
     } : undefined}>
       <div className="match-card__head">
-        <span>{stageLabel}{match.knockout && match.id ? ` · Match ${match.id.split('-')[1]}` : ''}{city ? ` · ${city}` : ''}</span>
+        <span>{stageLabel}{match.knockout && match.id ? ` · Match ${match.id.split('-')[1]}` : ''}{city ? ` · ${city}` : ''}{match.knockout && !isFinished ? ` · Min ${CURRENCY_SYMBOL}${getMinBet(match.id)}` : ''}</span>
         {isLive ? <LiveDot minute={match.minute} /> :
          isFinished ? <span style={{ color: 'var(--ink-3)' }}>FT</span> :
          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>{fmtCountdown(match.kickoffTs)}</span>}
@@ -400,6 +401,12 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
       </div>
 
       {isLive && <WatchLive home={match.home} away={match.away} />}
+      {isLive && (
+        <Link href="/news" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,59,59,0.06)', border: '1px solid rgba(255,59,59,0.15)', textDecoration: 'none', width: 'fit-content' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#ff3b3b' }}>⚡ Live Commentary</span>
+          <span style={{ fontSize: 10, color: 'rgba(255,59,59,0.6)' }}>→</span>
+        </Link>
+      )}
 
       {!isFinished && bettingOpen && (
         <div className={'match-card__odds' + (match.knockout ? ' match-card__odds--2col' : '')}>
@@ -651,7 +658,7 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
     <div className="hero">
       <div className="row between center">
         <div className="hero__stage">
-          {isLive ? '★ LIVE' : isFinished ? 'FINISHED' : 'Round of 32 · Featured'}
+          {isLive ? '★ LIVE' : isFinished ? 'FINISHED' : `${match.stage ? { R32: 'Round of 32', R16: 'Round of 16', QF: 'Quarterfinal', SF: 'Semifinal', Final: 'Final' }[match.stage] || match.stage : match.group ? `Group ${match.group}` : 'Featured'} · Min ${CURRENCY_SYMBOL}${getMinBet(match.id)}`}
         </div>
         {isLive && <LiveDot minute={match.minute} />}
         {!isLive && !isFinished && countdown && (
@@ -687,6 +694,12 @@ export function HeroMatch({ match, onBet, poolData, allUsers = [], myBets = [], 
       </div>
 
       {isLive && <WatchLive home={match.home} away={match.away} />}
+      {isLive && (
+        <Link href="/news" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8, padding: '8px 14px', borderRadius: 10, background: 'rgba(255,59,59,0.06)', border: '1px solid rgba(255,59,59,0.15)', textDecoration: 'none' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#ff3b3b' }}>⚡ Live Commentary</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,59,59,0.6)' }}>→</span>
+        </Link>
+      )}
 
       {bettingOpen ? (
         <div className="hero__cta-row">
@@ -764,9 +777,9 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
     }, 70);
   }
 
-  const home = getTeam(match.home);
-  const away = getTeam(match.away);
-  const sideName = side === 'home' ? home.name : side === 'away' ? away.name : 'Draw';
+  const home = match.home ? getTeam(match.home) : null;
+  const away = match.away ? getTeam(match.away) : null;
+  const sideName = side === 'home' ? (home?.name || 'Home') : side === 'away' ? (away?.name || 'Away') : 'Draw';
 
   const existingPick = existingBets.length > 0 ? existingBets[0].pick : null;
   const existingTotal = existingBets.reduce((s, b) => s + b.amount, 0);
@@ -865,11 +878,11 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
           <div className="row between center" style={{ gap: 10 }}>
             <div className="row center" style={{ gap: 8 }}>
               <Flag code={match.home} />
-              <span style={{ fontWeight: 600 }}>{home.name}</span>
+              <span style={{ fontWeight: 600 }}>{home?.name || 'TBD'}</span>
             </div>
             <span className="mono" style={{ color: 'var(--ink-3)' }}>vs</span>
             <div className="row center" style={{ gap: 8 }}>
-              <span style={{ fontWeight: 600 }}>{away.name}</span>
+              <span style={{ fontWeight: 600 }}>{away?.name || 'TBD'}</span>
               <Flag code={match.away} />
             </div>
           </div>
@@ -887,9 +900,9 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
         </div>
         <div className="match-card__odds" style={{ marginBottom: pool.total > 0 ? 8 : 18 }}>
           {[
-            { k: 'home', l: home.name },
+            { k: 'home', l: home?.name || 'Home' },
             ...(!match.group ? [] : [{ k: 'draw', l: 'Draw' }]),
-            { k: 'away', l: away.name },
+            { k: 'away', l: away?.name || 'Away' },
           ].map(o => {
             const odds = pool.total > 0 ? sideOdds(pool, o.k) : null;
             return (
@@ -900,7 +913,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
                 onClick={() => setSide(o.k)}
               >
                 <span className="odds-btn__label">
-                  {o.l.length > 8 ? (o.k === 'home' ? home.code : o.k === 'away' ? away.code : 'X') : o.l}
+                  {o.l.length > 8 ? (o.k === 'home' ? (home?.code || '?') : o.k === 'away' ? (away?.code || '?') : 'X') : o.l}
                 </span>
                 {pool.total > 0 && (
                   <span style={{ display: 'block', marginTop: 4, fontSize: 13, fontWeight: 800, color: side === o.k ? 'var(--gold)' : 'var(--ink-2)' }}>
@@ -930,7 +943,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
             background: 'rgba(231, 76, 60, 0.08)', border: '1px solid rgba(231, 76, 60, 0.2)',
             fontSize: 12, color: 'var(--loss)', lineHeight: 1.4,
           }}>
-            You have {fmtMoney(existingTotal)} on <b>{existingPick === 'home' ? home.name : existingPick === 'away' ? away.name : 'Draw'}</b>.
+            You have {fmtMoney(existingTotal)} on <b>{existingPick === 'home' ? (home?.name || 'Home') : existingPick === 'away' ? (away?.name || 'Away') : 'Draw'}</b>.
             Switching to <b>{sideName}</b> will cancel your previous bet and refund it.
           </div>
         )}
@@ -1025,7 +1038,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
         <button
           className="btn primary block lg"
           style={{ flexShrink: 0, marginTop: 12 }}
-          disabled={submitting || !bettingOpen || (existingPick === side) || amount < minBet}
+          disabled={submitting || !bettingOpen || (existingPick === side) || amount < minBet || (!match.home || !match.away)}
           onClick={async () => {
             setSubmitting(true);
             try { await onConfirm({ matchId: match.id, pick: side, amount }); }
@@ -1033,7 +1046,7 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
             finally { setSubmitting(false); }
           }}
         >
-          {submitting ? 'Placing...' : !bettingOpen ? 'Betting closed' : (existingPick === side) ? 'Already placed — cancel to change' : amount < minBet ? `Min bet ${CURRENCY_SYMBOL}${minBet}` : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
+          {submitting ? 'Placing...' : (!match.home || !match.away) ? 'Teams not decided yet' : !bettingOpen ? 'Betting closed' : (existingPick === side) ? 'Already placed — cancel to change' : amount < minBet ? `Min bet ${CURRENCY_SYMBOL}${minBet}` : `Place ${CURRENCY_SYMBOL}${amount.toLocaleString('en-IN')} bet`}
         </button>
       </div>
     </div>
@@ -1062,17 +1075,19 @@ export function Toast({ message, onDone }) {
 export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, poolData, allUsers = [], userId }) {
   const matchId = bet.match_id || bet.matchId;
   const isSpecial = bet.kind && bet.kind !== 'match';
-  const match = !isSpecial ? getMatch(matchId) : null;
+  const { matches: allMatches } = useBetting();
+  const match = !isSpecial ? (getMatch(matchId) || allMatches.find(m => m.id === matchId)) : null;
   // Called unconditionally (Rules of Hooks) before any early return.
   const bettingOpen = useBettingOpen(kickoffTs);
 
   if (!isSpecial && !match) {
     const pickLabel = bet.pick === 'home' ? 'Home' : bet.pick === 'away' ? 'Away' : bet.pick === 'draw' ? 'Draw' : bet.pick;
+    const stageTag = fmtKnockoutStage(matchId);
     const canCancel = bet.status === 'pending' && onCancelBet;
     return (
       <div className="bet-card">
         <div className="bet-card__head">
-          <span>Match bet</span>
+          <span>{stageTag || 'Match bet'}</span>
           <span className={'bet-card__status ' + bet.status}>{bet.status}</span>
         </div>
         <div className="bet-card__pick">
@@ -1106,7 +1121,11 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
 
   if (isSpecial) {
     const specialDef = getSpecial(bet.kind);
-    const pickLabel = specialDef?.formatPick?.(bet.pick) || bet.pick;
+    let pickLabel = specialDef?.formatPick?.(bet.pick) || bet.pick;
+    if ((bet.kind === 'r32_loser' || bet.kind === 'r32_winner') && allUsers?.length) {
+      const u = allUsers.find(u => u.id === bet.pick);
+      if (u) pickLabel = u.display_name || u.username || pickLabel;
+    }
     const isTeamPick = specialDef?.optionType === 'team';
     const specialDeadlinePassed = cupWinnerDeadlineTs && Date.now() >= cupWinnerDeadlineTs;
     const canCancel = bet.status === 'pending' && onCancelBet && !specialDeadlinePassed;
@@ -1124,6 +1143,8 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
             bet.kind === 'h2h' ? 'Messi vs Ronaldo' :
             bet.kind === 'golden_boot' ? 'Golden Boot' :
             bet.kind === 'goalscorer' ? 'Goalscorer' :
+            bet.kind === 'r32_loser' ? 'KO Flop' :
+            bet.kind === 'r32_winner' ? 'KO Bagholder' :
             bet.kind
           }</span>
           <span className={'bet-card__status ' + bet.status}>{bet.status}</span>

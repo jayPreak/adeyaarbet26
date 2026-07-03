@@ -19,9 +19,9 @@ function useDeadlineCountdown(deadlineTs) {
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
-  if (d > 0) return `${d}d ${h}h left`;
-  if (h > 0) return `${h}h ${m}m left`;
-  return `${m}m left`;
+  if (d > 0) return `in ${d}d ${h}h`;
+  if (h > 0) return `in ${h}h ${m}m`;
+  return `in ${m}m`;
 }
 
 function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs, highlight, bettorCount, totalFriends }) {
@@ -82,7 +82,7 @@ function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs,
       </div>
 
       {/* Card body */}
-      <div style={{ padding: '10px 14px 12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flex: 1, gap: 10 }}>
+      <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flex: 1, gap: 6 }}>
         {/* Stats rows */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -112,30 +112,44 @@ function SpecialCard({ special, poolData, onOpen, deadlineTs, myBet, resolvesTs,
             </div>
           )}
         </div>
+      </div>
 
-        {/* Bottom: timer */}
-        <div style={{ display: 'flex', gap: 4 }}>
-          {countdown && countdown !== 'closed' && (
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(74,222,128,0.1)', color: 'var(--win)' }}>
-              ⏱ {countdown}
-            </span>
-          )}
-          {countdown === 'closed' && resolvesIn && resolvesIn !== 'closed' && (
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(255,215,0,0.08)', color: 'var(--gold)' }}>
-              🏁 {resolvesIn}
-            </span>
-          )}
-          {countdown === 'closed' && (!resolvesIn || resolvesIn === 'closed') && (
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(248,113,113,0.12)', color: 'var(--loss)' }}>
-              Closed
-            </span>
-          )}
-          {!countdown && resolvesIn && resolvesIn !== 'closed' && (
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(255,215,0,0.08)', color: 'var(--gold)' }}>
-              🏁 {resolvesIn}
-            </span>
-          )}
-        </div>
+      {/* Footer strip — mirrors header */}
+      <div style={{
+        padding: '8px 14px',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        background: countdown && countdown !== 'closed'
+          ? 'rgba(74,222,128,0.04)'
+          : countdown === 'closed' && resolvesIn && resolvesIn !== 'closed'
+            ? 'rgba(255,215,0,0.04)'
+            : 'rgba(248,113,113,0.04)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {countdown && countdown !== 'closed' && (
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--win)' }}>
+            Closes {countdown}
+          </span>
+        )}
+        {countdown === 'closed' && resolvesIn && resolvesIn !== 'closed' && (
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--gold)' }}>
+            Settles {resolvesIn}
+          </span>
+        )}
+        {countdown === 'closed' && (!resolvesIn || resolvesIn === 'closed') && (
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--loss)' }}>
+            Betting closed
+          </span>
+        )}
+        {!countdown && resolvesIn && resolvesIn !== 'closed' && (
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--gold)' }}>
+            Settles {resolvesIn}
+          </span>
+        )}
+        {!countdown && (!resolvesIn || resolvesIn === 'closed') && (
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ink-3)' }}>
+            Open
+          </span>
+        )}
       </div>
     </div>
   );
@@ -876,6 +890,23 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       })
       .catch(() => {});
 
+    // R32 Flop
+    fetch(`/api/special-bet?match_id=R32_BIGGEST_LOSER&kind=r32_loser${user?.id ? `&user_id=${user.id}` : ''}`)
+      .then(r => r.json())
+      .then(data => {
+        setPoolsData(prev => ({ ...prev, r32_loser: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0 } }));
+        setMyBetsData(prev => ({ ...prev, r32_loser: data.myBets?.[0] || null }));
+      })
+      .catch(() => {});
+
+    // R32 Bagholder
+    fetch(`/api/special-bet?match_id=R32_BIGGEST_WINNER&kind=r32_winner${user?.id ? `&user_id=${user.id}` : ''}`)
+      .then(r => r.json())
+      .then(data => {
+        setPoolsData(prev => ({ ...prev, r32_winner: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0 } }));
+        setMyBetsData(prev => ({ ...prev, r32_winner: data.myBets?.[0] || null }));
+      })
+      .catch(() => {});
 
   }, [user, bets]);
 
@@ -997,7 +1028,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               key={special.id}
               special={special}
               poolData={{ total: h2hTotal, byTeam: h2hPool?.byTeam || {} }}
-              onOpen={() => setExpanded(special.id)}
+              onOpen={() => window.location.href = '/specials/h2h'}
               deadlineTs={new Date(special.deadlineTs).getTime()}
               myBet={h2hMyBet}
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
@@ -1024,6 +1055,27 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
               highlight="All 8 must be correct"
               bettorCount={tpqPool?.bettorCount || 0}
+              totalFriends={allUsers.length}
+            />
+          );
+        }
+
+        // R32 Flop / Bagholder — navigate to dedicated page
+        if (special.id === 'r32_loser' || special.id === 'r32_winner') {
+          const r32Pool = poolsData[special.id];
+          const r32MyBet = myBetsData[special.id] || null;
+          const href = special.id === 'r32_loser' ? '/specials/r32-flop' : '/specials/r32-bagholder';
+          return (
+            <SpecialCard
+              key={special.id}
+              special={special}
+              poolData={{ total: r32Pool?.total || 0, byTeam: {} }}
+              onOpen={() => window.location.href = href}
+              deadlineTs={new Date(special.deadlineTs).getTime()}
+              myBet={r32MyBet}
+              resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
+              highlight={special.id === 'r32_loser' ? 'R32 + R16 biggest loser' : 'R32 + R16 biggest winner'}
+              bettorCount={r32Pool?.bettorCount || 0}
               totalFriends={allUsers.length}
             />
           );

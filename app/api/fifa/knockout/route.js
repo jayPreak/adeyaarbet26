@@ -34,6 +34,7 @@ export async function GET() {
         id: m.IdMatch,
         stage: STAGE_MAP[m.IdStage] || m.IdStage,
         date: m.Date,
+        matchNumber: m.MatchNumber ?? null,
         home: normalize(m.Home?.Abbreviation),
         away: normalize(m.Away?.Abbreviation),
         homeScore: m.HomeTeamScore,

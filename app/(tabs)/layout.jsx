@@ -8,6 +8,7 @@ import CupWinnerBetModal from '@/components/CupWinnerBetModal';
 import ContinentBetModal from '@/components/ContinentBetModal';
 import H2HBetModal from '@/components/H2HBetModal';
 import ThirdPlaceQualifierBetModal from '@/components/ThirdPlaceQualifierBetModal';
+import { useAutoReload } from '@/lib/useAutoReload';
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -47,6 +48,7 @@ function TabsShell({ children }) {
     refreshCupWinnerBet, refreshData, refreshPools,
   } = useBetting();
 
+  useAutoReload();
   const theme = 'midnight';
 
   if (loading || !user) return null;

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef, useLayoutEffect, useCallback } fr
 import { TransformWrapper, TransformComponent, useControls } from 'react-zoom-pan-pinch';
 import { useBetting } from '@/lib/BettingContext';
 import { getTeam } from '@/lib/data';
-import { fmtMoney } from '@/lib/currency';
+import { fmtMoney, getMinBet, CURRENCY_SYMBOL } from '@/lib/currency';
 
 const STAGE_ORDER = ['R32', 'R16', 'QF', 'SF', 'Final'];
 const STAGE_LABELS = {
@@ -29,32 +29,6 @@ function formatIST(isoDate) {
   return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true, day: 'numeric', month: 'short' });
 }
 
-function Countdown({ kickoffTs }) {
-  const [diff, setDiff] = useState('');
-
-  useEffect(() => {
-    if (!kickoffTs) return;
-    function update() {
-      const ms = new Date(kickoffTs).getTime() - Date.now();
-      if (ms <= 0) { setDiff(''); return; }
-      const h = Math.floor(ms / 3600000);
-      const m = Math.floor((ms % 3600000) / 60000);
-      const s = Math.floor((ms % 60000) / 1000);
-      if (h > 48) {
-        const days = Math.floor(h / 24);
-        setDiff(`${days}d ${h % 24}h`);
-      } else {
-        setDiff(`${h}h ${m}m ${s}s`);
-      }
-    }
-    update();
-    const id = setInterval(update, 1000);
-    return () => clearInterval(id);
-  }, [kickoffTs]);
-
-  if (!diff) return null;
-  return <span className="ko-node__countdown">{diff}</span>;
-}
 
 function KnockoutNode({ match, onTap, myBets, poolData }) {
   const home = match.home ? getTeam(match.home) : null;
@@ -65,27 +39,27 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
   const myBet = myBets[0];
   const betWon = myBets.some(b => b.status === 'won');
   const betLost = myBets.some(b => b.status === 'lost');
-  const myPick = myBet?.pick;
 
-  const homePool = poolData?.bySide?.home || 0;
-  const awayPool = poolData?.bySide?.away || 0;
-  const drawPool = poolData?.bySide?.draw || 0;
-  const totalPool = poolData?.total || 0;
-  const homePct = totalPool > 0 ? Math.round((homePool / totalPool) * 100) : 0;
-  const awayPct = totalPool > 0 ? Math.round((awayPool / totalPool) * 100) : 0;
+  const myPick = myBet?.pick; // 'home' | 'away' | 'draw'
 
   const winner = isFinished && match.score
     ? (match.score[0] > match.score[1] ? 'home' : match.score[1] > match.score[0] ? 'away' : null)
     : null;
 
-  const borderColor = betWon ? 'var(--win)' : betLost ? 'var(--loss)' : isLive ? 'var(--live)' : hasBet ? 'var(--gold)' : 'var(--line)';
+  // Minimal: only live gets a distinct border
+  const borderColor = isLive ? 'rgba(255,80,80,0.5)' : 'rgba(255,255,255,0.08)';
+  // Slightly dim finished no-bet matches (0.65 not 0.5 — still readable)
+  const nodeOpacity = isFinished && !hasBet ? 0.65 : 1;
+
+  // Tiny left accent for bet status (like a 3px colored strip)
+  const accentColor = betWon ? 'var(--win)' : betLost ? 'var(--loss)' : hasBet ? 'var(--gold)' : 'transparent';
 
   return (
     <button
       id={`ko-node-${match.id}`}
       className="ko-node"
       onClick={(e) => { e.stopPropagation(); onTap(match); }}
-      style={{ borderColor }}
+      style={{ borderColor, opacity: nodeOpacity, borderLeftColor: accentColor, borderLeftWidth: hasBet || betWon || betLost ? 3 : 1.5 }}
     >
       {isLive && (
         <div className="ko-node__live">
@@ -94,73 +68,66 @@ function KnockoutNode({ match, onTap, myBets, poolData }) {
         </div>
       )}
 
-      <div className="ko-node__team" style={isFinished && winner === 'home' ? { background: 'rgba(0,255,133,0.06)', borderRadius: 4, margin: '-2px -4px', padding: '2px 4px' } : undefined}>
+      {/* Home team row */}
+      <div className="ko-node__team">
         <div className="ko-node__team-info">
           <span className="ko-node__flag">{home ? home.flag : '🏳️'}</span>
-          <span className="ko-node__name" style={isFinished && winner === 'home' ? { color: 'var(--win)' } : undefined}>
+          <span className="ko-node__name" style={{
+            fontWeight: winner === 'home' ? 700 : 400,
+            color: winner && winner !== 'home' ? 'var(--ink-3)' : 'var(--ink)',
+          }}>
             {home ? home.name : formatPlaceholder(match.placeholderA)}
           </span>
-          {myPick === 'home' && <span className="ko-node__my-pick">●</span>}
+          {myPick === 'home' && <span className="ko-node__pick-chip">Pick</span>}
         </div>
-        <div className="ko-node__team-right">
-          {homePool > 0 && <span className="ko-node__team-pool">{fmtMoney(homePool)}</span>}
-          {(isFinished || isLive) && match.score && (
-            <span className={'ko-node__score' + (isLive ? ' live' : '')} style={isFinished && winner === 'home' ? { color: 'var(--win)' } : undefined}>
-              {match.score[0]}
-            </span>
-          )}
-        </div>
+        {(isFinished || isLive) && match.score && (
+          <span className="ko-node__score" style={{
+            fontWeight: winner === 'home' || winner === 'draw' ? 700 : 400,
+            color: isLive ? 'var(--ink)' : winner === 'home' || winner === 'draw' ? 'var(--ink)' : 'var(--ink-3)',
+          }}>
+            {match.score[0]}
+          </span>
+        )}
       </div>
 
       <div className="ko-node__divider" />
 
-      <div className="ko-node__team" style={isFinished && winner === 'away' ? { background: 'rgba(0,255,133,0.06)', borderRadius: 4, margin: '-2px -4px', padding: '2px 4px' } : undefined}>
+      {/* Away team row */}
+      <div className="ko-node__team">
         <div className="ko-node__team-info">
           <span className="ko-node__flag">{away ? away.flag : '🏳️'}</span>
-          <span className="ko-node__name" style={isFinished && winner === 'away' ? { color: 'var(--win)' } : undefined}>
+          <span className="ko-node__name" style={{
+            fontWeight: winner === 'away' ? 700 : 400,
+            color: winner && winner !== 'away' ? 'var(--ink-3)' : 'var(--ink)',
+          }}>
             {away ? away.name : formatPlaceholder(match.placeholderB)}
           </span>
-          {myPick === 'away' && <span className="ko-node__my-pick">●</span>}
+          {myPick === 'away' && <span className="ko-node__pick-chip">Pick</span>}
         </div>
-        <div className="ko-node__team-right">
-          {awayPool > 0 && <span className="ko-node__team-pool">{fmtMoney(awayPool)}</span>}
-          {(isFinished || isLive) && match.score && (
-            <span className={'ko-node__score' + (isLive ? ' live' : '')} style={isFinished && winner === 'away' ? { color: 'var(--win)' } : undefined}>
-              {match.score[1]}
-            </span>
-          )}
-        </div>
+        {(isFinished || isLive) && match.score && (
+          <span className="ko-node__score" style={{
+            fontWeight: winner === 'away' || winner === 'draw' ? 700 : 400,
+            color: isLive ? 'var(--ink)' : winner === 'away' || winner === 'draw' ? 'var(--ink)' : 'var(--ink-3)',
+          }}>
+            {match.score[1]}
+          </span>
+        )}
       </div>
 
-      {totalPool > 0 && (
-        <div className="ko-node__pool-bar">
-          <div className="ko-node__pool-home" style={{ width: `${homePct}%` }} />
-          <div className="ko-node__pool-away" style={{ width: `${awayPct}%` }} />
-        </div>
-      )}
-
-      <div className="ko-node__footer-bar">
-        <div className="ko-node__timer">
-          {!isFinished && !isLive && match.kickoffTs && (
-            <>
-              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="ko-node__clock-icon">
-                <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M8 4.5V8L10.5 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-              <span className="ko-node__timer-text">{formatIST(match.kickoffTs)}</span>
-              <Countdown kickoffTs={match.kickoffTs} />
-            </>
-          )}
-          {isFinished && <span className="ko-node__ft">FT</span>}
-          {isLive && match.minute && <span className="ko-node__minute">{match.minute}'</span>}
-        </div>
-        <div className="ko-node__meta">
-          {betWon && <span className="ko-node__badge won">WON</span>}
-          {betLost && <span className="ko-node__badge lost">LOST</span>}
-          {hasBet && !betWon && !betLost && <span className="ko-node__badge">{fmtMoney(myBet.amount)}</span>}
-          {!hasBet && totalPool === 0 && <span className="ko-node__tap-hint">Tap ›</span>}
-          {!hasBet && totalPool > 0 && <span className="ko-node__pool-total">{fmtMoney(totalPool)}</span>}
-        </div>
+      {/* Footer: minimal — just status + time */}
+      <div className="ko-node__footer">
+        {isLive && match.minute && <span className="ko-node__minute">{match.minute}'</span>}
+        {isFinished && <span className="ko-node__ft">FT</span>}
+        {!isFinished && !isLive && match.kickoffTs && (
+          <span className="ko-node__timer-text">{formatIST(match.kickoffTs)}</span>
+        )}
+        {hasBet && (
+          <span className="ko-node__bet-tag" style={{
+            color: betWon ? 'var(--win)' : betLost ? 'var(--loss)' : 'var(--ink-2)',
+          }}>
+            {betWon ? `+${fmtMoney((myBet.payout || 0) - myBet.amount)}` : betLost ? `-${fmtMoney(myBet.amount)}` : fmtMoney(myBet.amount)}
+          </span>
+        )}
       </div>
     </button>
   );
@@ -200,23 +167,43 @@ function computeSvgPath(fromEl, toEl, container) {
   return `M${x1},${y1} L${midX - 8},${y1} Q${midX},${y1} ${midX},${y1 + Math.sign(y2 - y1) * 8} L${midX},${y2 - Math.sign(y2 - y1) * 8} Q${midX},${y2} ${midX + 8},${y2} L${x2},${y2}`;
 }
 
-// Build the edge list: each pair in stage N feeds into one node in stage N+1
-function buildEdges(byStage) {
+// Build bracket edges by matching teams across stages, with placeholder fallback.
+function buildEdges(byStage, allKnockout) {
   const edges = [];
   const stages = STAGE_ORDER.filter(s => byStage[s]?.length);
 
-  for (let i = 0; i < stages.length - 1; i++) {
-    const cur = byStage[stages[i]];
-    const next = byStage[stages[i + 1]];
-    // Pair consecutive matches: match 0,1 → next 0; match 2,3 → next 1, etc.
-    for (let j = 0; j < next.length; j++) {
-      const srcA = cur[j * 2];
-      const srcB = cur[j * 2 + 1];
-      const dest = next[j];
-      if (srcA && dest) edges.push([srcA.id, dest.id]);
-      if (srcB && dest) edges.push([srcB.id, dest.id]);
+  // matchNumber → match lookup for placeholder resolution
+  const byMatchNum = {};
+  for (const m of allKnockout) {
+    if (m.matchNumber) byMatchNum[m.matchNumber] = m;
+  }
+
+  for (let i = 1; i < stages.length; i++) {
+    const children = byStage[stages[i - 1]];
+    const parents = byStage[stages[i]];
+    const childIds = new Set(children.map(c => c.id));
+
+    for (const parent of parents) {
+      for (const [team, placeholder] of [[parent.home, parent.placeholderA], [parent.away, parent.placeholderB]]) {
+        // Method 1: team match
+        if (team) {
+          const src = children.find(c => c.home === team || c.away === team);
+          if (src) { edges.push([src.id, parent.id]); continue; }
+        }
+        // Method 2: placeholder W{matchNumber}
+        if (placeholder) {
+          const wMatch = placeholder.match(/^W(\d+)$/);
+          if (wMatch) {
+            const srcMatch = byMatchNum[parseInt(wMatch[1])];
+            if (srcMatch && childIds.has(srcMatch.id)) {
+              edges.push([srcMatch.id, parent.id]); continue;
+            }
+          }
+        }
+      }
     }
   }
+
   return edges;
 }
 
@@ -265,22 +252,64 @@ export default function KnockoutPage() {
       if (!grouped[stage]) grouped[stage] = [];
       grouped[stage].push(m);
     }
+    // Reorder nodes so paired matches are adjacent (standard bracket tree layout).
+    // For each parent match, find its two feeder children by:
+    // 1. Team matching (if teams are resolved)
+    // 2. Placeholder/matchNumber matching (W73 → child with matchNumber 73)
+    const stages = STAGE_ORDER.filter(s => grouped[s]?.length);
+
+    // Build matchNumber → match lookup across all knockout matches
+    const byMatchNum = {};
+    for (const stage of stages) {
+      for (const m of grouped[stage]) {
+        if (m.matchNumber) byMatchNum[m.matchNumber] = m;
+      }
+    }
+
+    for (let i = stages.length - 1; i >= 1; i--) {
+      const parentStage = stages[i];
+      const childStage = stages[i - 1];
+      const parents = grouped[parentStage];
+      const children = grouped[childStage];
+      if (!parents?.length || !children?.length) continue;
+
+      const childIds = new Set(children.map(c => c.id));
+      const ordered = [];
+      const placed = new Set();
+
+      for (const parent of parents) {
+        // Try team matching first, then placeholder matching
+        for (const [team, placeholder] of [[parent.home, parent.placeholderA], [parent.away, parent.placeholderB]]) {
+          // Method 1: team name match
+          if (team) {
+            const child = children.find(c => !placed.has(c.id) && (c.home === team || c.away === team));
+            if (child) { ordered.push(child); placed.add(child.id); continue; }
+          }
+          // Method 2: placeholder W{matchNumber} match
+          if (placeholder) {
+            const wMatch = placeholder.match(/^W(\d+)$/);
+            if (wMatch) {
+              const srcMatch = byMatchNum[parseInt(wMatch[1])];
+              if (srcMatch && childIds.has(srcMatch.id) && !placed.has(srcMatch.id)) {
+                ordered.push(srcMatch); placed.add(srcMatch.id); continue;
+              }
+            }
+          }
+        }
+      }
+      // Append any unmatched children
+      for (const c of children) {
+        if (!placed.has(c.id)) ordered.push(c);
+      }
+      if (ordered.length === children.length) {
+        grouped[childStage] = ordered;
+      }
+    }
     return grouped;
   }, [knockoutMatches]);
 
-  const edges = useMemo(() => buildEdges(byStage), [byStage]);
+  const edges = useMemo(() => buildEdges(byStage, knockoutMatches), [byStage, knockoutMatches]);
 
-  const betStatusByMatch = useMemo(() => {
-    const map = {};
-    for (const b of bets) {
-      if (b.status === 'cancelled') continue;
-      const mid = b.match_id || b.matchId;
-      if (!map[mid]) map[mid] = b.status;
-      if (b.status === 'won') map[mid] = 'won';
-      else if (b.status === 'lost' && map[mid] !== 'won') map[mid] = 'lost';
-    }
-    return map;
-  }, [bets]);
 
   const computePaths = useCallback(() => {
     const container = bracketRef.current;
@@ -291,13 +320,11 @@ export default function KnockoutPage() {
       const toEl = container.querySelector(`#ko-node-${CSS.escape(toId)}`);
       const p = computeSvgPath(fromEl, toEl, container);
       if (p) {
-        const status = betStatusByMatch[fromId];
-        const color = status === 'won' ? 'var(--win)' : status === 'lost' ? 'var(--loss)' : null;
-        result.push({ d: p, color });
+        result.push({ d: p });
       }
     }
     setPaths(result);
-  }, [edges, betStatusByMatch]);
+  }, [edges]);
 
   // Recompute paths after layout
   useLayoutEffect(() => {
@@ -341,7 +368,8 @@ export default function KnockoutPage() {
           initialPositionY={0}
           minScale={0.3}
           maxScale={2.5}
-          limitToBounds={false}
+          limitToBounds={true}
+          centerZoomedOut={true}
           doubleClick={{ disabled: true }}
           onInit={(ref) => {
             const saved = loadViewState();
@@ -359,7 +387,7 @@ export default function KnockoutPage() {
               {/* SVG overlay for connector lines */}
               <svg className="ko-bracket__svg">
                 {paths.map((p, i) => (
-                  <path key={i} d={p.d} fill="none" stroke={p.color || 'rgba(255,255,255,0.15)'} strokeWidth="1.5" opacity={p.color ? 0.7 : 1} />
+                  <path key={i} d={p.d} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" />
                 ))}
               </svg>
 
@@ -371,6 +399,9 @@ export default function KnockoutPage() {
                   <div key={stage} className="ko-bracket__round">
                     <div className={'ko-bracket__title' + (isGold ? ' gold' : '')}>
                       {STAGE_LABELS[stage]}
+                      <span style={{ fontSize: 9, fontWeight: 500, color: 'var(--ink-3)', marginLeft: 6 }}>
+                        min {CURRENCY_SYMBOL}{getMinBet(`${stage}-1`)}
+                      </span>
                     </div>
                     <div className="ko-bracket__matches">
                       {stageMatches.map(m => {

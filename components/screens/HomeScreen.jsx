@@ -15,7 +15,7 @@ function relativeTime(iso) {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenThirdPlaceQual }) {
+export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenThirdPlaceQual, totalInPlay = 0, totalBets = 0 }) {
   const live = matches.filter(m => m.status === 'live');
   const upcoming = matches
     .filter(m => m.status === 'upcoming')
@@ -47,7 +47,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
               id: a.id,
               username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
               avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap, matchesById),
+              text: formatActivityText(a, fifaIdMap, matchesById, allUsers),
               createdAt: a.created_at,
             })));
         }
@@ -68,7 +68,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
               id: a.id,
               username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
               avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap, matchesById),
+              text: formatActivityText(a, fifaIdMap, matchesById, allUsers),
               createdAt: a.created_at,
             }));
           setFullActivity(mapped);
@@ -92,7 +92,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
               id: a.id,
               username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
               avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap, matchesById),
+              text: formatActivityText(a, fifaIdMap, matchesById, allUsers),
               createdAt: a.created_at,
             }));
           setFullActivity(prev => [...prev, ...mapped]);
@@ -233,16 +233,36 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
 
       {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending')} onCancelBet={onCancelBet} userId={user?.id} />}
 
-      {/* Live matches */}
-      {live.length > 0 && (
+      {/* Live matches (exclude the featured/hero match to avoid duplicate) */}
+      {live.filter(m => m.id !== featured?.id).length > 0 && (
         <>
           <SectionHead title="Live now" more="All matches" onMore={() => onNav('fixtures')} />
           <div className="date-group" style={{ marginBottom: 8 }}>
-            {live.map(m => <MatchCard key={m.id} match={m} onBet={onBet} myBets={bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending')} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} userId={user?.id} />)}
+            {live.filter(m => m.id !== featured?.id).map(m => <MatchCard key={m.id} match={m} onBet={onBet} myBets={bets.filter(b => (b.match_id || b.matchId) === m.id && b.status === 'pending')} onCancelBet={onCancelBet} poolData={poolMap[m.id]} allUsers={allUsers} userId={user?.id} />)}
           </div>
         </>
       )}
 
+
+      {/* Total in play ticker */}
+      {totalInPlay > 0 && (
+        <div style={{
+          margin: '12px 16px 8px', padding: '10px 16px',
+          borderRadius: 10, textAlign: 'center',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
+            Total Volume
+          </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, color: 'var(--gold)' }}>
+            {CURRENCY_SYMBOL}{totalInPlay.toLocaleString('en-IN')}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 2 }}>
+            {totalBets} bets across {allUsers.length} players
+          </div>
+        </div>
+      )}
 
       {/* Friend activity */}
       <SectionHead title="Friend activity" more="See all" onMore={openAllActivity} />
@@ -277,6 +297,8 @@ function formatSpecialMatchLabel(matchId) {
   if (matchId === 'MESSI_V_RONALDO') return 'Messi vs Ronaldo';
   if (matchId === 'GOLDEN_BOOT') return 'Golden Boot';
   if (matchId === 'THIRD_QUALIFIERS') return '3rd Place Qualifiers';
+  if (matchId === 'R32_BIGGEST_LOSER') return 'KO Flop';
+  if (matchId === 'R32_BIGGEST_WINNER') return 'KO Bagholder';
   if (matchId?.startsWith('HT_')) {
     const slug = matchId.slice(3).toLowerCase().replace(/_/g, ' ');
     return slug.replace(/\b\w/g, c => c.toUpperCase());
@@ -284,7 +306,7 @@ function formatSpecialMatchLabel(matchId) {
   return null;
 }
 
-function formatActivityText(a, fifaIdMap, matchesById) {
+function formatActivityText(a, fifaIdMap, matchesById, allUsers) {
   const matchId = a.payload?.match_id;
   const specialLabel = formatSpecialMatchLabel(matchId);
   const isSpecial = !!specialLabel;
@@ -305,6 +327,9 @@ function formatActivityText(a, fifaIdMap, matchesById) {
     } else if (matchId === 'CONTINENT') {
       const confLabels = { UEFA: 'Europe', CONMEBOL: 'S. America', CONCACAF: 'N/C America', CAF: 'Africa', AFC: 'Asia', OFC: 'Oceania' };
       pickLabel = confLabels[pickCode] || pickCode;
+    } else if (matchId === 'R32_BIGGEST_LOSER' || matchId === 'R32_BIGGEST_WINNER') {
+      const u = allUsers?.find(u => u.id === pickCode);
+      pickLabel = u?.display_name || u?.username || pickCode;
     } else if (matchId?.startsWith('HT_')) {
       pickLabel = pickCode === 'yes' ? 'YES' : pickCode === 'no' ? 'NO' : pickCode;
     } else if (match) {
