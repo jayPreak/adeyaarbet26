@@ -1,6 +1,6 @@
 'use client';
 
-import { Component } from 'react';
+import { Component, useEffect } from 'react';
 import { BettingProvider, useBetting } from '@/lib/BettingContext';
 import { AppHeader, TabBar, PlaceBetSheet, Toast, SpecialNotification } from '@/components';
 import CountdownGate from '@/components/CountdownGate';
@@ -50,6 +50,28 @@ function TabsShell({ children }) {
 
   useAutoReload();
   const theme = 'midnight';
+
+  // iOS Safari's address/toolbar can show or hide without dvh recomputing
+  // layout on an already-open fixed-position sheet. Track the real visible
+  // height via visualViewport and expose it as a CSS var so bottom sheets
+  // (.sheet-backdrop / .sheet in globals.css) size against what's actually on
+  // screen — otherwise the pinned submit button can render below the visible
+  // area, clipped by .sheet's overflow:hidden, with no way to scroll to it.
+  useEffect(() => {
+    const setVH = () => {
+      const h = window.visualViewport?.height || window.innerHeight;
+      document.documentElement.style.setProperty('--vvh', `${h * 0.01}px`);
+    };
+    setVH();
+    window.visualViewport?.addEventListener('resize', setVH);
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', setVH);
+      window.removeEventListener('resize', setVH);
+      window.removeEventListener('orientationchange', setVH);
+    };
+  }, []);
 
   if (loading || !user) return null;
 

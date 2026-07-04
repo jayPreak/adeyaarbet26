@@ -472,6 +472,12 @@ body {
 /* ── Bottom sheet ──────────────────────────────────────────── */
 .sheet-backdrop {
   position: fixed; inset: 0; z-index: 90;
+  /* iOS Safari's toolbar can show/hide without dvh recomputing on an
+     already-open fixed element; --vvh (set from visualViewport in
+     app/(tabs)/layout.jsx) tracks the real visible height so the backdrop —
+     and the sheet's pinned button inside it — never end up clipped above the
+     currently-visible viewport. Falls back to 100dvh/100vh where --vvh isn't set yet. */
+  height: 100vh; height: 100dvh; height: calc(var(--vvh, 1vh) * 100);
   background: rgba(0,0,0,0.15);
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   display: flex; align-items: flex-end; justify-content: center;
@@ -484,7 +490,8 @@ body {
   color: var(--ink, #F2F3F5);
   border-radius: 28px 28px 0 0;
   padding: 14px 20px max(16px, env(safe-area-inset-bottom, 16px));
-  max-height: 92dvh; overflow: hidden;
+  max-height: 92vh; max-height: 92dvh; max-height: calc(var(--vvh, 1vh) * 92);
+  overflow: hidden;
   display: flex; flex-direction: column;
   animation: slideUp 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
   border-top: 1px solid rgba(255,255,255,0.12);
