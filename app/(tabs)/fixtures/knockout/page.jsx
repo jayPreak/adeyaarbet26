@@ -405,7 +405,7 @@ export default function KnockoutPage() {
                     </div>
                     <div className="ko-bracket__matches">
                       {stageMatches.map(m => {
-                        const myBets2 = bets.filter(b => (b.match_id || b.matchId) === m.id && b.kind === 'match' && b.status !== 'cancelled');
+                        const myBets2 = bets.filter(b => (b.match_id || b.matchId) === m.id && (b.kind === 'match' || b.kind === 'penalty') && b.status !== 'cancelled');
                         return (
                           <KnockoutNode
                             key={m.id}
@@ -427,7 +427,7 @@ export default function KnockoutPage() {
                 <div className="ko-bracket__title">3rd Place</div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {thirdPlace.map(m => {
-                    const myBets2 = bets.filter(b => (b.match_id || b.matchId) === m.id && b.kind === 'match' && b.status !== 'cancelled');
+                    const myBets2 = bets.filter(b => (b.match_id || b.matchId) === m.id && (b.kind === 'match' || b.kind === 'penalty') && b.status !== 'cancelled');
                     return <KnockoutNode key={m.id} match={m} onTap={handleTap} myBets={myBets2} poolData={poolMap[m.id]} />;
                   })}
                 </div>

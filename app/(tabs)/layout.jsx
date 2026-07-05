@@ -100,7 +100,7 @@ function TabsShell({ children }) {
             match={betSheet.match}
             pick={betSheet.pick}
             poolInfo={poolMap[betSheet.match.id] || null}
-            existingBets={bets.filter(b => (b.match_id || b.matchId) === betSheet.match.id && b.status === 'pending')}
+            existingBets={bets.filter(b => (b.match_id || b.matchId) === betSheet.match.id && b.status === 'pending' && (b.kind === 'match' || b.kind === 'penalty'))}
             onClose={closeBet}
             onConfirm={confirmBet}
           />
