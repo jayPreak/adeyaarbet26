@@ -77,7 +77,7 @@ export default function FixturesUpcomingPage() {
                 <div className="date-group__date">{date === 'tbd' ? '' : fmtDate(date)}</div>
               </div>
               {byDate[date].map(m => {
-                const myBets = bets.filter(b => (b.match_id || b.matchId) === m.id && (b.status !== 'cancelled' || m.status === 'finished'));
+                const myBets = bets.filter(b => (b.match_id || b.matchId) === m.id && b.kind === 'match' && (b.status !== 'cancelled' || m.status === 'finished'));
                 return <MatchCard key={m.id} match={m} onBet={openBet} myBets={myBets} onCancelBet={cancelBet} poolData={poolMap[m.id]} allUsers={allUsers} userId={user?.id} />;
               })}
             </div>
