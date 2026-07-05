@@ -26,7 +26,7 @@ export async function GET(request) {
   const fifaController = new AbortController();
   const fifaTimer = setTimeout(() => fifaController.abort(), 4000);
 
-  const [betsRes, schedRes, poolRes, profilesRes, cupWinnerRes, fifaRes] = await Promise.all([
+  const [betsRes, schedRes, poolRes, profilesRes, cupWinnerRes, fifaRes, challengesRes] = await Promise.all([
     // User bets
     userId
       ? db.from('bets').select('*').eq('user_id', userId).neq('match_id', '_topup').order('created_at', { ascending: false })
@@ -45,6 +45,10 @@ export async function GET(request) {
     fetch(FIFA_URL, { signal: fifaController.signal, next: { revalidate: 120 } })
       .then(r => r.ok ? r.json() : null)
       .catch(() => null),
+    // Challenges involving this user (for duel indicators)
+    userId
+      ? db.from('challenges').select('id, match_id, status, challenger_id, opponent_id').or(`challenger_id.eq.${userId},opponent_id.eq.${userId}`).in('status', ['open', 'accepted'])
+      : Promise.resolve({ data: [] }),
   ]);
 
   clearTimeout(fifaTimer);
@@ -161,5 +165,6 @@ export async function GET(request) {
     myCupWinnerBet: cupWinnerRes.data?.[0] || null,
     totalInPlay,
     totalBets,
+    challenges: challengesRes.data || [],
   });
 }

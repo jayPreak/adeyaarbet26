@@ -362,6 +362,45 @@ body {
   50% { opacity: 0.4; transform: scale(0.7); }
 }
 
+@keyframes pulse-border {
+  0%, 100% { border-color: rgba(0,255,133,0.4); }
+  50% { border-color: rgba(0,255,133,0.12); }
+}
+
+/* ── Duels ─────────────────────────────────────────────────── */
+.duel-incoming {
+  margin-bottom: 12px; border-radius: 14px; overflow: hidden;
+  border: 1.5px solid rgba(0,255,133,0.35);
+  background: linear-gradient(135deg, rgba(0,255,133,0.04) 0%, rgba(255,61,127,0.03) 100%);
+  animation: pulse-border 2.5s ease-in-out infinite;
+}
+
+.duel-accept-btn {
+  flex: 2; padding: 13px 0; border-radius: 10px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, var(--win) 0%, #22c55e 100%);
+  color: #04170c; font-weight: 800; font-size: 14px;
+  box-shadow: 0 4px 16px rgba(0,255,133,0.2);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.duel-accept-btn:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(0,255,133,0.3); }
+
+.duel-cta-btn {
+  width: 100%; padding: 14px 20px; margin-bottom: 18px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(135deg, rgba(0,255,133,0.15) 0%, rgba(77,168,255,0.1) 100%);
+  border: 1.5px solid rgba(0,255,133,0.3);
+  color: var(--gold); font-size: 14px; font-weight: 800; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,255,133,0.08);
+  transition: transform 0.1s, border-color 0.2s, box-shadow 0.2s;
+}
+.duel-cta-btn:hover { border-color: rgba(0,255,133,0.5); box-shadow: 0 4px 24px rgba(0,255,133,0.15); }
+.duel-cta-btn:active { transform: scale(0.98); }
+
+@keyframes shimmer-text {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
 /* ── Flag ──────────────────────────────────────────────────── */
 .flag {
   display: inline-grid; place-items: center;

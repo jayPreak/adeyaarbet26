@@ -112,6 +112,7 @@ export function BettingProvider({ children }) {
   const [allUsers, setAllUsers] = useState([]);
   const [totalInPlay, setTotalInPlay] = useState(0);
   const [totalBets, setTotalBets] = useState(0);
+  const [challenges, setChallenges] = useState([]);
 
   const balance = computeBalance(bets);
   const realisedBalance = computeRealisedBalance(bets.filter(b => b.match_id !== '_topup'));
@@ -145,6 +146,13 @@ export function BettingProvider({ children }) {
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setBets(data); setBetsLoaded(true); })
       .catch(() => { setBetsLoaded(true); });
+    fetch(`/api/challenge`)
+      .then(r => r.json())
+      .then(data => {
+        const all = data.challenges || [];
+        setChallenges(all.filter(c => ['open', 'accepted'].includes(c.status) && (c.challenger_id === user.id || c.opponent_id === user.id)));
+      })
+      .catch(() => {});
   }, [user]);
 
   const refreshCupWinnerBet = useCallback(() => {
@@ -186,6 +194,7 @@ export function BettingProvider({ children }) {
         if (data.myCupWinnerBet) setMyCupWinnerBet(data.myCupWinnerBet);
         if (data.totalInPlay != null) setTotalInPlay(data.totalInPlay);
         if (data.totalBets != null) setTotalBets(data.totalBets);
+        if (data.challenges) setChallenges(data.challenges);
       })
       .catch(() => { setBetsLoaded(true); });
   }, [user]);
@@ -310,6 +319,7 @@ export function BettingProvider({ children }) {
     totalWon, totalLost, totalOpen,
     matches, scheduleMap, poolMap, allUsers, totalInPlay, totalBets,
     cupWinnerDeadlineTs, myCupWinnerBet,
+    challenges,
     betSheet, toast,
     // actions
     openBet, closeBet, cancelBet, confirmBet,
@@ -329,6 +339,7 @@ export function BettingProvider({ children }) {
     totalWon, totalLost, totalOpen,
     matches, scheduleMap, poolMap, allUsers, totalInPlay, totalBets,
     cupWinnerDeadlineTs, myCupWinnerBet,
+    challenges,
     betSheet, toast,
     openBet, closeBet, cancelBet, confirmBet,
     handleLogout, handleOpenSpecialBet,

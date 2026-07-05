@@ -10,12 +10,19 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const limit = parseInt(searchParams.get('limit') || '20', 10);
   const offset = parseInt(searchParams.get('offset') || '0', 10);
+  const matchId = searchParams.get('match_id');
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('activity')
     .select('*, profiles(username, display_name, avatar_url)')
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
+
+  if (matchId) {
+    query = query.contains('payload', { match_id: matchId });
+  }
+
+  const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);

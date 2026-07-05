@@ -340,7 +340,7 @@ export function WatchLive({ home, away }) {
   );
 }
 
-export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, allUsers = [], userId }) {
+export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, allUsers = [], userId, challenges = [] }) {
   const home = getTeam(match.home);
   const away = getTeam(match.away);
   const isLive = match.status === 'live';
@@ -348,6 +348,8 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
   const bettingOpen = useBettingOpen(match);
   const [lineupOpen, setLineupOpen] = useState(false);
   const [propsOpen, setPropsOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const matchDuels = challenges.filter(c => c.match_id === match.id);
 
   const kickoffTs = getMatchKickoffTs(match);
   const lineupAvailable = kickoffTs != null && Date.now() >= kickoffTs - LINEUP_ANNOUNCE_MS;
@@ -461,6 +463,21 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
         <MatchPoolTable poolData={poolData} home={home} away={away} allUsers={allUsers} userId={userId} />
       )}
 
+      {matchDuels.length > 0 && (
+        <Link
+          href="/specials?tab=duels"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5, marginTop: 6, padding: '6px 10px',
+            borderRadius: 8, background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.2)',
+            textDecoration: 'none', width: 'fit-content', fontSize: 11, fontWeight: 700, color: 'var(--gold)',
+          }}
+        >
+          ⚔️ {matchDuels.length} duel{matchDuels.length !== 1 ? 's' : ''} on this match
+          <span style={{ fontSize: 10, color: 'rgba(255,215,0,0.6)' }}>→</span>
+        </Link>
+      )}
+
       {hasBet && (
         <div className={`match-card__footer has-bet`}>
           {isFinished ? (() => {
@@ -512,8 +529,120 @@ export function MatchCard({ match, onBet, myBets = [], onCancelBet, poolData, al
         </button>
       )}
 
+      {match.home && match.away && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setActivityOpen(true); }}
+          style={{
+            width: '100%', marginTop: 4, padding: '8px 0',
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 8, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            color: 'var(--ink-3)', fontSize: 11, fontWeight: 600,
+          }}
+        >
+          Betting Activity
+        </button>
+      )}
+
       <LineupSheet match={match} open={lineupOpen} onClose={() => setLineupOpen(false)} />
       <MatchPropsSheet match={match} open={propsOpen} onClose={() => setPropsOpen(false)} />
+      <MatchActivityModal match={match} open={activityOpen} onClose={() => setActivityOpen(false)} />
+    </div>
+  );
+}
+
+// ── Match Activity Modal ────────────────────────────────────
+function MatchActivityModal({ match, open, onClose }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || !match?.id) return;
+    setLoading(true);
+    fetch(`/api/activity?match_id=${match.id}&limit=30`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setItems(data); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [open, match?.id]);
+
+  if (!open) return null;
+
+  const home = match.home ? getTeam(match.home) : null;
+  const away = match.away ? getTeam(match.away) : null;
+
+  function relTime(iso) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'now';
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
+  }
+
+  function formatAction(item) {
+    const name = item.profiles?.display_name || 'Someone';
+    const payload = item.payload || {};
+    const pick = payload.pick;
+    const amount = payload.amount;
+    const pickLabel = pick === 'home' ? (home?.name || 'Home') : pick === 'away' ? (away?.name || 'Away') : pick === 'draw' ? 'Draw' : pick || '';
+
+    if (item.type === 'bet_placed') {
+      return { name, action: 'bet', detail: `${fmtMoney(amount)} on ${pickLabel}`, color: 'var(--ink-2)' };
+    }
+    if (item.type === 'bet_cancelled') {
+      return { name, action: 'cancelled', detail: pickLabel, color: 'var(--ink-3)' };
+    }
+    if (item.type === 'bet_won') {
+      return { name, action: 'won', detail: `${fmtMoney(payload.payout || amount)} on ${pickLabel}`, color: 'var(--win)' };
+    }
+    return { name, action: item.type?.replace('bet_', '') || '?', detail: '', color: 'var(--ink-3)' };
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} />
+      <div style={{
+        position: 'relative', width: '100%', maxWidth: 440, maxHeight: '70vh', overflowY: 'auto',
+        background: 'var(--surface)', borderRadius: '20px 20px 0 0', padding: '16px 16px 28px',
+        border: '1px solid rgba(255,255,255,0.08)', borderBottom: 'none',
+      }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 12px' }} />
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>
+          Betting Activity
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 14 }}>
+          {home?.name || '?'} vs {away?.name || '?'}
+        </div>
+
+        {loading && <div style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)', fontSize: 12 }}>Loading…</div>}
+
+        {!loading && items.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)', fontSize: 12 }}>No activity yet</div>
+        )}
+
+        {!loading && items.map(item => {
+          const { name, action, detail, color } = formatAction(item);
+          return (
+            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                background: item.profiles?.avatar_url ? `url(${item.profiles.avatar_url}) center/cover` : 'rgba(255,255,255,0.08)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: 'var(--ink-3)',
+              }}>
+                {!item.profiles?.avatar_url && (name[0] || '?')}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>{name}</span>{' '}
+                <span style={{ fontSize: 12, color }}>{action}</span>{' '}
+                {detail && <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{detail}</span>}
+              </div>
+              <span style={{ fontSize: 10, color: 'var(--ink-3)', flexShrink: 0 }}>{relTime(item.created_at)}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

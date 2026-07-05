@@ -235,7 +235,7 @@ function ZoomControls() {
 }
 
 export default function KnockoutPage() {
-  const { matches, openBet, bets, poolMap } = useBetting();
+  const { matches, openBet, bets, poolMap, challenges } = useBetting();
   const bracketRef = useRef(null);
   const readyRef = useRef(false);
   const wrapperRef = useRef(null);

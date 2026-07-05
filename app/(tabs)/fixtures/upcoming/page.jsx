@@ -7,7 +7,7 @@ import { MatchCard } from '@/components';
 import KnockoutPage from '../knockout/page';
 
 export default function FixturesUpcomingPage() {
-  const { matches, openBet, bets, cancelBet, poolMap, allUsers, user } = useBetting();
+  const { matches, openBet, bets, cancelBet, poolMap, allUsers, user, challenges } = useBetting();
   const [view, setView] = useState('list');
 
   const upcoming = useMemo(() => {
@@ -78,7 +78,7 @@ export default function FixturesUpcomingPage() {
               </div>
               {byDate[date].map(m => {
                 const myBets = bets.filter(b => (b.match_id || b.matchId) === m.id && (b.kind === 'match' || b.kind === 'penalty') && (b.status !== 'cancelled' || m.status === 'finished'));
-                return <MatchCard key={m.id} match={m} onBet={openBet} myBets={myBets} onCancelBet={cancelBet} poolData={poolMap[m.id]} allUsers={allUsers} userId={user?.id} />;
+                return <MatchCard key={m.id} match={m} onBet={openBet} myBets={myBets} onCancelBet={cancelBet} poolData={poolMap[m.id]} allUsers={allUsers} userId={user?.id} challenges={challenges} />;
               })}
             </div>
           ))}

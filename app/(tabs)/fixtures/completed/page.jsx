@@ -6,7 +6,7 @@ import { fmtDay, fmtDate } from '@/lib/data';
 import { MatchCard } from '@/components';
 
 export default function FixturesCompletedPage() {
-  const { matches, openBet, bets, cancelBet, poolMap, allUsers, user } = useBetting();
+  const { matches, openBet, bets, cancelBet, poolMap, allUsers, user, challenges } = useBetting();
 
   const completed = useMemo(() => {
     const done = matches.filter(m => m.status === 'finished');
@@ -41,7 +41,7 @@ export default function FixturesCompletedPage() {
           </div>
           {byDate[date].map(m => {
             const myBets = bets.filter(b => (b.match_id || b.matchId) === m.id && (b.kind === 'match' || b.kind === 'penalty') && (b.status !== 'cancelled' || m.status === 'finished'));
-            return <MatchCard key={m.id} match={m} onBet={openBet} myBets={myBets} onCancelBet={cancelBet} poolData={poolMap[m.id]} allUsers={allUsers} userId={user?.id} />;
+            return <MatchCard key={m.id} match={m} onBet={openBet} myBets={myBets} onCancelBet={cancelBet} poolData={poolMap[m.id]} allUsers={allUsers} userId={user?.id} challenges={challenges} />;
           })}
         </div>
       ))}

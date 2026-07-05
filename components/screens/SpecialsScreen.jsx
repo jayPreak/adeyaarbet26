@@ -852,7 +852,6 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
   const [myBetsData, setMyBetsData] = useState({});
   const [finalFourOpen, setFinalFourOpen] = useState(false);
   const [totalGoalsOpen, setTotalGoalsOpen] = useState(false);
-  const [duelsSummary, setDuelsSummary] = useState(null);
 
   useEffect(() => {
     // Cup-winner data
@@ -930,19 +929,6 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       .then(data => {
         setPoolsData(prev => ({ ...prev, total_goals: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, byTeam: data.pool?.byOption || {} } }));
         setMyBetsData(prev => ({ ...prev, total_goals: data.myBets?.[0] || null }));
-      })
-      .catch(() => {});
-
-    // Duels summary
-    fetch('/api/challenge')
-      .then(r => r.json())
-      .then(data => {
-        const live = (data.challenges || []).filter(c => ['open', 'accepted'].includes(c.status));
-        setDuelsSummary({
-          count: live.length,
-          total: live.reduce((s, c) => s + c.amount * (c.status === 'accepted' ? 2 : 1), 0),
-          incoming: (data.challenges || []).filter(c => c.status === 'open' && c.opponent_id === user?.id).length,
-        });
       })
       .catch(() => {});
 
@@ -1029,29 +1015,6 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, padding: '0 16px' }}>
-      {/* Duels — 1v1 challenges (own page, not a parimutuel pool) */}
-      <SpecialCard
-        special={{
-          id: 'duels',
-          title: 'Duels — 1v1 Challenges',
-          description: 'Challenge a friend head-to-head, winner takes all',
-          emoji: '⚔️',
-          multiPick: false,
-          formatPick: p => p,
-        }}
-        poolData={{ total: duelsSummary?.total || 0, byTeam: {} }}
-        onOpen={() => window.location.href = '/specials/duels'}
-        deadlineTs={null}
-        myBet={null}
-        resolvesTs={null}
-        highlight={duelsSummary?.incoming > 0
-          ? `🔥 ${duelsSummary.incoming} duel${duelsSummary.incoming !== 1 ? 's' : ''} waiting for YOU`
-          : duelsSummary?.count > 0
-            ? `${duelsSummary.count} live duel${duelsSummary.count !== 1 ? 's' : ''}`
-            : 'Call a friend out, winner takes all'}
-        bettorCount={duelsSummary?.count || 0}
-        totalFriends={null}
-      />
       {SPECIALS.filter(s => !s.hidden).map(special => {
         // Final Four — opens its own modal
         if (special.id === 'final_four') {
