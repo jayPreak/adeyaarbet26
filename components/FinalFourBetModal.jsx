@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { getTeam, getMatchKickoffTs } from '@/lib/data';
+import { getTeam } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { Icon } from './index';
 
@@ -30,12 +30,10 @@ export function computeAliveTeams(matches) {
   return [...inKo].filter(c => !eliminated.has(c)).sort();
 }
 
-export function qfDeadlineTs(matches) {
-  const kickoffs = matches
-    .filter(m => m.id?.startsWith('QF-'))
-    .map(m => getMatchKickoffTs(m))
-    .filter(ts => ts != null);
-  return kickoffs.length ? Math.min(...kickoffs) : null;
+// Pinned deadline: Fri 10 Jul 2026, 1:00 AM IST = 2026-07-09T19:30:00Z.
+// (Previously derived from the first QF kickoff, mirrored in qf_deadline() SQL.)
+export function qfDeadlineTs() {
+  return new Date('2026-07-09T19:30:00Z').getTime();
 }
 
 export default function FinalFourBetModal({ open, onClose, user, onPlaced, matches = [] }) {

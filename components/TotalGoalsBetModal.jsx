@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
-import { TOTAL_GOALS_LINE, formatTotalGoalsPick } from '@/lib/props';
+import { TOTAL_GOALS_LINE, TOTAL_GOALS_MATCH_COUNT, formatTotalGoalsPick, goalsSoFar } from '@/lib/props';
 import { qfDeadlineTs } from './FinalFourBetModal';
 import { Icon } from './index';
 
 export default function TotalGoalsBetModal({ open, onClose, user, onPlaced, matches = [] }) {
   const deadline = qfDeadlineTs(matches);
   const closed = deadline != null && Date.now() >= deadline;
+  const soFar = goalsSoFar(matches);
 
   const [myBet, setMyBet] = useState(null);
   const [pool, setPool] = useState(null);
@@ -92,12 +93,21 @@ export default function TotalGoalsBetModal({ open, onClose, user, onPlaced, matc
           <div>
             <div style={{ fontSize: 17, fontWeight: 800, fontFamily: 'var(--font-display)' }}>🌡️ Total Tournament Goals</div>
             <div style={{ fontSize: 11, color: closed ? 'var(--loss)' : 'var(--ink-3)', marginTop: 2 }}>
-              {closed ? 'Locked — quarterfinals started' : `All 104 matches, incl. extra time · line ${TOTAL_GOALS_LINE}`}
+              {closed ? 'Locked — quarterfinals started' : `Through Round of 16 (${TOTAL_GOALS_MATCH_COUNT} matches, incl. extra time) · line ${TOTAL_GOALS_LINE}`}
             </div>
           </div>
           <button onClick={onClose} style={{ width: 30, height: 30, display: 'grid', placeItems: 'center', color: 'var(--ink-3)' }}>
             {Icon.close}
           </button>
+        </div>
+
+        <div style={{
+          display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6,
+          padding: '8px 0 12px', marginBottom: 4, borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Goals so far</span>
+          <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--gold)' }}>{soFar}</span>
+          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>/ {TOTAL_GOALS_LINE} line</span>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>

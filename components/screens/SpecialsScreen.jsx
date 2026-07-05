@@ -8,6 +8,7 @@ import { Flag } from '@/components';
 import { useBetting } from '@/lib/BettingContext';
 import FinalFourBetModal, { qfDeadlineTs } from '@/components/FinalFourBetModal';
 import TotalGoalsBetModal from '@/components/TotalGoalsBetModal';
+import { TOTAL_GOALS_LINE } from '@/lib/props';
 
 function useDeadlineCountdown(deadlineTs) {
   const [now, setNow] = useState(Date.now());
@@ -1048,7 +1049,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               deadlineTs={qfDeadlineTs(matches)}
               myBet={myBetsData.total_goals || null}
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
-              highlight={tg?.total > 0 ? `Over ${fmtMoney(overAmt)} · Under ${fmtMoney(underAmt)}` : 'Over/under 269.5 goals'}
+              highlight={tg?.total > 0 ? `Over ${fmtMoney(overAmt)} · Under ${fmtMoney(underAmt)}` : `Over/under ${TOTAL_GOALS_LINE} goals`}
               bettorCount={tg?.bettorCount || 0}
               totalFriends={allUsers.length}
             />

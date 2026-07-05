@@ -91,8 +91,8 @@ describe('pens market', () => {
 
 describe('total tournament goals', () => {
   test('line and formatting', () => {
-    expect(TOTAL_GOALS_LINE).toBe(269.5);
-    expect(formatTotalGoalsPick('over')).toBe('Over 269.5 goals');
-    expect(formatTotalGoalsPick('under')).toBe('Under 269.5 goals');
+    expect(TOTAL_GOALS_LINE).toBe(248.5);
+    expect(formatTotalGoalsPick('over')).toBe('Over 248.5 goals');
+    expect(formatTotalGoalsPick('under')).toBe('Under 248.5 goals');
   });
 });
