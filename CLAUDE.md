@@ -6,6 +6,38 @@ broke when it wasn't followed.
 
 ---
 
+## 📋 MANDATORY: Documentation Protocol (every agent, every session)
+
+This repo is documented for AI-assisted development. **You MUST keep the docs in
+sync with your changes.** Before ANY commit, complete this checklist:
+
+1. **Update `CHANGELOG.md`** (repo root) — human-readable. Add an entry under today's
+   date: what changed, why, and which files. Written for the repo owner and friends,
+   plain English, no jargon.
+2. **Append to `docs/ai/SESSION_LOG.md`** — AI-readable. Log your session: task,
+   files touched, decisions made, gotchas discovered, anything a future agent needs.
+   Append-only; never rewrite old entries.
+3. **Update `docs/ai/STATE.md`** if you changed what's true about the system
+   (new feature live, known issue fixed/introduced, pending manual step).
+4. **Update the relevant `CLAUDE.md`** — this file for architecture/invariant changes;
+   `app/api/CLAUDE.md`, `components/CLAUDE.md`, or `lib/CLAUDE.md` for changes in
+   those directories. If you discovered this documentation was WRONG or stale,
+   fix it — stale docs are worse than no docs.
+5. **New failure mode discovered?** Add it to "Known Failure Modes & Traps" below.
+
+**Doc map:**
+| File | Audience | Purpose |
+|------|----------|---------|
+| `CLAUDE.md` (this file) | AI | Architecture, invariants, failure modes |
+| `app/api/CLAUDE.md`, `components/CLAUDE.md`, `lib/CLAUDE.md` | AI | Directory-level detail (auto-loaded when working there) |
+| `docs/ai/SESSION_LOG.md` | AI | Append-only log of every AI session's changes |
+| `docs/ai/STATE.md` | AI | Current system state: what's live, known issues, pending manual steps |
+| `CHANGELOG.md` | Humans | Plain-English log of all changes |
+| `docs/ARCHITECTURE.md` | Both | DB schema deep-dive & financial model (may lag; this file wins on conflict) |
+| `PLAN.md` | Both | Historical feature plan (mostly archival) |
+
+---
+
 ## System Overview
 
 AdeYaar 26 is a friends' FIFA World Cup 2026 parimutuel betting app.
@@ -48,34 +80,44 @@ app/
     sync-schedule/route.js — POST (manual FIFA→DB schedule sync, rarely needed)
   login/page.js            — Google OAuth login
 
+app/(tabs)/               — REAL app shell (route group). layout.jsx = TabsShell:
+                             BettingProvider + AppHeader + TabBar + shared modals + ErrorBoundary.
+  home/ fixtures/ specials/ leaders/ account/ news/ tournament/ — one route per tab
+
 components/
-  AdeYaarApp.jsx           — Root app shell. ALL state lives here. Passes props down.
+  AdeYaarApp.jsx           — ⚠️ DEAD CODE. Legacy monolith shell, no longer rendered.
+                             Do NOT wire new state/modals here. Real shell = app/(tabs)/layout.jsx.
   index.jsx                — Shared widgets: MatchCard, HeroMatch, PlaceBetSheet, BetCard,
-                             Flag, SectionHead, Toast, useBettingOpen hook
-  screens/
-    HomeScreen.jsx         — Featured match + activity feed
-    FixturesScreen.jsx     — All matches by group/date + bracket
-    SpecialsScreen.jsx     — Special bets (cup winner, continent, h2h, golden boot, goalscorer)
-    LeaderboardScreen.jsx  — Rankings with tabs (P&L, wins, losses, biggest bettor)
-    BetsScreen.jsx         — Account page: profile, settlement, net worth graph, my bets
-  CupWinnerBetModal.jsx    — Cup winner bet placement modal
-  H2HBetModal.jsx          — Messi vs Ronaldo H2H bet modal
-  GoldenBootBetModal.jsx   — Golden Boot multi-pick bet modal
-  GoalScorerBetModal.jsx   — Per-match goalscorer bet modal
+                             AppHeader, TabBar, Flag, SectionHead, Toast, useBettingOpen hook
+  screens/                 — Screen bodies rendered by the (tabs) route pages:
+                             HomeScreen, FixturesScreen, BracketScreen, SpecialsScreen,
+                             LeaderboardScreen, BetsScreen
+  desktop/DesktopApp.jsx   — Desktop layout variant
+  *BetModal.jsx            — Special-bet modals (CupWinner, Continent, H2H, GoldenBoot,
+                             GoalScorer, FinalFour, TotalGoals, ThirdPlaceQualifier)
+  MatchPropsSheet.jsx      — Per-match props (scoreline, o/u, pens) + duels sheet
+  LineupSheet.jsx, SearchOverlay.jsx, CountdownGate.jsx, R32BetPage.jsx — misc UI
 
 lib/
-  data.js                  — Static: MATCHES (72), TEAM (48), FRIENDS, getMatch(), getTeam(),
+  BettingContext.jsx       — ★ Central app state (React context). The real state owner —
+                             replaces the old AdeYaarApp useState pile.
+  LeaderboardContext.jsx   — Leaderboard/rankings state
+  data.js                  — Static: MATCHES, TEAM, FRIENDS, getMatch(), getTeam(),
                              getMatchKickoffTs(), isMatchBettingOpen(), MATCH_BET_CUTOFF_MS
   ledger.js                — computeBalance(), computeRealisedBalance(), resolveMatchBets()
   specials.js              — SPECIALS registry, getSpecial(id), GOLDEN_BOOT_CANDIDATES
+  props.js                 — Pure helpers for match props settlement (scoreline/o-u/pens)
+  achievements.js          — Leaderboard "Titles", computed client-side
+  odds.js, settlement.js, third-place-qualifiers.js, cup-winner.js — domain helpers
   currency.js              — CURRENCY_SYMBOL (₹), fmtMoney(), MAX_BET
   schedule-sync.js         — mapFifaToSchedule(): FIFA API → static ID mapping
-  cup-winner.js            — cupWinnerDeadlineFromKickoffs()
   supabase.js              — Server anon client
   supabase-admin.js        — Server service-role client (for writes that bypass RLS)
   supabase-browser.js      — Client-side Supabase (for auth, file uploads)
+  supabase-server.js       — Server client w/ auth cookies
 
-supabase/migrations/       — Sequential SQL migrations (001–015)
+supabase/migrations/       — Sequential SQL migrations (001–033). RPCs live here;
+                             the LAST migration touching an RPC is its current definition.
 ```
 
 ---
@@ -176,7 +218,7 @@ All specials are registered in `lib/specials.js:SPECIALS[]`. Each has:
 2. Add the kind to `bets_kind_check` constraint (new migration)
 3. The `/api/special-bet` route handles GET/POST/DELETE generically via `place_special_bet` / `cancel_special_bet` RPCs
 4. Add UI: card in `SpecialsScreen.jsx` + expanded detail view + modal for placement
-5. Wire modal open state in `AdeYaarApp.jsx`
+5. Wire modal open state in `lib/BettingContext.jsx` and render the modal in `app/(tabs)/layout.jsx` (NOT `AdeYaarApp.jsx` — dead code)
 6. If auto-settlement is needed, add logic to `auto-resolve/route.js`
 
 ---
@@ -184,12 +226,16 @@ All specials are registered in `lib/specials.js:SPECIALS[]`. Each has:
 ## Frontend Architecture
 
 ### State Management
-ALL app state lives in `AdeYaarApp.jsx` as ~15 `useState` hooks. Props drill down to screens.
+App state lives in `lib/BettingContext.jsx` (`BettingProvider`), mounted in
+`app/(tabs)/layout.jsx` (the real shell — "TabsShell"). Screens consume via `useBetting()`.
 Key state: `user`, `bets`, `matches`, `scheduleMap`, `balance`, `poolMap`, `allUsers`.
+**⚠️ `components/AdeYaarApp.jsx` is DEAD CODE** — the old monolith shell. Never wire new
+state or modals there; anything added to it silently does nothing in the live app.
 
 ### Screen Navigation
-Tab-based: `screen` state = `'home' | 'fixtures' | 'specials' | 'leaderboard' | 'account'`.
-Modals: `betSheet`, `cupWinnerOpen`, `h2hOpen`, `goldenBootOpen`, `goalScorerOpen` + `goalScorerMatchId`.
+Next.js App Router route group `app/(tabs)/` — one directory per tab
+(`home`, `fixtures`, `specials`, `leaders`, `account`, `news`, `tournament`).
+Shared modals (bet sheet, special-bet modals, toasts) render in `app/(tabs)/layout.jsx`.
 
 ### Data Flow on Load
 ```
@@ -264,7 +310,18 @@ Admin top-ups are stored as bets with `match_id = '_topup'`. These are ALWAYS fi
 ### 9. Net Worth Graph Needs `resolved_at` or `created_at` Ordering
 The graph plots chronological P&L. If a bet has no `resolved_at`, it falls back to `created_at` for ordering. New RPCs that resolve bets should set `resolved_at = now()`.
 
-### 10. CSS/Theming
+### 10. `SUPABASE_SERVICE_ROLE_KEY` May Be Missing on Vercel
+The service-role key has (at times) not been set in Vercel env vars, silently breaking
+service_role-only RPCs in production (e.g. duels settlement via `settle_challenges`).
+Routes fall back to the anon client (`supabaseAdmin || supabase`) which then fails RLS.
+If a service_role RPC works locally but not in prod, check Vercel env vars first.
+
+### 11. `AdeYaarApp.jsx` Is Dead Code
+`components/AdeYaarApp.jsx` looks like the app root but is NOT rendered. The live shell
+is `app/(tabs)/layout.jsx` + `lib/BettingContext.jsx`. Changes wired into AdeYaarApp
+silently do nothing — a classic wasted-session trap.
+
+### 12. CSS/Theming
 All styles are inline or in `app/globals.css`. CSS vars: `--ink`, `--ink-2`, `--ink-3`, `--surface-2`, `--line`, `--gold`, `--win`, `--loss`. Dark theme only. Mobile-first (phone frame on desktop via media queries).
 
 ---
@@ -276,9 +333,10 @@ All styles are inline or in `app/globals.css`. CSS vars: `--ink`, `--ink-2`, `--
 3. **If it needs a new bet kind:** Add to `bets_kind_check` via migration. Add to `SPECIALS` in `lib/specials.js` with `formatPick()`.
 4. **If it reads schedule data:** Use `scheduleMap` from props, not a fresh fetch. Match IDs are ALWAYS static strings (A1, B1, etc.).
 5. **If it fetches FIFA API:** Never await on the response path. Use fire-and-forget or a separate route with timeout.
-6. **If it adds a modal:** Add open state in `AdeYaarApp.jsx`, render alongside other modals at the bottom. Wire via `onOpenSpecialBet` handler.
+6. **If it adds a modal:** Add open state in `lib/BettingContext.jsx`, render in `app/(tabs)/layout.jsx` alongside the other modals. (`AdeYaarApp.jsx` is dead code — never touch it.)
 7. **If it shows bet labels:** Use `getSpecial(kind).formatPick(pick)` for specials, `getTeam(match.home).name` for match bets. Never show raw `match_id` or `pick` values to users.
-8. **Before pushing:** `rm -rf .next && npm run build` must pass. `npm test` must pass. Push to `upstream` (not `origin`).
+8. **Update the docs** per the Documentation Protocol at the top of this file: `CHANGELOG.md`, `docs/ai/SESSION_LOG.md`, `docs/ai/STATE.md`, and any stale `CLAUDE.md`.
+9. **Before pushing:** `rm -rf .next && npm run build` must pass. `npm test` must pass. Push to `upstream` (not `origin`).
 
 ---
 
