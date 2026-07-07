@@ -23,7 +23,8 @@ export async function GET() {
   const { data: bets, error: bErr } = await supabase
     .from('bets')
     .select('user_id, amount, status, payout, match_id')
-    .neq('match_id', '_topup');
+    .neq('match_id', '_topup')
+    .limit(5000);
 
   if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 });
 

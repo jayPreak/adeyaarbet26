@@ -13,7 +13,7 @@ export async function GET(request) {
   // If no match_id, return all pools (pending + resolved) + all profiles
   if (!matchId) {
     const [betsRes, profilesRes, schedRes] = await Promise.all([
-      supabase.from('bets').select('match_id, user_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)'),
+      supabase.from('bets').select('match_id, user_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)').limit(5000),
       supabase.from('profiles').select('id, display_name, avatar_url'),
       supabase.from('match_schedule').select('id, kickoff_ts'),
     ]);

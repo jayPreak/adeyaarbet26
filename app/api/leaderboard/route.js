@@ -23,7 +23,8 @@ export async function GET() {
 
   const { data: bets, error: bErr } = await supabase
     .from('bets')
-    .select('user_id, amount, status, payout, match_id, pick, kind, created_at, resolved_at');
+    .select('user_id, amount, status, payout, match_id, pick, kind, created_at, resolved_at')
+    .limit(5000);
 
   if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 });
 
