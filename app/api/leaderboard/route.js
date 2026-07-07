@@ -3,6 +3,8 @@ import supabase from '@/lib/supabase';
 import { FRIENDS, getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { computeBalance, computeRealisedBalance } from '@/lib/ledger';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
   if (!supabase) {

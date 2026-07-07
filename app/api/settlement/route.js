@@ -3,6 +3,9 @@ import supabase from '@/lib/supabase';
 import { FRIENDS } from '@/lib/data';
 import { computeSettlement, computeNetPositions } from '@/lib/settlement';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   if (!supabase) {
     const mock = FRIENDS.map(f => ({ id: f.id, display_name: f.name, balance: 0 }));
