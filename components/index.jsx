@@ -561,7 +561,7 @@ function MatchActivityModal({ match, open, onClose }) {
     setLoading(true);
     fetch(`/api/activity?match_id=${match.id}&limit=30`)
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setItems(data); })
+      .then(data => { if (Array.isArray(data)) setItems(data.filter(d => !d.payload?.kind || d.payload.kind === 'match' || d.payload.kind === 'penalty')); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [open, match?.id]);
@@ -597,7 +597,10 @@ function MatchActivityModal({ match, open, onClose }) {
     if (item.type === 'bet_won') {
       return { name, action: 'won', detail: `${fmtMoney(payload.payout || amount)} on ${pickLabel}`, color: 'var(--win)' };
     }
-    return { name, action: item.type?.replace('bet_', '') || '?', detail: '', color: 'var(--ink-3)' };
+    if (item.type === 'penalty_applied') {
+      return { name, action: 'penalty', detail: amount ? `-${fmtMoney(amount)}` : '', color: 'var(--loss)' };
+    }
+    return { name, action: item.type?.replace('bet_', '').replace(/_/g, ' ') || '?', detail: '', color: 'var(--ink-3)' };
   }
 
   return (

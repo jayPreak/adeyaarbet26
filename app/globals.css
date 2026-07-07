@@ -615,7 +615,7 @@ body {
 
 /* ── Knockout Bracket (tree with connectors) ──────────────── */
 .ko-canvas {
-  position: relative; overflow: hidden;
+  position: relative; overflow: auto; -webkit-overflow-scrolling: touch;
   height: calc(100vh - 220px); min-height: 400px;
 }
 .ko-canvas__controls {
@@ -813,7 +813,7 @@ body {
   color: var(--gold);
   font-weight: 600; font-size: 13px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-  z-index: 200;
+  z-index: 9999;
   display: flex; align-items: center; gap: 8px;
   animation: slideUp 0.25s ease;
   white-space: nowrap;

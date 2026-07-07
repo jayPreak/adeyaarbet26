@@ -28,5 +28,11 @@ export async function GET(request) {
   const { data, error } = await query;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  // Filter out duel/challenge activity from per-match views
+  const filtered = matchId
+    ? (data || []).filter(d => !d.payload?.kind || d.payload.kind === 'match' || d.payload.kind === 'penalty')
+    : data;
+
+  return NextResponse.json(filtered);
 }

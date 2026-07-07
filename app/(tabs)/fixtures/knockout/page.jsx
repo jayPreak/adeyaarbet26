@@ -192,7 +192,7 @@ function buildEdges(byStage, allKnockout) {
         }
         // Method 2: placeholder W{matchNumber}
         if (placeholder) {
-          const wMatch = placeholder.match(/^W(\d+)$/);
+          const wMatch = placeholder.match(/^(?:W|RU|L)(\d+)$/);
           if (wMatch) {
             const srcMatch = byMatchNum[parseInt(wMatch[1])];
             if (srcMatch && childIds.has(srcMatch.id)) {
@@ -287,7 +287,7 @@ export default function KnockoutPage() {
           }
           // Method 2: placeholder W{matchNumber} match
           if (placeholder) {
-            const wMatch = placeholder.match(/^W(\d+)$/);
+            const wMatch = placeholder.match(/^(?:W|RU|L)(\d+)$/);
             if (wMatch) {
               const srcMatch = byMatchNum[parseInt(wMatch[1])];
               if (srcMatch && childIds.has(srcMatch.id) && !placed.has(srcMatch.id)) {
