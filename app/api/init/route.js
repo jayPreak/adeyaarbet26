@@ -34,7 +34,7 @@ export async function GET(request) {
     // Schedule
     db.from('match_schedule').select('id, kickoff_ts'),
     // All bets for pool computation
-    db.from('bets').select('match_id, user_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)').limit(5000),
+    db.from('bets').select('match_id, user_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)').range(0, 4999),
     // Profiles
     db.from('profiles').select('id, display_name, avatar_url'),
     // Cup winner bet

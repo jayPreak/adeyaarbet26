@@ -27,7 +27,7 @@ export async function GET() {
     .from('bets')
     .select('user_id, amount, status, payout, match_id')
     .neq('match_id', '_topup')
-    .limit(5000);
+    .range(0, 4999);
 
   if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 });
 
