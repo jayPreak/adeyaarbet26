@@ -27,14 +27,13 @@ export async function GET() {
     .from('bets')
     .select('user_id, amount, status, payout, match_id')
     .neq('match_id', '_topup')
-    .range(0, 4999);
+    .neq('status', 'cancelled');
 
   if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 });
 
   const resolvedMap = {};
   const ledgerMap = {};
   for (const b of bets || []) {
-    if (b.status === 'cancelled') continue;
     ledgerMap[b.user_id] = ledgerMap[b.user_id] || { spent: 0, won: 0 };
     ledgerMap[b.user_id].spent += b.amount;
     if (b.status === 'won') ledgerMap[b.user_id].won += (b.payout || 0);

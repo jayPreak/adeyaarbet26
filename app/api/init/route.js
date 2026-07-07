@@ -33,8 +33,8 @@ export async function GET(request) {
       : Promise.resolve({ data: [] }),
     // Schedule
     db.from('match_schedule').select('id, kickoff_ts'),
-    // All bets for pool computation
-    db.from('bets').select('match_id, user_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)').range(0, 4999),
+    // All non-cancelled bets for pool computation (cancelled excluded to stay under PostgREST max-rows)
+    db.from('bets').select('match_id, user_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)').neq('match_id', '_topup').neq('status', 'cancelled'),
     // Profiles
     db.from('profiles').select('id, display_name, avatar_url'),
     // Cup winner bet
@@ -93,7 +93,6 @@ export async function GET(request) {
 
   const grouped = {};
   for (const b of allBets) {
-    if (b.match_id === '_topup') continue;
     (grouped[b.match_id] = grouped[b.match_id] || []).push(b);
   }
 
@@ -101,21 +100,12 @@ export async function GET(request) {
   for (const [mid, mBetsAll] of Object.entries(grouped)) {
     const matchBets = mBetsAll.filter(b => b.kind === 'match');
     const penaltyBets = mBetsAll.filter(b => b.kind === 'penalty');
-    const activeMatchBets = matchBets.filter(b => b.status !== 'cancelled');
-    const activePenaltyBets = penaltyBets.filter(b => b.status !== 'cancelled');
-    const isRefunded = activeMatchBets.length === 0 && matchBets.length > 0 && finishedMatches.has(mid);
+    // Query already excludes cancelled, so active = all returned
+    const activeMatchBets = matchBets;
+    const activePenaltyBets = penaltyBets;
+    const isRefunded = false;
 
-    let mBets;
-    if (isRefunded) {
-      const latest = {};
-      for (const b of matchBets) {
-        const key = `${b.user_id}|${b.pick}`;
-        if (!latest[key] || (b.created_at || '') > (latest[key].created_at || '')) latest[key] = b;
-      }
-      mBets = Object.values(latest);
-    } else {
-      mBets = activeMatchBets;
-    }
+    const mBets = activeMatchBets;
 
     const matchTotal = activeMatchBets.reduce((s, b) => s + b.amount, 0);
     const penaltyTotal = activePenaltyBets.reduce((s, b) => s + b.amount, 0);

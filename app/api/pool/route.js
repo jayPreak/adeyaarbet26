@@ -16,7 +16,7 @@ export async function GET(request) {
   // If no match_id, return all pools (pending + resolved) + all profiles
   if (!matchId) {
     const [betsRes, profilesRes, schedRes] = await Promise.all([
-      supabase.from('bets').select('match_id, user_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)').range(0, 4999),
+      supabase.from('bets').select('match_id, user_id, pick, amount, status, payout, kind, created_at, profiles(display_name, avatar_url)').neq('match_id', '_topup').neq('status', 'cancelled'),
       supabase.from('profiles').select('id, display_name, avatar_url'),
       supabase.from('match_schedule').select('id, kickoff_ts'),
     ]);
@@ -32,40 +32,20 @@ export async function GET(request) {
 
     const grouped = {};
     for (const b of bets) {
-      if (b.match_id === '_topup') continue;
       (grouped[b.match_id] = grouped[b.match_id] || []).push(b);
     }
 
     const pools = {};
     for (const [mid, allBets] of Object.entries(grouped)) {
-      // Separate real match bets from penalty bets
       const matchBets   = allBets.filter(b => b.kind === 'match');
       const penaltyBets = allBets.filter(b => b.kind === 'penalty');
-
-      const activeMatchBets   = matchBets.filter(b => b.status !== 'cancelled');
-      const activePenaltyBets = penaltyBets.filter(b => b.status !== 'cancelled');
-
-      // Only mark as "refunded" if the match is finished (kickoff > 2h ago) AND all match bets are cancelled.
-      const isRefunded = activeMatchBets.length === 0 && matchBets.length > 0 && finishedMatches.has(mid);
-
-      let mBets;
-      if (isRefunded) {
-        const latest = {};
-        for (const b of matchBets) {
-          const key = `${b.user_id}|${b.pick}`;
-          if (!latest[key] || (b.created_at || '') > (latest[key].created_at || '')) latest[key] = b;
-        }
-        mBets = Object.values(latest);
-      } else {
-        mBets = activeMatchBets;
-      }
+      // Query already excludes cancelled bets
+      const activeMatchBets = matchBets;
+      const activePenaltyBets = penaltyBets;
 
       const matchTotal   = activeMatchBets.reduce((s, b) => s + b.amount, 0);
       const penaltyTotal = activePenaltyBets.reduce((s, b) => s + b.amount, 0);
-      // Total pool includes penalties — they inflate winner payouts
-      const total = isRefunded
-        ? mBets.reduce((s, b) => s + b.amount, 0)
-        : matchTotal + penaltyTotal;
+      const total = matchTotal + penaltyTotal;
 
       const bySide = { home: 0, away: 0, draw: 0 };
       activeMatchBets.forEach(b => { bySide[b.pick] = (bySide[b.pick] || 0) + b.amount; });
@@ -76,15 +56,12 @@ export async function GET(request) {
       pools[mid] = {
         matchId: mid,
         total,
-        penaltyTotal: isRefunded ? 0 : penaltyTotal,
-        // bettorCount and bets[] only reflect real match bets (not penalties)
-        bettorCount: new Set(mBets.map(b => b.user_id)).size,
-        bySide: isRefunded
-          ? (() => { const s = { home: 0, away: 0, draw: 0 }; mBets.forEach(b => { s[b.pick] = (s[b.pick] || 0) + b.amount; }); return s; })()
-          : bySide,
-        resolved: isResolved || isRefunded,
-        refunded: isRefunded,
-        bets: mBets.map(b => ({
+        penaltyTotal,
+        bettorCount: new Set(activeMatchBets.map(b => b.user_id)).size,
+        bySide,
+        resolved: isResolved,
+        refunded: false,
+        bets: activeMatchBets.map(b => ({
           user_id: b.user_id,
           display_name: b.profiles?.display_name || 'Unknown',
           avatar_url: b.profiles?.avatar_url || null,
@@ -92,11 +69,9 @@ export async function GET(request) {
           amount: b.amount,
           status: b.status,
           payout: b.payout || null,
-          possible_win: isRefunded
-            ? 0
-            : isResolved
-              ? (b.status === 'won' ? (b.payout || 0) : 0)
-              : Math.floor((b.amount / (bySide[b.pick] || 1)) * total),
+          possible_win: isResolved
+            ? (b.status === 'won' ? (b.payout || 0) : 0)
+            : Math.floor((b.amount / (bySide[b.pick] || 1)) * total),
         })),
       };
     }
