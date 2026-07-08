@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { fmtMoney, MAX_BET } from '@/lib/currency';
 import { getSpecial } from '@/lib/specials';
+import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 const H2H = getSpecial('h2h');
 
@@ -17,18 +18,28 @@ export default function H2HBetModal({ open, onClose, user, onPlaced }) {
   useEffect(() => {
     if (!open) return;
     setError(null);
-    const url = `/api/special-bet?match_id=MESSI_V_RONALDO&kind=h2h${user ? `&user_id=${user.id}` : ''}`;
-    fetch(url)
-      .then(r => r.json())
-      .then(data => {
-        setPool(data.pool);
-        setMyBets(data.myBets || []);
-        if (data.myBets?.length > 0) {
-          setSelected(data.myBets[0].pick);
-          setAmount(data.myBets[0].amount);
-        }
-      })
-      .catch(() => {});
+    let cancelled = false;
+    const apply = (data) => {
+      if (cancelled || !data) return;
+      setPool(data.pool);
+      setMyBets(data.myBets || []);
+      if (data.myBets?.length > 0) {
+        setSelected(data.myBets[0].pick);
+        setAmount(data.myBets[0].amount);
+      }
+    };
+    (async () => {
+      try {
+        const direct = await fetchSpecialDirect({ matchId: 'MESSI_V_RONALDO', kind: 'h2h', userId: user?.id });
+        if (direct) return apply(direct);
+      } catch { /* fall through */ }
+      try {
+        const url = `/api/special-bet?match_id=MESSI_V_RONALDO&kind=h2h${user ? `&user_id=${user.id}` : ''}`;
+        const res = await fetch(url);
+        apply(await res.json());
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, [open, user]);
 
   if (!open) return null;

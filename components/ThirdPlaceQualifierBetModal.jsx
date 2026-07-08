@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { GROUPS, getTeam } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { Icon } from './index';
+import supabaseBrowser from '@/lib/supabase-browser';
 
 // Compute potential third-place teams per group.
 // If a group is fully finished (6 matches), return only the confirmed 3rd.
@@ -88,10 +89,8 @@ export default function ThirdPlaceQualifierBetModal({ open, onClose, user, onPla
 
   async function loadData() {
     if (!user?.id) return;
-    try {
-      const res = await fetch(`/api/third-place-qualifier-bet?user_id=${user.id}`);
-      if (!res.ok) return;
-      const data = await res.json();
+    const apply = (data) => {
+      if (!data) return;
       setMyBet(data.myBet || null);
       setPool(data.pool || null);
       setPicks(data.picks || []);
@@ -99,6 +98,47 @@ export default function ThirdPlaceQualifierBetModal({ open, onClose, user, onPla
         setSelected(new Set(data.myBet.pick.split(',')));
         setAmount(data.myBet.amount);
       }
+    };
+
+    if (supabaseBrowser) {
+      try {
+        const { data: bets, error } = await supabaseBrowser
+          .from('bets')
+          .select('id, user_id, pick, amount, status, payout, profiles(display_name, avatar_url)')
+          .eq('match_id', 'THIRD_QUALIFIERS')
+          .eq('kind', 'third_place_qualifiers');
+        if (!error && bets) {
+          const active = bets.filter(b => b.status === 'pending' || b.status === 'cancelled');
+          const uniqueByUser = {};
+          for (const b of active) {
+            if (!uniqueByUser[b.user_id] || b.status === 'pending') uniqueByUser[b.user_id] = b;
+          }
+          const displayBets = Object.values(uniqueByUser);
+          const total = displayBets.reduce((s, b) => s + b.amount, 0);
+          const bettorCount = displayBets.length;
+          const deadlinePassed = Date.now() > DEADLINE_TS;
+          const picks = deadlinePassed ? displayBets.map(b => ({
+            userId: b.user_id,
+            displayName: b.profiles?.display_name || '?',
+            avatarUrl: b.profiles?.avatar_url || null,
+            pick: b.pick,
+            amount: b.amount,
+            status: b.status,
+          })) : [];
+          const myBetRow = displayBets.find(b => b.user_id === user.id) || null;
+          return apply({
+            myBet: myBetRow ? { id: myBetRow.id, pick: myBetRow.pick, amount: myBetRow.amount } : null,
+            pool: { total, bettorCount },
+            picks,
+          });
+        }
+      } catch { /* fall through */ }
+    }
+
+    try {
+      const res = await fetch(`/api/third-place-qualifier-bet?user_id=${user.id}`);
+      if (!res.ok) return;
+      apply(await res.json());
     } catch { /* ignore */ }
   }
 

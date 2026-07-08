@@ -6,6 +6,7 @@ import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { SCORELINE_OPTIONS, formatScorelinePick, formatOverUnderPick, formatPensPick, OU_LINE } from '@/lib/props';
 import { useBetting } from '@/lib/BettingContext';
 import { Icon, useBettingOpen } from './index';
+import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 const PRESETS = [50, 100, 250, 500];
 
@@ -33,10 +34,17 @@ export default function MatchPropsSheet({ match, open, onClose }) {
   const load = useCallback(() => {
     if (!match?.id) return;
     for (const k of ['scoreline', 'over_under', 'pens']) {
-      fetch(`/api/special-bet?match_id=${match.id}&kind=${k}${user?.id ? `&user_id=${user.id}` : ''}`)
-        .then(r => r.json())
-        .then(d => setData(prev => ({ ...prev, [k]: d })))
-        .catch(() => {});
+      (async () => {
+        try {
+          const direct = await fetchSpecialDirect({ matchId: match.id, kind: k, userId: user?.id });
+          if (direct) { setData(prev => ({ ...prev, [k]: direct })); return; }
+        } catch { /* fall through */ }
+        try {
+          const res = await fetch(`/api/special-bet?match_id=${match.id}&kind=${k}${user?.id ? `&user_id=${user.id}` : ''}`);
+          const d = await res.json();
+          setData(prev => ({ ...prev, [k]: d }));
+        } catch { /* ignore */ }
+      })();
     }
   }, [match?.id, user?.id]);
 

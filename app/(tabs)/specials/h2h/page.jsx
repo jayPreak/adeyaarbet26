@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useBetting } from '@/lib/BettingContext';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
+import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 export default function H2HPage() {
   const { user, bets, refreshData, allUsers } = useBetting();
@@ -22,14 +23,24 @@ export default function H2HPage() {
 
   useEffect(() => {
     if (!user) return;
-    fetch(`/api/special-bet?match_id=MESSI_V_RONALDO&kind=h2h&user_id=${user.id}`)
-      .then(r => r.json())
-      .then(d => {
-        setPoolData(d.pool || null);
-        setPicks(d.picks || []);
-        setMyBet(d.myBets?.[0] || null);
-      })
-      .catch(() => {});
+    let cancelled = false;
+    const apply = (d) => {
+      if (cancelled || !d) return;
+      setPoolData(d.pool || null);
+      setPicks(d.picks || []);
+      setMyBet(d.myBets?.[0] || null);
+    };
+    (async () => {
+      try {
+        const direct = await fetchSpecialDirect({ matchId: 'MESSI_V_RONALDO', kind: 'h2h', userId: user.id });
+        if (direct) return apply(direct);
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch(`/api/special-bet?match_id=MESSI_V_RONALDO&kind=h2h&user_id=${user.id}`);
+        apply(await res.json());
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, [user]);
 
   const messiGoals = goalData?.messi?.goals || [];

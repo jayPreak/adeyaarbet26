@@ -9,6 +9,12 @@ import { useBetting } from '@/lib/BettingContext';
 import FinalFourBetModal, { qfDeadlineTs } from '@/components/FinalFourBetModal';
 import TotalGoalsBetModal from '@/components/TotalGoalsBetModal';
 import { TOTAL_GOALS_LINE } from '@/lib/props';
+import supabaseBrowser from '@/lib/supabase-browser';
+import { cupWinnerDeadlineFromKickoffs } from '@/lib/cup-winner';
+
+const THIRD_QUAL_MATCH_ID = 'THIRD_QUALIFIERS';
+const THIRD_QUAL_KIND = 'third_place_qualifiers';
+const THIRD_QUAL_DEADLINE_TS = new Date('2026-06-26T18:59:00Z').getTime();
 
 function useDeadlineCountdown(deadlineTs) {
   const [now, setNow] = useState(Date.now());
@@ -945,29 +951,81 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
     if (newSettled.length) setSettledIds(new Set(newSettled));
   }, [initSpecialPools]);
 
-  // Fallback: fetch cup-winner deadline + third-place-qualifiers (not in init batch)
+  // Direct-Supabase fetch: cup-winner deadline + third-place-qualifiers.
+  // Falls back to API if browser client unavailable.
   useEffect(() => {
-    fetch(`/api/cup-winner-bet?user_id=${user?.id || ''}`)
-      .then(r => r.json())
-      .then(data => {
-        if (!initSpecialPools) {
-          setPoolsData(prev => ({ ...prev, cup_winner: data.pool }));
-          setPicksData(prev => ({ ...prev, cup_winner: data.picks || [] }));
-          setMyBetsData(prev => ({ ...prev, cup_winner: data.myBet || null }));
-        }
-        if (data.deadlineTs) setDeadlines(prev => ({ ...prev, cup_winner: data.deadlineTs }));
-      })
-      .catch(() => {});
+    let cancelled = false;
 
-    fetch(`/api/third-place-qualifier-bet${user?.id ? `?user_id=${user.id}` : ''}`)
-      .then(r => r.json())
-      .then(data => {
-        setPoolsData(prev => ({ ...prev, third_place_qualifiers: data.pool || { total: 0, bettorCount: 0 } }));
-        setPicksData(prev => ({ ...prev, third_place_qualifiers: data.picks || [] }));
-        setMyBetsData(prev => ({ ...prev, third_place_qualifiers: data.myBet || null }));
-      })
-      .catch(() => {});
-  }, [user, bets]);
+    (async () => {
+      // Cup-winner deadline (from match_schedule kickoffs)
+      if (supabaseBrowser) {
+        const { data: sched } = await supabaseBrowser
+          .from('match_schedule')
+          .select('id, kickoff_ts');
+        if (!cancelled && sched) {
+          const groupSched = sched.filter(r => !/^\d+$/.test(r.id));
+          const deadline = cupWinnerDeadlineFromKickoffs(groupSched);
+          if (deadline) setDeadlines(prev => ({ ...prev, cup_winner: deadline }));
+        }
+      } else {
+        try {
+          const res = await fetch(`/api/cup-winner-bet?user_id=${user?.id || ''}`);
+          const data = await res.json();
+          if (cancelled) return;
+          if (!initSpecialPools) {
+            setPoolsData(prev => ({ ...prev, cup_winner: data.pool }));
+            setPicksData(prev => ({ ...prev, cup_winner: data.picks || [] }));
+            setMyBetsData(prev => ({ ...prev, cup_winner: data.myBet || null }));
+          }
+          if (data.deadlineTs) setDeadlines(prev => ({ ...prev, cup_winner: data.deadlineTs }));
+        } catch { /* ignore */ }
+      }
+
+      // Third-place qualifiers
+      if (supabaseBrowser) {
+        const { data: bets } = await supabaseBrowser
+          .from('bets')
+          .select('id, user_id, pick, amount, status, payout, profiles(display_name, avatar_url)')
+          .eq('match_id', THIRD_QUAL_MATCH_ID)
+          .eq('kind', THIRD_QUAL_KIND);
+        if (cancelled) return;
+        if (bets) {
+          const active = bets.filter(b => b.status === 'pending' || b.status === 'cancelled');
+          const uniqueByUser = {};
+          for (const b of active) {
+            if (!uniqueByUser[b.user_id] || b.status === 'pending') uniqueByUser[b.user_id] = b;
+          }
+          const displayBets = Object.values(uniqueByUser);
+          const total = displayBets.reduce((s, b) => s + b.amount, 0);
+          const bettorCount = displayBets.length;
+          const deadlinePassed = Date.now() > THIRD_QUAL_DEADLINE_TS;
+          const picks = deadlinePassed ? displayBets.map(b => ({
+            userId: b.user_id,
+            displayName: b.profiles?.display_name || '?',
+            avatarUrl: b.profiles?.avatar_url || null,
+            pick: b.pick,
+            amount: b.amount,
+            status: b.status,
+          })) : [];
+          const myBetRow = user?.id ? displayBets.find(b => b.user_id === user.id) : null;
+          setPoolsData(prev => ({ ...prev, third_place_qualifiers: { total, bettorCount } }));
+          setPicksData(prev => ({ ...prev, third_place_qualifiers: picks }));
+          setMyBetsData(prev => ({ ...prev, third_place_qualifiers: myBetRow ? { id: myBetRow.id, pick: myBetRow.pick, amount: myBetRow.amount } : null }));
+        }
+      } else {
+        try {
+          const res = await fetch(`/api/third-place-qualifier-bet${user?.id ? `?user_id=${user.id}` : ''}`);
+          const data = await res.json();
+          if (cancelled) return;
+          setPoolsData(prev => ({ ...prev, third_place_qualifiers: data.pool || { total: 0, bettorCount: 0 } }));
+          setPicksData(prev => ({ ...prev, third_place_qualifiers: data.picks || [] }));
+          setMyBetsData(prev => ({ ...prev, third_place_qualifiers: data.myBet || null }));
+        } catch { /* ignore */ }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [user, bets, initSpecialPools]);
 
   const expandedSpecial = expanded ? SPECIALS.find(s => s.id === expanded) : null;
 

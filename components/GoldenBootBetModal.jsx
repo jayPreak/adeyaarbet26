@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { fmtMoney, MAX_BET } from '@/lib/currency';
 import { getSpecial } from '@/lib/specials';
+import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 const GB = getSpecial('golden_boot');
 
@@ -19,14 +20,24 @@ export default function GoldenBootBetModal({ open, onClose, user, onPlaced }) {
     if (!open) return;
     setError(null);
     setSearch('');
-    const url = `/api/special-bet?match_id=GOLDEN_BOOT&kind=golden_boot${user ? `&user_id=${user.id}` : ''}`;
-    fetch(url)
-      .then(r => r.json())
-      .then(data => {
-        setPool(data.pool);
-        setMyBets(data.myBets || []);
-      })
-      .catch(() => {});
+    let cancelled = false;
+    const apply = (data) => {
+      if (cancelled || !data) return;
+      setPool(data.pool);
+      setMyBets(data.myBets || []);
+    };
+    (async () => {
+      try {
+        const direct = await fetchSpecialDirect({ matchId: 'GOLDEN_BOOT', kind: 'golden_boot', userId: user?.id });
+        if (direct) return apply(direct);
+      } catch { /* fall through */ }
+      try {
+        const url = `/api/special-bet?match_id=GOLDEN_BOOT&kind=golden_boot${user ? `&user_id=${user.id}` : ''}`;
+        const res = await fetch(url);
+        apply(await res.json());
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, [open, user]);
 
   const filteredOptions = useMemo(() => {

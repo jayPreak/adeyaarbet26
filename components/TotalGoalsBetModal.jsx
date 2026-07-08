@@ -5,6 +5,7 @@ import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { TOTAL_GOALS_LINE, TOTAL_GOALS_MATCH_COUNT, formatTotalGoalsPick, goalsSoFar } from '@/lib/props';
 import { qfDeadlineTs } from './FinalFourBetModal';
 import { Icon } from './index';
+import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 export default function TotalGoalsBetModal({ open, onClose, user, onPlaced, matches = [] }) {
   const deadline = qfDeadlineTs(matches);
@@ -21,15 +22,22 @@ export default function TotalGoalsBetModal({ open, onClose, user, onPlaced, matc
 
   async function loadData() {
     if (!user?.id) return;
-    try {
-      const res = await fetch(`/api/special-bet?match_id=TOTAL_GOALS&kind=total_goals&user_id=${user.id}`);
-      if (!res.ok) return;
-      const data = await res.json();
+    const apply = (data) => {
+      if (!data) return;
       const mine = data.myBets?.[0] || null;
       setMyBet(mine);
       setPool(data.pool || null);
       setPicks(data.picks || []);
       if (mine) { setPick(mine.pick); setAmount(mine.amount); }
+    };
+    try {
+      const direct = await fetchSpecialDirect({ matchId: 'TOTAL_GOALS', kind: 'total_goals', userId: user.id });
+      if (direct) return apply(direct);
+    } catch { /* fall through */ }
+    try {
+      const res = await fetch(`/api/special-bet?match_id=TOTAL_GOALS&kind=total_goals&user_id=${user.id}`);
+      if (!res.ok) return;
+      apply(await res.json());
     } catch { /* ignore */ }
   }
 

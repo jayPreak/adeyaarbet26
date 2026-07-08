@@ -149,17 +149,72 @@ export default function GoalScorerBetModal({ open, onClose, matchId, user, onPla
   }
 
   async function loadPool() {
+    const apply = (data) => {
+      if (!data) return;
+      setPoolData(data.pool  || null);
+      setPicks(data.picks    || []);
+      setMyBet(data.myBet    || null);
+    };
+
+    // Fast path: direct Supabase (2 parallel queries: bets + match_players)
+    const { default: supabaseBrowser } = await import('@/lib/supabase-browser');
+    if (supabaseBrowser) {
+      try {
+        const [poolRes, playersRes] = await Promise.all([
+          supabaseBrowser
+            .from('bets')
+            .select('id, user_id, pick, amount, status, payout, created_at, profiles(display_name, avatar_url)')
+            .eq('kind', 'goalscorer')
+            .eq('match_id', matchId)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false }),
+          supabaseBrowser
+            .from('match_players')
+            .select('player_id, player_name, team_code, jersey_num')
+            .eq('match_id', matchId),
+        ]);
+        if (!poolRes.error && poolRes.data) {
+          const playerNames = {};
+          for (const p of (playersRes.data || [])) playerNames[p.player_id] = p;
+          const byPlayer = {};
+          let total = 0;
+          const bettors = new Set();
+          const picks = [];
+          for (const b of poolRes.data) {
+            byPlayer[b.pick] = (byPlayer[b.pick] || 0) + b.amount;
+            total += b.amount;
+            bettors.add(b.user_id);
+            const p = playerNames[b.pick];
+            picks.push({
+              user_id: b.user_id,
+              display_name: b.profiles?.display_name || 'Unknown',
+              avatar_url: b.profiles?.avatar_url || null,
+              pick: b.pick,
+              player_name: p?.player_name || b.pick,
+              player_team: p?.team_code || null,
+              amount: b.amount,
+              created_at: b.created_at,
+            });
+          }
+          let myBetRow = user?.id
+            ? poolRes.data.find(b => b.user_id === user.id) || null
+            : null;
+          if (myBetRow) {
+            const p = playerNames[myBetRow.pick];
+            myBetRow = { ...myBetRow, player_name: p?.player_name || myBetRow.pick };
+          }
+          return apply({ pool: { byPlayer, total, bettorCount: bettors.size }, picks, myBet: myBetRow });
+        }
+      } catch { /* fall through */ }
+    }
+
     try {
       const url = user?.id
         ? `/api/goalscorer-bet?match_id=${matchId}&user_id=${user.id}`
         : `/api/goalscorer-bet?match_id=${matchId}`;
       const res  = await fetch(url);
       const data = await res.json();
-      if (res.ok) {
-        setPoolData(data.pool  || null);
-        setPicks(data.picks    || []);
-        setMyBet(data.myBet    || null);
-      }
+      if (res.ok) apply(data);
     } catch { /* ignore */ }
   }
 

@@ -5,6 +5,7 @@ import { useBetting } from '@/lib/BettingContext';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { TOTAL_GOALS_LINE, TOTAL_GOALS_MATCH_COUNT, formatTotalGoalsPick, goalsSoFar } from '@/lib/props';
 import { qfDeadlineTs } from '@/components/FinalFourBetModal';
+import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 export default function TotalGoalsPage() {
   const { user, matches, refreshData, allUsers } = useBetting();
@@ -23,16 +24,26 @@ export default function TotalGoalsPage() {
 
   useEffect(() => {
     if (!user?.id) return;
-    fetch(`/api/special-bet?match_id=TOTAL_GOALS&kind=total_goals&user_id=${user.id}`)
-      .then(r => r.json())
-      .then(data => {
-        const mine = data.myBets?.[0] || null;
-        setMyBet(mine);
-        setPool(data.pool || null);
-        setPicks(data.picks || []);
-        if (mine) { setPick(mine.pick); setAmount(mine.amount); }
-      })
-      .catch(() => {});
+    let cancelled = false;
+    const apply = (data) => {
+      if (cancelled || !data) return;
+      const mine = data.myBets?.[0] || null;
+      setMyBet(mine);
+      setPool(data.pool || null);
+      setPicks(data.picks || []);
+      if (mine) { setPick(mine.pick); setAmount(mine.amount); }
+    };
+    (async () => {
+      try {
+        const direct = await fetchSpecialDirect({ matchId: 'TOTAL_GOALS', kind: 'total_goals', userId: user.id });
+        if (direct) return apply(direct);
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch(`/api/special-bet?match_id=TOTAL_GOALS&kind=total_goals&user_id=${user.id}`);
+        apply(await res.json());
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, [user]);
 
   const byOption = pool?.byOption || {};

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { getTeam } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { Icon } from './index';
+import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 const REQUIRED = 4;
 
@@ -57,10 +58,8 @@ export default function FinalFourBetModal({ open, onClose, user, onPlaced, match
 
   async function loadData() {
     if (!user?.id) return;
-    try {
-      const res = await fetch(`/api/special-bet?match_id=FINAL_FOUR&kind=final_four&user_id=${user.id}`);
-      if (!res.ok) return;
-      const data = await res.json();
+    const apply = (data) => {
+      if (!data) return;
       const mine = data.myBets?.[0] || null;
       setMyBet(mine);
       setPool(data.pool || null);
@@ -69,6 +68,15 @@ export default function FinalFourBetModal({ open, onClose, user, onPlaced, match
         setSelected(new Set(mine.pick.split(',')));
         setAmount(mine.amount);
       }
+    };
+    try {
+      const direct = await fetchSpecialDirect({ matchId: 'FINAL_FOUR', kind: 'final_four', userId: user.id });
+      if (direct) return apply(direct);
+    } catch { /* fall through */ }
+    try {
+      const res = await fetch(`/api/special-bet?match_id=FINAL_FOUR&kind=final_four&user_id=${user.id}`);
+      if (!res.ok) return;
+      apply(await res.json());
     } catch { /* ignore */ }
   }
 

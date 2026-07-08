@@ -5,6 +5,7 @@ import { useBetting } from '@/lib/BettingContext';
 import { getTeam } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { computeAliveTeams } from '@/components/FinalFourBetModal';
+import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 const DEADLINE = new Date('2026-07-09T19:30:00Z').getTime();
 
@@ -40,16 +41,26 @@ export default function KOCupWinnerPage() {
 
   useEffect(() => {
     if (!user?.id) return;
-    fetch(`/api/special-bet?match_id=KO_CUP_WINNER&kind=ko_cup_winner&user_id=${user.id}`)
-      .then(r => r.json())
-      .then(data => {
-        const mine = data.myBets?.[0] || null;
-        setMyBet(mine);
-        setPool(data.pool || null);
-        setPicks(data.picks || []);
-        if (mine) { setPick(mine.pick); setAmount(mine.amount); }
-      })
-      .catch(() => {});
+    let cancelled = false;
+    const apply = (data) => {
+      if (cancelled || !data) return;
+      const mine = data.myBets?.[0] || null;
+      setMyBet(mine);
+      setPool(data.pool || null);
+      setPicks(data.picks || []);
+      if (mine) { setPick(mine.pick); setAmount(mine.amount); }
+    };
+    (async () => {
+      try {
+        const direct = await fetchSpecialDirect({ matchId: 'KO_CUP_WINNER', kind: 'ko_cup_winner', userId: user.id });
+        if (direct) return apply(direct);
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch(`/api/special-bet?match_id=KO_CUP_WINNER&kind=ko_cup_winner&user_id=${user.id}`);
+        apply(await res.json());
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, [user]);
 
   const byOption = pool?.byOption || {};

@@ -5,6 +5,7 @@ import { useBetting } from '@/lib/BettingContext';
 import { getTeam } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { computeAliveTeams, qfDeadlineTs } from '@/components/FinalFourBetModal';
+import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 const REQUIRED = 4;
 
@@ -40,19 +41,29 @@ export default function FinalFourPage() {
 
   useEffect(() => {
     if (!user?.id) return;
-    fetch(`/api/special-bet?match_id=FINAL_FOUR&kind=final_four&user_id=${user.id}`)
-      .then(r => r.json())
-      .then(data => {
-        const mine = data.myBets?.[0] || null;
-        setMyBet(mine);
-        setPool(data.pool || null);
-        setPicks(data.picks || []);
-        if (mine?.pick) {
-          setSelected(new Set(mine.pick.split(',')));
-          setAmount(mine.amount);
-        }
-      })
-      .catch(() => {});
+    let cancelled = false;
+    const apply = (data) => {
+      if (cancelled || !data) return;
+      const mine = data.myBets?.[0] || null;
+      setMyBet(mine);
+      setPool(data.pool || null);
+      setPicks(data.picks || []);
+      if (mine?.pick) {
+        setSelected(new Set(mine.pick.split(',')));
+        setAmount(mine.amount);
+      }
+    };
+    (async () => {
+      try {
+        const direct = await fetchSpecialDirect({ matchId: 'FINAL_FOUR', kind: 'final_four', userId: user.id });
+        if (direct) return apply(direct);
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch(`/api/special-bet?match_id=FINAL_FOUR&kind=final_four&user_id=${user.id}`);
+        apply(await res.json());
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, [user]);
 
   function toggleTeam(code) {

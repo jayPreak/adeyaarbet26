@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useBetting } from '@/lib/BettingContext';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
 import { getTeam } from '@/lib/data';
+import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 const DEADLINE = new Date('2026-07-03T12:30:00Z').getTime();
 const MIN_BET = 50;
@@ -58,14 +59,24 @@ export default function R32BetPage({ variant = 'flop' }) {
 
   useEffect(() => {
     if (!user) return;
-    fetch(`/api/special-bet?match_id=${matchId}&kind=${kind}&user_id=${user.id}`)
-      .then(r => r.json())
-      .then(d => {
-        setPoolData(d.pool || null);
-        setPicks(d.picks || []);
-        setMyBet(d.myBets?.[0] || null);
-      })
-      .catch(() => {});
+    let cancelled = false;
+    const apply = (d) => {
+      if (cancelled || !d) return;
+      setPoolData(d.pool || null);
+      setPicks(d.picks || []);
+      setMyBet(d.myBets?.[0] || null);
+    };
+    (async () => {
+      try {
+        const direct = await fetchSpecialDirect({ matchId, kind, userId: user.id });
+        if (direct) return apply(direct);
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch(`/api/special-bet?match_id=${matchId}&kind=${kind}&user_id=${user.id}`);
+        apply(await res.json());
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, [user, matchId, kind]);
 
   async function handlePlace() {
