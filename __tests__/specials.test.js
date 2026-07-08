@@ -21,7 +21,7 @@ describe('SPECIALS registry', () => {
     expect(getSpecial('scoreline').formatPick('2-1')).toBe('2-1');
     expect(getSpecial('over_under').formatPick('over')).toBe('Over 2.5 goals');
     expect(getSpecial('pens').formatPick('yes')).toContain('penalties');
-    expect(getSpecial('total_goals').formatPick('under')).toBe('Under 248.5 goals');
+    expect(getSpecial('total_goals').formatPick('under')).toBe('Under 299.5 goals');
     expect(getSpecial('final_four').formatPick('ARG,BRA,ENG,FRA')).toBe('Argentina · Brazil · England · France');
     expect(getSpecial('challenge').formatPick('home')).toBe('Home');
   });

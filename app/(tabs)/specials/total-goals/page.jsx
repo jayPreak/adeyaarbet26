@@ -137,7 +137,7 @@ export default function TotalGoalsPage() {
       {/* Rules */}
       <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5 }}>
-          Will there be over or under {TOTAL_GOALS_LINE} total goals across the entire tournament ({TOTAL_GOALS_MATCH_COUNT} matches, including extra time, excluding shootouts)? Settled at tournament end.
+          Will there be over or under {TOTAL_GOALS_LINE} total goals across all {TOTAL_GOALS_MATCH_COUNT} tournament matches (including extra time, excluding shootouts)? Settled at tournament end.
         </div>
       </div>
 
