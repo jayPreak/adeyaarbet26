@@ -4,7 +4,7 @@ describe('SPECIALS registry', () => {
   test('has all specials defined', () => {
     expect(SPECIALS.map(s => s.id)).toEqual([
       'cup_winner', 'continent', 'h2h', 'r32_loser', 'r32_winner', 'third_place_qualifiers',
-      'final_four', 'total_goals',
+      'final_four', 'total_goals', 'ko_cup_winner',
       'scoreline', 'over_under', 'pens', 'challenge',
     ]);
   });

@@ -30,10 +30,9 @@ export function computeAliveTeams(matches) {
   return [...inKo].filter(c => !eliminated.has(c)).sort();
 }
 
-// Pinned deadline: Fri 10 Jul 2026, 1:00 AM IST = 2026-07-09T19:30:00Z.
-// (Previously derived from the first QF kickoff, mirrored in qf_deadline() SQL.)
+// Pinned deadline: Wed 8 Jul 2026, 11:30 PM IST = 2026-07-08T18:00:00Z.
 export function qfDeadlineTs() {
-  return new Date('2026-07-09T19:30:00Z').getTime();
+  return new Date('2026-07-08T18:00:00Z').getTime();
 }
 
 export default function FinalFourBetModal({ open, onClose, user, onPlaced, matches = [] }) {
@@ -245,7 +244,7 @@ export default function FinalFourBetModal({ open, onClose, user, onPlaced, match
               </div>
               <input
                 type="range" className="slider"
-                min={100} max={MAX_BET} step={50}
+                min={500} max={MAX_BET} step={50}
                 value={amount}
                 onChange={e => setAmount(Number(e.target.value))}
                 style={{ marginBottom: 8 }}

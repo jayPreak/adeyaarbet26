@@ -449,12 +449,24 @@ function ContinentDetail({ special, poolData, picks, myBet, user, allUsers, onBa
           </div>
         )}
 
-        <button
-          onClick={onPlace}
-          style={{ width: '100%', padding: '14px', marginBottom: 16, borderRadius: 12, background: 'var(--gold)', color: '#0a0a0a', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-        >
-          {myBet ? 'Change pick' : 'Place bet'}
-        </button>
+        {(() => {
+          const deadlinePassed = special.deadlineTs && Date.now() >= new Date(special.deadlineTs).getTime();
+          if (deadlinePassed) {
+            return (
+              <div style={{ width: '100%', padding: '14px', marginBottom: 16, borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center', fontSize: 13, fontWeight: 600, color: 'var(--ink-3)' }}>
+                Betting closed
+              </div>
+            );
+          }
+          return (
+            <button
+              onClick={onPlace}
+              style={{ width: '100%', padding: '14px', marginBottom: 16, borderRadius: 12, background: 'var(--gold)', color: '#0a0a0a', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+            >
+              {myBet ? 'Change pick' : 'Place bet'}
+            </button>
+          );
+        })()}
 
         {sorted.length > 0 && (
           <div>
@@ -844,6 +856,59 @@ function ThirdPlaceDetail({ pool, picks, myBet, user, allUsers, onBack, onPlace 
   );
 }
 
+function SettledSpecials({ specials, myBetsData }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ padding: '0 16px', marginTop: 20 }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+          color: 'var(--ink-2)', fontSize: 13, fontWeight: 600,
+        }}
+      >
+        <span>Settled Specials ({specials.length})</span>
+        <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {specials.map(s => {
+            const myBet = myBetsData[s.id];
+            return (
+              <div key={s.id} style={{
+                padding: '10px 14px', borderRadius: 10,
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>{s.emoji}</span>
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink-2)' }}>{s.title}</span>
+                  {myBet && (
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                      background: myBet.status === 'won' ? 'rgba(74,222,128,0.12)' : myBet.status === 'lost' ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.06)',
+                      color: myBet.status === 'won' ? 'var(--win)' : myBet.status === 'lost' ? 'var(--loss)' : 'var(--ink-3)',
+                    }}>
+                      {myBet.status === 'won' ? `Won ${fmtMoney(myBet.payout || 0)}` : myBet.status === 'lost' ? `Lost ${fmtMoney(myBet.amount)}` : myBet.status}
+                    </span>
+                  )}
+                  {!myBet && <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>No bet</span>}
+                </div>
+                {myBet && (
+                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--ink-3)', paddingLeft: 24 }}>
+                    Picked: {s.formatPick(myBet.pick)} · {fmtMoney(myBet.amount)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allUsers = [], matches = [], onToast }) {
   const { refreshData } = useBetting();
   const [poolsData, setPoolsData] = useState({});
@@ -933,6 +998,15 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       })
       .catch(() => {});
 
+    // KO Cup Winner
+    fetch(`/api/special-bet?match_id=KO_CUP_WINNER&kind=ko_cup_winner${user?.id ? `&user_id=${user.id}` : ''}`)
+      .then(r => r.json())
+      .then(data => {
+        setPoolsData(prev => ({ ...prev, ko_cup_winner: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, byTeam: data.pool?.byOption || {} } }));
+        setMyBetsData(prev => ({ ...prev, ko_cup_winner: data.myBets?.[0] || null }));
+      })
+      .catch(() => {});
+
   }, [user, bets]);
 
   const expandedSpecial = expanded ? SPECIALS.find(s => s.id === expanded) : null;
@@ -1016,7 +1090,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, padding: '0 16px' }}>
-      {SPECIALS.filter(s => !s.hidden).map(special => {
+      {SPECIALS.filter(s => !s.hidden && !(s.resolvesTs && new Date(s.resolvesTs).getTime() < Date.now())).map(special => {
         // Final Four — opens its own modal
         if (special.id === 'final_four') {
           return (
@@ -1024,7 +1098,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               key={special.id}
               special={special}
               poolData={{ total: poolsData.final_four?.total || 0, byTeam: {} }}
-              onOpen={() => setFinalFourOpen(true)}
+              onOpen={() => { window.location.href = '/specials/final-four'; }}
               deadlineTs={qfDeadlineTs(matches)}
               myBet={myBetsData.final_four || null}
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
@@ -1045,7 +1119,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
               key={special.id}
               special={special}
               poolData={{ total: tg?.total || 0, byTeam: tg?.byTeam || {} }}
-              onOpen={() => setTotalGoalsOpen(true)}
+              onOpen={() => { window.location.href = '/specials/total-goals'; }}
               deadlineTs={qfDeadlineTs(matches)}
               myBet={myBetsData.total_goals || null}
               resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
@@ -1145,6 +1219,27 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
           );
         }
 
+        // KO Cup Winner — navigates to dedicated page
+        if (special.id === 'ko_cup_winner') {
+          const koPool = poolsData.ko_cup_winner;
+          const koMyBet = myBetsData.ko_cup_winner || null;
+          const topKoTeam = koPool?.byTeam ? Object.entries(koPool.byTeam).sort((a, b) => b[1] - a[1])[0] : null;
+          return (
+            <SpecialCard
+              key={special.id}
+              special={special}
+              poolData={{ total: koPool?.total || 0, byTeam: koPool?.byTeam || {} }}
+              onOpen={() => { window.location.href = '/specials/ko-cup-winner'; }}
+              deadlineTs={new Date(special.deadlineTs).getTime()}
+              myBet={koMyBet}
+              resolvesTs={special.resolvesTs ? new Date(special.resolvesTs).getTime() : null}
+              highlight={topKoTeam ? `Favourite: ${special.formatPick(topKoTeam[0])}` : 'Teams still alive only'}
+              bettorCount={koPool?.bettorCount || 0}
+              totalFriends={allUsers.length}
+            />
+          );
+        }
+
         // Cup winner card (default)
         const pool = poolsData[special.id];
         const myBet = myBetsData[special.id] || null;
@@ -1166,6 +1261,14 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
         );
       })}
       </div>
+
+      {/* Settled specials — collapsed section */}
+      {(() => {
+        const now = Date.now();
+        const settled = SPECIALS.filter(s => !s.hidden && s.resolvesTs && new Date(s.resolvesTs).getTime() < now);
+        if (settled.length === 0) return null;
+        return <SettledSpecials specials={settled} myBetsData={myBetsData} />;
+      })()}
 
       <FinalFourBetModal
         open={finalFourOpen}
