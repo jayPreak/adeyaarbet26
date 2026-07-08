@@ -5,6 +5,7 @@ import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET, getMinBet } from '@/lib/cur
 import { getSpecial } from '@/lib/specials';
 import { poolOdds, sideOdds, fmtDecimalOdds, fmtImpliedProb } from '@/lib/odds';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useBetting } from '@/lib/BettingContext';
@@ -1219,29 +1220,44 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
 export function Toast({ message, onDone }) {
   const isError = message?.startsWith('Error');
   const [leaving, setLeaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  // Use refs so we don't recreate effects when the parent hands us new
+  // onDone/dismiss function identities each render.
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+  const leavingRef = useRef(false);
   const autoTimer = useRef(null);
+
   const dismiss = useCallback(() => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
     if (autoTimer.current) { clearTimeout(autoTimer.current); autoTimer.current = null; }
-    setLeaving(prev => {
-      if (prev) return prev;               // already leaving — don't schedule another onDone
-      setTimeout(onDone, 200);
-      return true;
-    });
-  }, [onDone]);
-  // Auto-dismiss success toasts after 3s. Re-arms on each new message so
-  // rapid consecutive successes (place → cancel → place) each get their timer.
+    setLeaving(true);
+    setTimeout(() => onDoneRef.current?.(), 220);
+  }, []);
+
+  // Portal target is document.body so the toast escapes any ancestor
+  // containing-block/overflow/isolation quirks in the phone-frame layout.
+  useEffect(() => { setMounted(true); }, []);
+
+  // Auto-dismiss success toasts after 3s. Keyed on message so a new message
+  // resets the timer; errors persist until user closes.
   useEffect(() => {
     if (isError) return;
     autoTimer.current = setTimeout(dismiss, 3000);
-    return () => { if (autoTimer.current) clearTimeout(autoTimer.current); };
+    return () => { if (autoTimer.current) { clearTimeout(autoTimer.current); autoTimer.current = null; } };
   }, [message, isError, dismiss]);
+
+  if (!mounted || typeof document === 'undefined') return null;
   const cleanMessage = isError ? message.replace(/^Error:\s*/, '') : message;
-  return (
-    <div className={`toast-top ${isError ? 'toast-top--error' : 'toast-top--success'} ${leaving ? 'toast-top--leaving' : ''}`}>
+
+  return createPortal(
+    <div className={`toast-top ${isError ? 'toast-top--error' : 'toast-top--success'} ${leaving ? 'toast-top--leaving' : ''}`} role="status" aria-live="polite">
       <span className="toast-top__icon">{isError ? '⚠' : '✓'}</span>
       <span className="toast-top__msg">{cleanMessage}</span>
       <button onClick={dismiss} className="toast-top__close" aria-label="Dismiss">✕</button>
-    </div>
+    </div>,
+    document.body
   );
 }
 
