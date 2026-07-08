@@ -76,7 +76,10 @@ export function NetWorthGraph({ bets, compact }) {
         } else if (m && (m.home || m.away)) {
           matchLabel = `${stageTag || ''}: ${m.home ? getTeam(m.home).code : 'TBD'} v ${m.away ? getTeam(m.away).code : 'TBD'}`;
         } else if (stageTag) {
-          matchLabel = stageTag;
+          // Knockout bet but we don't have match_id → home/away resolved yet
+          // (FIFA fetch not complete). Fall back to stage + raw match id so
+          // the graph node isn't just "R16" for every KO bet.
+          matchLabel = `${stageTag} · ${b.match_id}`;
         }
       }
 
@@ -543,7 +546,7 @@ export function AchievementBadges({ user }) {
 }
 
 export function SettlementCard({ user, bets = [] }) {
-  const { matches } = useBetting();
+  const { matches, allUsers = [] } = useBetting();
   const [myPosition, setMyPosition] = useState(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
 

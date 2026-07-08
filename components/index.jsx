@@ -4,7 +4,7 @@ import { getTeam, getFriend, fmtCompact, fmtDate, fmtDay, getMatch, fmtTimeIST, 
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL, MAX_BET, getMinBet } from '@/lib/currency';
 import { getSpecial } from '@/lib/specials';
 import { poolOdds, sideOdds, fmtDecimalOdds, fmtImpliedProb } from '@/lib/odds';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useBetting } from '@/lib/BettingContext';
@@ -1219,13 +1219,22 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
 export function Toast({ message, onDone }) {
   const isError = message?.startsWith('Error');
   const [leaving, setLeaving] = useState(false);
-  const dismiss = () => { setLeaving(true); setTimeout(onDone, 200); };
+  const autoTimer = useRef(null);
+  const dismiss = useCallback(() => {
+    if (autoTimer.current) { clearTimeout(autoTimer.current); autoTimer.current = null; }
+    setLeaving(prev => {
+      if (prev) return prev;               // already leaving — don't schedule another onDone
+      setTimeout(onDone, 200);
+      return true;
+    });
+  }, [onDone]);
+  // Auto-dismiss success toasts after 3s. Re-arms on each new message so
+  // rapid consecutive successes (place → cancel → place) each get their timer.
   useEffect(() => {
     if (isError) return;
-    const t = setTimeout(dismiss, 3000);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isError]);
+    autoTimer.current = setTimeout(dismiss, 3000);
+    return () => { if (autoTimer.current) clearTimeout(autoTimer.current); };
+  }, [message, isError, dismiss]);
   const cleanMessage = isError ? message.replace(/^Error:\s*/, '') : message;
   return (
     <div className={`toast-top ${isError ? 'toast-top--error' : 'toast-top--success'} ${leaving ? 'toast-top--leaving' : ''}`}>
