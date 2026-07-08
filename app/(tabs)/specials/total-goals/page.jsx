@@ -116,34 +116,54 @@ export default function TotalGoalsPage() {
         </div>
       </div>
 
-      {/* Live goal tracker */}
-      <div style={{
-        padding: '16px', borderRadius: 12, marginBottom: 16, textAlign: 'center',
-        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-      }}>
-        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 4 }}>Goals scored so far</div>
-        <div style={{ fontSize: 42, fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--gold)' }}>
-          {soFar}
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-          {finishedCount} of {TOTAL_GOALS_MATCH_COUNT} matches played · {pacePerMatch} goals/match
-        </div>
-        {projectedTotal && (
-          <div style={{ fontSize: 12, color: projectedTotal > TOTAL_GOALS_LINE ? 'var(--win)' : 'var(--loss)', marginTop: 6, fontWeight: 600 }}>
-            Projected: ~{projectedTotal} goals ({projectedTotal > TOTAL_GOALS_LINE ? 'Over' : 'Under'} pace)
+      {/* Live goal tracker — framed against the o/u line */}
+      {(() => {
+        const overSide = soFar >= TOTAL_GOALS_LINE;
+        const distance = Math.abs(TOTAL_GOALS_LINE - soFar);
+        const distanceLabel = overSide
+          ? `${distance.toFixed(1)} goals past the line`
+          : `${distance.toFixed(1)} goals under the line`;
+        const sideColor = overSide ? 'var(--win)' : 'var(--loss)';
+        return (
+          <div style={{
+            padding: '16px', borderRadius: 12, marginBottom: 16, textAlign: 'center',
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 6 }}>
+              Goals so far vs. line
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6 }}>
+              <span style={{ fontSize: 42, fontWeight: 800, fontFamily: 'var(--font-mono)', color: sideColor }}>
+                {soFar}
+              </span>
+              <span style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink-3)', fontFamily: 'var(--font-mono)' }}>
+                / {TOTAL_GOALS_LINE}
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: sideColor, fontWeight: 700, marginTop: 4 }}>
+              {overSide ? '🔥 OVER' : '🧊 UNDER'} · {distanceLabel}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
+              {finishedCount} of {TOTAL_GOALS_MATCH_COUNT} matches played · {pacePerMatch} goals/match
+            </div>
+            {projectedTotal && (
+              <div style={{ fontSize: 12, color: projectedTotal > TOTAL_GOALS_LINE ? 'var(--win)' : 'var(--loss)', marginTop: 6, fontWeight: 600 }}>
+                Projected: ~{projectedTotal} goals ({projectedTotal > TOTAL_GOALS_LINE ? 'Over' : 'Under'} pace)
+              </div>
+            )}
+            {/* Progress bar toward line */}
+            <div style={{ marginTop: 10, height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(100, (soFar / TOTAL_GOALS_LINE) * 100)}%`, background: sideColor, borderRadius: 4, transition: 'width 0.3s' }} />
+              <div style={{ position: 'absolute', left: '50%', top: -4, bottom: -4, width: 2, background: 'var(--ink-3)', transform: 'translateX(-50%)' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--ink-3)', marginTop: 4 }}>
+              <span>0</span>
+              <span>Line: {TOTAL_GOALS_LINE}</span>
+              <span>{Math.round(TOTAL_GOALS_LINE * 2)}</span>
+            </div>
           </div>
-        )}
-        {/* Progress bar toward line */}
-        <div style={{ marginTop: 10, height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.06)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${Math.min(100, (soFar / TOTAL_GOALS_LINE) * 100)}%`, background: 'var(--gold)', borderRadius: 4, transition: 'width 0.3s' }} />
-          <div style={{ position: 'absolute', left: '50%', top: -4, bottom: -4, width: 2, background: 'var(--ink-3)', transform: 'translateX(-50%)' }} />
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--ink-3)', marginTop: 4 }}>
-          <span>0</span>
-          <span>Line: {TOTAL_GOALS_LINE}</span>
-          <span>{Math.round(TOTAL_GOALS_LINE * 2)}</span>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Rules */}
       <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -243,6 +263,23 @@ export default function TotalGoalsPage() {
       {/* Everyone's picks */}
       {picks.length > 0 && (
         <div style={{ marginTop: 20, marginBottom: 20 }}>
+          {/* Subtle pool-share bar */}
+          {totalPool > 0 && (() => {
+            const overPct = Math.round((overPool / totalPool) * 100);
+            const underPct = 100 - overPct;
+            return (
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ink-3)', marginBottom: 4, fontWeight: 600 }}>
+                  <span>🔥 Over · {overPct}% ({fmtMoney(overPool)})</span>
+                  <span>🧊 Under · {underPct}% ({fmtMoney(underPool)})</span>
+                </div>
+                <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.05)', overflow: 'hidden', display: 'flex' }}>
+                  <div style={{ width: `${overPct}%`, background: 'rgba(255,149,0,0.55)' }} />
+                  <div style={{ width: `${underPct}%`, background: 'rgba(90,200,250,0.55)' }} />
+                </div>
+              </div>
+            );
+          })()}
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-3)', marginBottom: 8, letterSpacing: '0.04em' }}>
             EVERYONE'S PICKS
           </div>
