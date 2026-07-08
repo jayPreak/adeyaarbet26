@@ -5,6 +5,7 @@ import { MATCHES, getMatch, getTeam } from '@/lib/data';
 import { fmtMoney } from '@/lib/currency';
 import { computeBalance, computeRealisedBalance } from '@/lib/ledger';
 import { useUser } from '@/lib/hooks';
+import supabaseBrowser from '@/lib/supabase-browser';
 
 const BettingContext = createContext(null);
 
@@ -178,6 +179,20 @@ export function BettingProvider({ children }) {
       })
       .catch(() => {});
   }, [user]);
+
+  // Fast-path: fetch schedule directly from Supabase (bypasses Vercel cold start)
+  useEffect(() => {
+    if (!supabaseBrowser) return;
+    supabaseBrowser.from('match_schedule').select('id, kickoff_ts')
+      .then(({ data }) => {
+        if (!data) return;
+        const map = {};
+        for (const row of data) {
+          if (!/^\d+$/.test(row.id)) map[row.id] = row.kickoff_ts;
+        }
+        setScheduleMap(map);
+      });
+  }, []);
 
   // Single consolidated fetch on load — replaces 6 separate calls
   useEffect(() => {
