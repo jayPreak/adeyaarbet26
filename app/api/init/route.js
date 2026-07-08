@@ -24,7 +24,7 @@ export async function GET(request) {
 
   // Fire all DB queries + FIFA fetch in parallel
   const fifaController = new AbortController();
-  const fifaTimer = setTimeout(() => fifaController.abort(), 4000);
+  const fifaTimer = setTimeout(() => fifaController.abort(), 2000);
 
   const [betsRes, schedRes, poolRes, profilesRes, cupWinnerRes, fifaRes, challengesRes] = await Promise.all([
     // User bets
@@ -41,7 +41,7 @@ export async function GET(request) {
     userId
       ? db.from('bets').select('*').eq('user_id', userId).eq('kind', 'cup_winner').eq('status', 'pending').limit(1)
       : Promise.resolve({ data: [] }),
-    // FIFA data
+    // FIFA data — 2s timeout, non-blocking (null on failure)
     fetch(FIFA_URL, { signal: fifaController.signal, next: { revalidate: 120 } })
       .then(r => r.ok ? r.json() : null)
       .catch(() => null),
