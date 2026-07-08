@@ -1011,6 +1011,20 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
 
   const expandedSpecial = expanded ? SPECIALS.find(s => s.id === expanded) : null;
 
+  // Hooks must be called BEFORE any early return — Rules of Hooks. Moving
+  // penaltyBets useMemo up here fixes React error #300 that crashed the
+  // Specials screen when expanding cup_winner / continent (which triggers
+  // the early-return branch below, previously skipping this hook).
+  const penaltyBets = useMemo(() => {
+    const now = Date.now();
+    return SPECIALS.filter(s => {
+      if (!s.penalty || s.hidden || settledIds.has(s.id)) return false;
+      const dl = s.deadlineTs ? new Date(s.deadlineTs).getTime() : (deadlines[s.id] ? new Date(deadlines[s.id]).getTime() : null);
+      if (dl && dl < now) return false;
+      return !myBetsData[s.id];
+    });
+  }, [myBetsData, settledIds, deadlines]);
+
   // If something is expanded, render only that detail view
   if (expandedSpecial) {
     if (expandedSpecial.id === 'continent') {
@@ -1082,16 +1096,6 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       </div>
     );
   }
-
-  const penaltyBets = useMemo(() => {
-    const now = Date.now();
-    return SPECIALS.filter(s => {
-      if (!s.penalty || s.hidden || settledIds.has(s.id)) return false;
-      const dl = s.deadlineTs ? new Date(s.deadlineTs).getTime() : (deadlines[s.id] ? new Date(deadlines[s.id]).getTime() : null);
-      if (dl && dl < now) return false;
-      return !myBetsData[s.id];
-    });
-  }, [myBetsData, settledIds, deadlines]);
 
   return (
     <div>
