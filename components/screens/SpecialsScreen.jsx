@@ -1090,7 +1090,11 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, padding: '0 16px' }}>
-      {SPECIALS.filter(s => !s.hidden && !(s.resolvesTs && new Date(s.resolvesTs).getTime() < Date.now())).map(special => {
+      {SPECIALS.filter(s => !s.hidden && !(s.resolvesTs && new Date(s.resolvesTs).getTime() < Date.now())).sort((a, b) => {
+        const aBet = myBetsData[a.id] ? 1 : 0;
+        const bBet = myBetsData[b.id] ? 1 : 0;
+        return aBet - bBet;
+      }).map(special => {
         // Final Four — opens its own modal
         if (special.id === 'final_four') {
           return (

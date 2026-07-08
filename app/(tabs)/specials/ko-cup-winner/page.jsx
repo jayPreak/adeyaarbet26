@@ -111,9 +111,9 @@ export default function KOCupWinnerPage() {
           ←
         </button>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>🏆 KO Cup Winner</div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>🏆 Cup Winner Last 8</div>
           <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-            Pick the World Cup winner from remaining knockout teams
+            Pick the World Cup winner from the remaining 8 teams
           </div>
         </div>
       </div>
