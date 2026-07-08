@@ -6,6 +6,7 @@ import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { KICKOFF_TS } from '@/lib/countdown';
 import { Flag, Icon } from './index';
 import CupWinnerPicksView from './CupWinnerPicksView';
+import supabaseBrowser from '@/lib/supabase-browser';
 
 function useCountdown(targetTs) {
   const [now, setNow] = useState(Date.now());
@@ -48,6 +49,37 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
   async function loadPicks() {
     setPicksLoading(true);
     try {
+      // Fast-path: direct Supabase (~50ms). Falls back to API on failure.
+      if (supabaseBrowser) {
+        const { data, error } = await supabaseBrowser
+          .from('bets')
+          .select('user_id, pick, amount, status, created_at, profiles(display_name, avatar_url)')
+          .eq('kind', 'cup_winner')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+        if (!error && data) {
+          const byTeam = {};
+          let total = 0;
+          const bettors = new Set();
+          const rows = [];
+          for (const b of data) {
+            byTeam[b.pick] = (byTeam[b.pick] || 0) + b.amount;
+            total += b.amount;
+            bettors.add(b.user_id);
+            rows.push({
+              user_id: b.user_id,
+              display_name: b.profiles?.display_name || 'Unknown',
+              avatar_url: b.profiles?.avatar_url || null,
+              pick: b.pick,
+              amount: b.amount,
+              created_at: b.created_at,
+            });
+          }
+          setPicks(rows);
+          setPool({ byTeam, total, bettorCount: bettors.size });
+          return;
+        }
+      }
       const url = user?.id
         ? `/api/cup-winner-bet?user_id=${user.id}`
         : '/api/cup-winner-bet';

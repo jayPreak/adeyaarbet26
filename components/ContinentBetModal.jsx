@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { fmtMoney, MAX_BET } from '@/lib/currency';
 import { CONFEDERATION_OPTIONS } from '@/lib/specials';
 import { TEAM } from '@/lib/data';
+import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 export default function ContinentBetModal({ open, onClose, user, onPlaced }) {
   const [selected, setSelected] = useState(null);
@@ -16,18 +17,29 @@ export default function ContinentBetModal({ open, onClose, user, onPlaced }) {
   useEffect(() => {
     if (!open) return;
     setError(null);
-    const url = `/api/special-bet?match_id=CONTINENT&kind=continent${user ? `&user_id=${user.id}` : ''}`;
-    fetch(url)
-      .then(r => r.json())
-      .then(data => {
+    let cancelled = false;
+    (async () => {
+      const apply = (data) => {
+        if (cancelled || !data) return;
         setPool(data.pool);
         setMyBets(data.myBets || []);
         if (data.myBets?.length > 0) {
           setSelected(data.myBets[0].pick);
           setAmount(data.myBets[0].amount);
         }
-      })
-      .catch(() => {});
+      };
+      try {
+        const direct = await fetchSpecialDirect({ matchId: 'CONTINENT', kind: 'continent', userId: user?.id });
+        if (direct) return apply(direct);
+      } catch { /* fall through to API */ }
+      try {
+        const url = `/api/special-bet?match_id=CONTINENT&kind=continent${user ? `&user_id=${user.id}` : ''}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        apply(data);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, [open, user]);
 
   if (!open) return null;
