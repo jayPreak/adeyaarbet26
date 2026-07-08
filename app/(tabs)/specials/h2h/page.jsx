@@ -41,7 +41,7 @@ export default function H2HPage() {
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user?.id]);
 
   const messiGoals = goalData?.messi?.goals || [];
   const ronaldoGoals = goalData?.ronaldo?.goals || [];

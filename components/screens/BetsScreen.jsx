@@ -99,7 +99,9 @@ export function NetWorthGraph({ bets, compact }) {
 
     const ys = pts.map(p => p.y);
     return { points: pts, minY: Math.min(...ys), maxY: Math.max(...ys) };
-  }, [bets, range]);
+    // matches is included so knockout bet labels update once FIFA data lands
+    // (otherwise nodes stuck on stale "R16 · KO-3" fallback labels)
+  }, [bets, range, matches]);
 
   const SVG_W = 600, H = 160, PX = 16, PY = 28, Y_AXIS_W = 38;
 
@@ -546,11 +548,19 @@ export function AchievementBadges({ user }) {
 }
 
 export function SettlementCard({ user, bets = [] }) {
-  const { matches, allUsers = [] } = useBetting();
+  const { matches, allUsers = [], settlementByUser } = useBetting();
   const [myPosition, setMyPosition] = useState(null);
   const [showBreakdown, setShowBreakdown] = useState(false);
 
+  // Prefer live settlementByUser from BettingContext (refreshed on every
+  // refreshData) so this card stays in sync with the header. Fall back to
+  // fetching /api/settlement only if the context value isn't populated.
   useEffect(() => {
+    if (!user?.id) return;
+    if (settlementByUser && Object.prototype.hasOwnProperty.call(settlementByUser, user.id)) {
+      setMyPosition(settlementByUser[user.id]);
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -573,7 +583,7 @@ export function SettlementCard({ user, bets = [] }) {
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user?.id, settlementByUser]);
 
   if (myPosition === null) return null;
 

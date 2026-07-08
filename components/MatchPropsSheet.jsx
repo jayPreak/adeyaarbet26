@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getTeam } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { SCORELINE_OPTIONS, formatScorelinePick, formatOverUnderPick, formatPensPick, OU_LINE } from '@/lib/props';
@@ -31,17 +31,24 @@ export default function MatchPropsSheet({ match, open, onClose }) {
   const [amount, setAmount] = useState(100);
   const [submitting, setSubmitting] = useState(false);
 
+  // Epoch guards against cross-match data leak: user opens sheet on match A,
+  // quickly switches to match B; A's in-flight responses would otherwise land
+  // and merge into B's data under the wrong keys.
+  const loadEpoch = useRef(0);
   const load = useCallback(() => {
     if (!match?.id) return;
+    const epoch = ++loadEpoch.current;
     for (const k of ['scoreline', 'over_under', 'pens']) {
       (async () => {
         try {
           const direct = await fetchSpecialDirect({ matchId: match.id, kind: k, userId: user?.id });
+          if (epoch !== loadEpoch.current) return;
           if (direct) { setData(prev => ({ ...prev, [k]: direct })); return; }
         } catch { /* fall through */ }
         try {
           const res = await fetch(`/api/special-bet?match_id=${match.id}&kind=${k}${user?.id ? `&user_id=${user.id}` : ''}`);
           const d = await res.json();
+          if (epoch !== loadEpoch.current) return;
           setData(prev => ({ ...prev, [k]: d }));
         } catch { /* ignore */ }
       })();
@@ -49,7 +56,9 @@ export default function MatchPropsSheet({ match, open, onClose }) {
   }, [match?.id, user?.id]);
 
   useEffect(() => {
-    if (open) { setPick(null); setKind('scoreline'); load(); }
+    if (!open) { loadEpoch.current++; return; }
+    setPick(null); setKind('scoreline'); setData({});
+    load();
   }, [open, load]);
 
   if (!open) return null;

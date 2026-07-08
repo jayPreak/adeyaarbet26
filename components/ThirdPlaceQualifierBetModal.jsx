@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GROUPS, getTeam } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { Icon } from './index';
@@ -87,10 +87,12 @@ export default function ThirdPlaceQualifierBetModal({ open, onClose, user, onPla
   const [view, setView] = useState('pick'); // 'pick' | 'picks'
   const [justPlaced, setJustPlaced] = useState(false);
 
+  const loadEpoch = useRef(0);
   async function loadData() {
     if (!user?.id) return;
+    const epoch = ++loadEpoch.current;
     const apply = (data) => {
-      if (!data) return;
+      if (epoch !== loadEpoch.current || !data) return;
       setMyBet(data.myBet || null);
       setPool(data.pool || null);
       setPicks(data.picks || []);
@@ -143,12 +145,11 @@ export default function ThirdPlaceQualifierBetModal({ open, onClose, user, onPla
   }
 
   useEffect(() => {
-    if (open) {
-      setError(null);
-      setJustPlaced(false);
-      setView('pick');
-      loadData();
-    }
+    if (!open) { loadEpoch.current++; return; }
+    setError(null);
+    setJustPlaced(false);
+    setView('pick');
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

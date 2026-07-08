@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { getTeam } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { Icon } from './index';
@@ -56,34 +56,44 @@ export default function FinalFourBetModal({ open, onClose, user, onPlaced, match
 
   const alive = useMemo(() => computeAliveTeams(matches), [matches]);
 
+  // Cancellation ref so async loadData() calls (post-place, post-cancel)
+  // don't stomp state after the modal closes.
+  const loadEpoch = useRef(0);
+
+  const applyData = (data, epoch) => {
+    if (epoch !== loadEpoch.current) return;   // stale response — modal was closed or reloaded
+    if (!data) return;
+    const mine = data.myBets?.[0] || null;
+    setMyBet(mine);
+    setPool(data.pool || null);
+    setPicks(data.picks || []);
+    if (mine?.pick) {
+      setSelected(new Set(mine.pick.split(',')));
+      setAmount(mine.amount);
+    }
+  };
+
   async function loadData() {
     if (!user?.id) return;
-    const apply = (data) => {
-      if (!data) return;
-      const mine = data.myBets?.[0] || null;
-      setMyBet(mine);
-      setPool(data.pool || null);
-      setPicks(data.picks || []);
-      if (mine?.pick) {
-        setSelected(new Set(mine.pick.split(',')));
-        setAmount(mine.amount);
-      }
-    };
+    const epoch = ++loadEpoch.current;
     try {
       const direct = await fetchSpecialDirect({ matchId: 'FINAL_FOUR', kind: 'final_four', userId: user.id });
-      if (direct) return apply(direct);
+      if (direct) return applyData(direct, epoch);
     } catch { /* fall through */ }
     try {
       const res = await fetch(`/api/special-bet?match_id=FINAL_FOUR&kind=final_four&user_id=${user.id}`);
       if (!res.ok) return;
-      apply(await res.json());
+      applyData(await res.json(), epoch);
     } catch { /* ignore */ }
   }
 
   useEffect(() => {
-    if (open) { setError(null); loadData(); }
+    if (!open) { loadEpoch.current++; return; }   // bump epoch so in-flight loads are ignored
+    if (!user?.id) return;
+    setError(null);
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, user?.id]);
 
   if (!open) return null;
 

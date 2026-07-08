@@ -44,7 +44,7 @@ export default function TotalGoalsPage() {
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user?.id]);
 
   const byOption = pool?.byOption || {};
   const totalPool = pool?.total || 0;

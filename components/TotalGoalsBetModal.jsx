@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { TOTAL_GOALS_LINE, TOTAL_GOALS_MATCH_COUNT, formatTotalGoalsPick, goalsSoFar } from '@/lib/props';
 import { qfDeadlineTs } from './FinalFourBetModal';
@@ -20,10 +20,12 @@ export default function TotalGoalsBetModal({ open, onClose, user, onPlaced, matc
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  const loadEpoch = useRef(0);
   async function loadData() {
     if (!user?.id) return;
+    const epoch = ++loadEpoch.current;
     const apply = (data) => {
-      if (!data) return;
+      if (epoch !== loadEpoch.current || !data) return;
       const mine = data.myBets?.[0] || null;
       setMyBet(mine);
       setPool(data.pool || null);
@@ -42,9 +44,11 @@ export default function TotalGoalsBetModal({ open, onClose, user, onPlaced, matc
   }
 
   useEffect(() => {
-    if (open) { setError(null); loadData(); }
+    if (!open) { loadEpoch.current++; return; }
+    setError(null);
+    loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, user?.id]);
 
   if (!open) return null;
 

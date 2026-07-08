@@ -70,7 +70,7 @@ export default function FinalFourPage() {
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user?.id]);
 
   function toggleTeam(code) {
     if (closed || myBet) return;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GROUPS, getTeam } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET } from '@/lib/currency';
 import { KICKOFF_TS } from '@/lib/countdown';
@@ -46,7 +46,9 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
   const [picksLoading, setPicksLoading] = useState(false);
   const [justPlaced, setJustPlaced] = useState(false);
 
+  const loadEpoch = useRef(0);
   async function loadPicks() {
+    const epoch = ++loadEpoch.current;
     setPicksLoading(true);
     try {
       // Fast-path: direct Supabase (~50ms). Falls back to API on failure.
@@ -56,7 +58,9 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
           .select('user_id, pick, amount, status, created_at, profiles(display_name, avatar_url)')
           .eq('kind', 'cup_winner')
           .eq('status', 'pending')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .range(0, 999);
+        if (epoch !== loadEpoch.current) return;   // stale — modal closed or reloaded
         if (!error && data) {
           const byTeam = {};
           let total = 0;
@@ -85,6 +89,7 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
         : '/api/cup-winner-bet';
       const res = await fetch(url);
       const data = await res.json();
+      if (epoch !== loadEpoch.current) return;
       if (res.ok) {
         setPicks(data.picks || []);
         setPool(data.pool || null);
@@ -92,19 +97,22 @@ export default function CupWinnerBetModal({ open, onClose, user, balance, myCupW
     } catch {
       /* ignore */
     } finally {
-      setPicksLoading(false);
+      if (epoch === loadEpoch.current) setPicksLoading(false);
     }
   }
 
   useEffect(() => {
-    if (open) {
-      setSelectedTeam(myCupWinnerBet?.pick || null);
-      setAmount(myCupWinnerBet?.amount || 500);
-      setError(null);
-      setView(myCupWinnerBet ? 'picks' : 'grid');
-      setJustPlaced(false);
-      loadPicks();
+    if (!open) {
+      // bump epoch so any in-flight loadPicks() calls become no-ops
+      loadEpoch.current++;
+      return;
     }
+    setSelectedTeam(myCupWinnerBet?.pick || null);
+    setAmount(myCupWinnerBet?.amount || 500);
+    setError(null);
+    setView(myCupWinnerBet ? 'picks' : 'grid');
+    setJustPlaced(false);
+    loadPicks();
     // Only reset on open-toggle, not on every prop change — preserves justPlaced state
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);

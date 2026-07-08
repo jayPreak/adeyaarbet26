@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { CURRENCY_SYMBOL } from '@/lib/currency';
 import { HeroMatch, SectionHead, MatchCard } from '@/components';
@@ -24,12 +24,18 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
     .slice(0, 3);
   const featured = live[0] || upcoming[0];
 
-  const fifaIdMap = {};
-  const matchesById = {};
-  for (const m of matches) {
-    if (m.fifaId) fifaIdMap[m.fifaId] = m;
-    matchesById[m.id] = m;
-  }
+  // Memoized so activity effect deps don't get a fresh reference every render
+  // (previously activity re-fetched only on bets.length change and rendered
+  // labels off stale/empty matches — team names showed as raw IDs).
+  const { fifaIdMap, matchesById } = useMemo(() => {
+    const fMap = {};
+    const mMap = {};
+    for (const m of matches) {
+      if (m.fifaId) fMap[m.fifaId] = m;
+      mMap[m.id] = m;
+    }
+    return { fifaIdMap: fMap, matchesById: mMap };
+  }, [matches]);
 
   const [activity, setActivity] = useState([]);
   const [showAllActivity, setShowAllActivity] = useState(false);
@@ -60,8 +66,10 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
+    // fifaIdMap/matchesById/allUsers included so labels reflect the newest
+    // match + user data as it lands (FIFA fetch is async, users load in init)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bets.length]);
+  }, [bets.length, fifaIdMap, matchesById, allUsers]);
 
   const mapItems = (data) => data
     .filter(a => a.type !== 'penalty_applied')

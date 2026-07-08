@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MATCHES, getTeam, getMatch } from '@/lib/data';
 import { fmtMoney, CURRENCY_SYMBOL, MAX_BET, getMinBet } from '@/lib/currency';
 import { Flag, Icon } from './index';
@@ -115,12 +115,16 @@ export default function GoalScorerBetModal({ open, onClose, matchId, user, onPla
   const [picks,      setPicks]      = useState([]);
   const [myBet,      setMyBet]      = useState(null);
   const [justPlaced, setJustPlaced] = useState(false);
+  // Epoch refs guard against cross-match data leak when user switches matches
+  // fast — otherwise A's late responses land in B's UI.
+  const loadPoolEpoch = useRef(0);
 
   useEffect(() => {
-    if (!open || !matchId) return;
+    if (!open || !matchId) { loadPoolEpoch.current++; return; }
     setSelected(null);
     setError(null);
     setJustPlaced(false);
+    setPoolData(null); setPicks([]); setMyBet(null);
     loadPlayers();
     loadPool();
   }, [open, matchId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -149,8 +153,9 @@ export default function GoalScorerBetModal({ open, onClose, matchId, user, onPla
   }
 
   async function loadPool() {
+    const epoch = ++loadPoolEpoch.current;
     const apply = (data) => {
-      if (!data) return;
+      if (epoch !== loadPoolEpoch.current || !data) return;
       setPoolData(data.pool  || null);
       setPicks(data.picks    || []);
       setMyBet(data.myBet    || null);
