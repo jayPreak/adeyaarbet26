@@ -7,6 +7,7 @@ import { computeBalance, computeRealisedBalance } from '@/lib/ledger';
 import { useUser } from '@/lib/hooks';
 import supabaseBrowser from '@/lib/supabase-browser';
 import { fetchInitDirect, fetchFifaData } from '@/lib/initDirect';
+import { invalidateAll as invalidateQueryCache } from '@/lib/queryCache';
 
 const BettingContext = createContext(null);
 
@@ -118,6 +119,10 @@ export function BettingProvider({ children }) {
   const [specialPools, setSpecialPools] = useState(null);
   const [settlementNet, setSettlementNet] = useState(null);
   const [settlementByUser, setSettlementByUser] = useState({});
+  // Full settlement payload — cached in context so SettlementCard +
+  // SettlementPlan + any other consumer share ONE fetch instead of each
+  // firing /api/settlement independently.
+  const [settlementData, setSettlementData] = useState(null);
 
   const balance = computeBalance(bets);
   // realisedBalance = settlement-plan-normalized net if available (matches the
@@ -151,10 +156,13 @@ export function BettingProvider({ children }) {
 
   const refreshData = useCallback(async () => {
     if (!user) return;
+    // refreshData is called after a bet/cancel — the user expects to see
+    // fresh numbers, so blow away the dedupe cache first.
+    invalidateQueryCache();
     // Fast path: refetch all direct-Supabase data + rebuild pools/specialPools
     if (supabaseBrowser) {
       try {
-        const direct = await fetchInitDirect(user.id);
+        const direct = await fetchInitDirect(user.id, { force: true });
         if (direct) {
           if (direct.bets) { setBets(direct.bets); setBetsLoaded(true); }
           if (direct.pools) setPoolMap(direct.pools);
@@ -194,10 +202,11 @@ export function BettingProvider({ children }) {
 
   const refreshPools = useCallback(async () => {
     if (!user) return;
+    invalidateQueryCache();
     // Direct-Supabase refresh — recomputes pools + specialPools from allBets.
     if (supabaseBrowser) {
       try {
-        const direct = await fetchInitDirect(user.id);
+        const direct = await fetchInitDirect(user.id, { force: true });
         if (direct) {
           if (direct.pools) setPoolMap(direct.pools);
           if (direct.allUsers) setAllUsers(direct.allUsers);

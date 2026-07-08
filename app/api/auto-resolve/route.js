@@ -122,18 +122,29 @@ async function settleGoalscorer(matchId, schedRow) {
   return data;
 }
 
-export async function GET() {
+export async function GET(request) {
   if (!db) return NextResponse.json({ resolved: [] });
 
-  // Apply participation penalties for any matches where betting has just closed.
-  // Must run BEFORE resolve_match so penalty amounts are included in the pool.
-  // The RPC is idempotent — safe to call on every auto-resolve invocation.
+  // Apply participation penalties. This is EXPENSIVE (Supabase query stats
+  // showed 220ms avg, 5.8s max × 8000 calls) and was blocking every user's
+  // auto-resolve. Now: only run when explicitly asked (nightly cron) via
+  // ?penalties=true. On regular user invocations we skip it — penalties
+  // only matter for matches that just closed, and the nightly cron catches
+  // them within 24h which is fine for a friend group betting app.
+  const { searchParams } = new URL(request.url);
+  const runPenalties = searchParams.get('penalties') === 'true';
   let penaltiesResult = null;
-  try {
-    const { data } = await db.rpc('apply_all_pending_penalties');
-    penaltiesResult = data;
-  } catch {
-    // non-fatal — proceed with match resolution regardless
+  if (runPenalties) {
+    try {
+      const { data } = await db.rpc('apply_all_pending_penalties');
+      penaltiesResult = data;
+    } catch {
+      // non-fatal — proceed with match resolution regardless
+    }
+  } else {
+    // Fire-and-forget: kick off penalties in the background but don't wait.
+    // If the process dies before it completes, the nightly cron cleans up.
+    db.rpc('apply_all_pending_penalties').then(({ data }) => { penaltiesResult = data; }).catch(() => {});
   }
 
   let fifaResults;

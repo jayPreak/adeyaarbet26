@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/auto-resolve",
+      "path": "/api/auto-resolve?penalties=true",
       "schedule": "0 0 * * *"
     }
   ]

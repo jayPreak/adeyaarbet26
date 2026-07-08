@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { SPECIALS, getSpecial } from '@/lib/specials';
+import { SPECIALS, getSpecial, CONFEDERATION_OPTIONS } from '@/lib/specials';
 import { fmtMoney, CURRENCY_SYMBOL } from '@/lib/currency';
 import { getTeam } from '@/lib/data';
 import { Flag } from '@/components';
 import { useBetting } from '@/lib/BettingContext';
-import FinalFourBetModal, { qfDeadlineTs } from '@/components/FinalFourBetModal';
+import FinalFourBetModal, { qfDeadlineTs, computeAliveTeams } from '@/components/FinalFourBetModal';
 import TotalGoalsBetModal from '@/components/TotalGoalsBetModal';
 import { TOTAL_GOALS_LINE } from '@/lib/props';
 import supabaseBrowser from '@/lib/supabase-browser';
@@ -921,7 +921,11 @@ function SettledSpecials({ specials, myBetsData, poolsData }) {
 }
 
 export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allUsers = [], matches = [], onToast }) {
-  const { refreshData, specialPools: initSpecialPools, cupWinnerDeadlineTs } = useBetting();
+  const { refreshData, specialPools: initSpecialPools, cupWinnerDeadlineTs, betsLoaded } = useBetting();
+  // initSpecialPools populated by the direct-Supabase init load — used as a
+  // "data ready for specials view" signal so we don't flash the COMPULSORY
+  // penalty banner before myBetsData is populated.
+  const specialsDataReady = betsLoaded && !!initSpecialPools;
   const [poolsData, setPoolsData] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [picksData, setPicksData] = useState({});
@@ -930,6 +934,14 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
   const [settledIds, setSettledIds] = useState(new Set());
   const [finalFourOpen, setFinalFourOpen] = useState(false);
   const [totalGoalsOpen, setTotalGoalsOpen] = useState(false);
+
+  // Live-eliminated derivation: teams still alive in the knockout bracket.
+  // Used to grey out eliminated Cup Winner picks + Continent confederations
+  // without actually settling those specials until the tournament ends.
+  const aliveSet = useMemo(() => new Set(computeAliveTeams(matches)), [matches]);
+  // If knockout hasn't started yet, computeAliveTeams returns empty — in that
+  // case we assume everyone is still alive (no elimination info yet).
+  const koStarted = aliveSet.size > 0;
 
   // Use data from init route if available (zero extra API calls)
   useEffect(() => {
@@ -1016,6 +1028,10 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
   // Specials screen when expanding cup_winner / continent (which triggers
   // the early-return branch below, previously skipping this hook).
   const penaltyBets = useMemo(() => {
+    // Hide the COMPULSORY banner until data is confirmed loaded — otherwise
+    // every penalty special looks 'unplaced' during the fetch window and
+    // flashes a false alarm.
+    if (!specialsDataReady) return [];
     const now = Date.now();
     return SPECIALS.filter(s => {
       if (!s.penalty || s.hidden || settledIds.has(s.id)) return false;
@@ -1023,7 +1039,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
       if (dl && dl < now) return false;
       return !myBetsData[s.id];
     });
-  }, [myBetsData, settledIds, deadlines]);
+  }, [myBetsData, settledIds, deadlines, specialsDataReady]);
 
   // If something is expanded, render only that detail view
   if (expandedSpecial) {

@@ -100,6 +100,18 @@ export function NetWorthGraph({ bets, compact }) {
 
   const SVG_W = 600, H = 160, PX = 16, PY = 28, Y_AXIS_W = 38;
 
+  // Hooks MUST run in the same order every render — Rules of Hooks. Keep this
+  // useMemo above the early-return so first render (points.length<2) doesn't
+  // skip it and cause React error #310 on the second render.
+  const xLabels = useMemo(() => {
+    const labelCount = Math.min(5, points.length);
+    const step = Math.max(1, Math.floor((points.length - 1) / (labelCount - 1)));
+    const indices = [];
+    for (let i = 0; i < points.length; i += step) indices.push(i);
+    if (indices[indices.length - 1] !== points.length - 1) indices.push(points.length - 1);
+    return indices;
+  }, [points.length]);
+
   if (points.length < 2) {
     const zeroY = PY + (H - PY * 2) / 2;
     return (
@@ -162,15 +174,6 @@ export function NetWorthGraph({ bets, compact }) {
     const d = new Date(ts);
     return `${d.getDate()}/${d.getMonth() + 1}`;
   };
-
-  const xLabels = useMemo(() => {
-    const labelCount = Math.min(5, points.length);
-    const step = Math.max(1, Math.floor((points.length - 1) / (labelCount - 1)));
-    const indices = [];
-    for (let i = 0; i < points.length; i += step) indices.push(i);
-    if (indices[indices.length - 1] !== points.length - 1) indices.push(points.length - 1);
-    return indices;
-  }, [points.length]);
 
   return (
     <div style={{ margin: '0 16px 12px', padding: '12px 0', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', position: 'relative' }}>
