@@ -290,7 +290,11 @@ export default function FinalFourPage() {
             EVERYONE'S PICKS
           </div>
           {picks.map((p, i) => {
-            const potentialWin = totalPool > 0 ? fmtMoney(totalPool) : '–';
+            const samePick = picks.filter(x => x.pick === p.pick);
+            const samePickTotal = samePick.reduce((s, x) => s + x.amount, 0);
+            const potentialWin = totalPool > 0 && samePickTotal > 0
+              ? fmtMoney(Math.floor((p.amount / samePickTotal) * totalPool))
+              : '–';
             return (
               <div key={i} style={{ padding: '10px 12px', marginBottom: 6, borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
