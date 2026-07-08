@@ -6,6 +6,7 @@ import { fmtMoney } from '@/lib/currency';
 import { computeBalance, computeRealisedBalance } from '@/lib/ledger';
 import { useUser } from '@/lib/hooks';
 import supabaseBrowser from '@/lib/supabase-browser';
+import { fetchInitDirect, fetchFifaData } from '@/lib/initDirect';
 
 const BettingContext = createContext(null);
 
@@ -142,8 +143,26 @@ export function BettingProvider({ children }) {
     }
   }, [user, loading]);
 
-  const refreshData = useCallback(() => {
+  const refreshData = useCallback(async () => {
     if (!user) return;
+    // Fast path: refetch all direct-Supabase data + rebuild pools/specialPools
+    if (supabaseBrowser) {
+      try {
+        const direct = await fetchInitDirect(user.id);
+        if (direct) {
+          if (direct.bets) { setBets(direct.bets); setBetsLoaded(true); }
+          if (direct.pools) setPoolMap(direct.pools);
+          if (direct.allUsers) setAllUsers(direct.allUsers);
+          if (direct.myCupWinnerBet !== undefined) setMyCupWinnerBet(direct.myCupWinnerBet);
+          if (direct.totalInPlay != null) setTotalInPlay(direct.totalInPlay);
+          if (direct.totalBets != null) setTotalBets(direct.totalBets);
+          if (direct.challenges) setChallenges(direct.challenges);
+          if (direct.specialPools) setSpecialPools(direct.specialPools);
+          return;
+        }
+      } catch { /* fall through */ }
+    }
+    // Fallback: legacy API
     fetch(`/api/bets?user_id=${user.id}`)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setBets(data); setBetsLoaded(true); })
@@ -165,8 +184,20 @@ export function BettingProvider({ children }) {
       .catch(() => {});
   }, [user]);
 
-  const refreshPools = useCallback(() => {
+  const refreshPools = useCallback(async () => {
     if (!user) return;
+    // Direct-Supabase refresh — recomputes pools + specialPools from allBets.
+    if (supabaseBrowser) {
+      try {
+        const direct = await fetchInitDirect(user.id);
+        if (direct) {
+          if (direct.pools) setPoolMap(direct.pools);
+          if (direct.allUsers) setAllUsers(direct.allUsers);
+          if (direct.specialPools) setSpecialPools(direct.specialPools);
+          return;
+        }
+      } catch { /* fall through */ }
+    }
     fetch('/api/pool')
       .then(r => r.json())
       .then(data => {
@@ -194,26 +225,58 @@ export function BettingProvider({ children }) {
       });
   }, []);
 
-  // Single consolidated fetch on load — replaces 6 separate calls
+  // Direct-Supabase load: 6 parallel PostgREST queries + client-side pool
+  // computation. Bypasses Vercel cold start entirely for data. FIFA data
+  // (CORS-blocked from browser) fires separately, non-blocking.
   useEffect(() => {
     if (!user) return;
-    fetch(`/api/init?user_id=${user.id}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.bets) { setBets(data.bets); setBetsLoaded(true); }
-        if (data.schedule) setScheduleMap(data.schedule);
-        if (data.cupWinnerDeadlineTs !== undefined) setCupWinnerDeadlineTs(data.cupWinnerDeadlineTs);
-        if (data.fifaMatches) setFifaData(data.fifaMatches);
-        if (data.knockout) setKnockoutData(data.knockout);
-        if (data.pools) setPoolMap(data.pools);
-        if (data.allUsers) setAllUsers(data.allUsers);
-        if (data.myCupWinnerBet) setMyCupWinnerBet(data.myCupWinnerBet);
-        if (data.totalInPlay != null) setTotalInPlay(data.totalInPlay);
-        if (data.totalBets != null) setTotalBets(data.totalBets);
-        if (data.challenges) setChallenges(data.challenges);
-        if (data.specialPools) setSpecialPools(data.specialPools);
-      })
-      .catch(() => { setBetsLoaded(true); });
+    let cancelled = false;
+
+    const applyInit = (data) => {
+      if (cancelled || !data) return;
+      if (data.bets) { setBets(data.bets); setBetsLoaded(true); }
+      if (data.schedule) setScheduleMap(data.schedule);
+      if (data.cupWinnerDeadlineTs !== undefined) setCupWinnerDeadlineTs(data.cupWinnerDeadlineTs);
+      if (data.pools) setPoolMap(data.pools);
+      if (data.allUsers) setAllUsers(data.allUsers);
+      if (data.myCupWinnerBet) setMyCupWinnerBet(data.myCupWinnerBet);
+      if (data.totalInPlay != null) setTotalInPlay(data.totalInPlay);
+      if (data.totalBets != null) setTotalBets(data.totalBets);
+      if (data.challenges) setChallenges(data.challenges);
+      if (data.specialPools) setSpecialPools(data.specialPools);
+    };
+
+    (async () => {
+      // Track 1: fast path — direct Supabase (~50-200ms)
+      try {
+        const direct = await fetchInitDirect(user.id);
+        if (direct) {
+          applyInit(direct);
+        } else {
+          throw new Error('supabase-browser unavailable');
+        }
+      } catch {
+        // Fallback: server route (cold start hazard, but works when direct fails)
+        try {
+          const res = await fetch(`/api/init?user_id=${user.id}`);
+          const data = await res.json();
+          applyInit(data);
+          if (data.fifaMatches) setFifaData(data.fifaMatches);
+          if (data.knockout) setKnockoutData(data.knockout);
+        } catch {
+          setBetsLoaded(true);
+        }
+        return;
+      }
+
+      // Track 2: FIFA data — server-only (CORS). Non-blocking.
+      const fifa = await fetchFifaData();
+      if (cancelled || !fifa) return;
+      if (fifa.fifaMatches) setFifaData(fifa.fifaMatches);
+      if (fifa.knockout) setKnockoutData(fifa.knockout);
+    })();
+
+    return () => { cancelled = true; };
   }, [user]);
 
   // Auto-resolve: throttled, fire-and-forget after init
