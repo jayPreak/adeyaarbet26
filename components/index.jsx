@@ -559,11 +559,23 @@ function MatchActivityModal({ match, open, onClose }) {
   useEffect(() => {
     if (!open || !match?.id) return;
     setLoading(true);
-    fetch(`/api/activity?match_id=${match.id}&limit=30`)
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setItems(data.filter(d => !d.payload?.kind || d.payload.kind === 'match' || d.payload.kind === 'penalty')); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    (async () => {
+      try {
+        const { fetchActivityDirect } = await import('@/lib/browserQueries');
+        const direct = await fetchActivityDirect({ matchId: match.id, limit: 30 });
+        if (!cancelled && direct) { setItems(direct); setLoading(false); return; }
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch(`/api/activity?match_id=${match.id}&limit=30`);
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data)) {
+          setItems(data.filter(d => !d.payload?.kind || d.payload.kind === 'match' || d.payload.kind === 'penalty'));
+        }
+      } catch { /* ignore */ }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, [open, match?.id]);
 
   if (!open) return null;

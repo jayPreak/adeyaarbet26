@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { CURRENCY_SYMBOL } from '@/lib/currency';
 import { HeroMatch, SectionHead, MatchCard } from '@/components';
+import { fetchActivityDirect } from '@/lib/browserQueries';
 
 function relativeTime(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -37,70 +38,68 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
   const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
-    fetch('/api/activity?limit=10')
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setActivity(data
-            .filter(a => a.type !== 'penalty_applied')
-            .map(a => ({
-              id: a.id,
-              username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
-              avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap, matchesById, allUsers),
-              createdAt: a.created_at,
-            })));
-        }
-      })
-      .catch(() => {});
+    let cancelled = false;
+    const mapItems = (data) => data
+      .filter(a => a.type !== 'penalty_applied')
+      .map(a => ({
+        id: a.id,
+        username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
+        avatar_url: a.profiles?.avatar_url || null,
+        text: formatActivityText(a, fifaIdMap, matchesById, allUsers),
+        createdAt: a.created_at,
+      }));
+    (async () => {
+      try {
+        const direct = await fetchActivityDirect({ limit: 10 });
+        if (!cancelled && direct) { setActivity(mapItems(direct)); return; }
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch('/api/activity?limit=10');
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data)) setActivity(mapItems(data));
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, [bets]);
 
-  const openAllActivity = () => {
+  const mapItems = (data) => data
+    .filter(a => a.type !== 'penalty_applied')
+    .map(a => ({
+      id: a.id,
+      username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
+      avatar_url: a.profiles?.avatar_url || null,
+      text: formatActivityText(a, fifaIdMap, matchesById, allUsers),
+      createdAt: a.created_at,
+    }));
+
+  const openAllActivity = async () => {
     setShowAllActivity(true);
     setHasMore(true);
-    fetch('/api/activity?limit=30')
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          const mapped = data
-            .filter(a => a.type !== 'penalty_applied')
-            .map(a => ({
-              id: a.id,
-              username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
-              avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap, matchesById, allUsers),
-              createdAt: a.created_at,
-            }));
-          setFullActivity(mapped);
-          if (data.length < 30) setHasMore(false);
-        }
-      })
-      .catch(() => {});
+    let data = null;
+    try { data = await fetchActivityDirect({ limit: 30 }); } catch { /* ignore */ }
+    if (!data) {
+      try { data = await fetch('/api/activity?limit=30').then(r => r.json()); } catch { data = null; }
+    }
+    if (Array.isArray(data)) {
+      setFullActivity(mapItems(data));
+      if (data.length < 30) setHasMore(false);
+    }
   };
 
-  const loadMore = () => {
+  const loadMore = async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     const offset = fullActivity.length;
-    fetch(`/api/activity?limit=30&offset=${offset}`)
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          const mapped = data
-            .filter(a => a.type !== 'penalty_applied')
-            .map(a => ({
-              id: a.id,
-              username: a.profiles?.display_name || a.profiles?.username || 'Unknown',
-              avatar_url: a.profiles?.avatar_url || null,
-              text: formatActivityText(a, fifaIdMap, matchesById, allUsers),
-              createdAt: a.created_at,
-            }));
-          setFullActivity(prev => [...prev, ...mapped]);
-          if (data.length < 30) setHasMore(false);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingMore(false));
+    let data = null;
+    try { data = await fetchActivityDirect({ limit: 30, offset }); } catch { /* ignore */ }
+    if (!data) {
+      try { data = await fetch(`/api/activity?limit=30&offset=${offset}`).then(r => r.json()); } catch { data = null; }
+    }
+    if (Array.isArray(data)) {
+      setFullActivity(prev => [...prev, ...mapItems(data)]);
+      if (data.length < 30) setHasMore(false);
+    }
+    setLoadingMore(false);
   };
 
   const [filterUser, setFilterUser] = useState(null);

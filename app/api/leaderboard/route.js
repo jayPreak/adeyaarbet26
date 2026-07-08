@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
 import { FRIENDS, getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { computeBalance, computeRealisedBalance } from '@/lib/ledger';
+import { normalizeToZeroSum } from '@/lib/settlement';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -129,6 +130,21 @@ export async function GET() {
 
       return { ...p, balance, realisedBalance, totalStaked, betCount, matchesBet, maxReturn, winRate, winStreak: maxStreak, topBets, chartPoints };
     });
+
+  // Normalize realisedBalance to zero-sum so displayed net win/loss matches
+  // what the "Settlement Plan" pays out (parimutuel rounding parity).
+  const normalized = normalizeToZeroSum(
+    result.map(r => ({ id: r.id, net: r.realisedBalance }))
+  );
+  const normMap = Object.fromEntries(normalized.map(n => [n.id, n.net]));
+  for (const r of result) {
+    if (Object.prototype.hasOwnProperty.call(normMap, r.id)) {
+      r.realisedBalance = normMap[r.id];
+    } else if (r.realisedBalance !== 0) {
+      // net was 0 → normalizeToZeroSum drops zero-net rows; keep 0
+      r.realisedBalance = 0;
+    }
+  }
 
   result.sort((a, b) => b.totalStaked - a.totalStaked);
 

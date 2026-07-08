@@ -239,13 +239,26 @@ export function SettlementPlan({ user }) {
   const [basis, setBasis] = useState('resolved');
 
   useEffect(() => {
-    fetch('/api/settlement')
-      .then(r => r.json())
-      .then(d => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { fetchSettlementDirect } = await import('@/lib/browserQueries');
+        const direct = await fetchSettlementDirect();
+        if (!cancelled && direct) {
+          if (Array.isArray(direct.resolved?.transactions)) setResolved(direct.resolved.transactions);
+          if (Array.isArray(direct.withPending?.transactions)) setWithPending(direct.withPending.transactions);
+          return;
+        }
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch('/api/settlement');
+        const d = await res.json();
+        if (cancelled) return;
         if (Array.isArray(d.resolved?.transactions)) setResolved(d.resolved.transactions);
         if (Array.isArray(d.withPending?.transactions)) setWithPending(d.withPending.transactions);
-      })
-      .catch(() => {});
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const txs = basis === 'resolved' ? resolved : withPending;
@@ -555,18 +568,28 @@ export default function LeaderboardScreen({ user }) {
   const [biggestLosses, setBiggestLosses] = useState([]);
 
   useEffect(() => {
-    fetch('/api/leaderboard')
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setRankings(data);
-        } else if (data?.rankings) {
-          setRankings(data.rankings);
-          setBiggestWins(data.biggestWins || []);
-          setBiggestLosses(data.biggestLosses || []);
-        }
-      })
-      .catch(() => {});
+    let cancelled = false;
+    const applyData = (data) => {
+      if (cancelled) return;
+      if (Array.isArray(data)) setRankings(data);
+      else if (data?.rankings) {
+        setRankings(data.rankings);
+        setBiggestWins(data.biggestWins || []);
+        setBiggestLosses(data.biggestLosses || []);
+      }
+    };
+    (async () => {
+      try {
+        const { fetchLeaderboardDirect } = await import('@/lib/browserQueries');
+        const direct = await fetchLeaderboardDirect();
+        if (direct) return applyData(direct);
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch('/api/leaderboard');
+        applyData(await res.json());
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   return (
