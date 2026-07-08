@@ -116,9 +116,15 @@ export function BettingProvider({ children }) {
   const [totalBets, setTotalBets] = useState(0);
   const [challenges, setChallenges] = useState([]);
   const [specialPools, setSpecialPools] = useState(null);
+  const [settlementNet, setSettlementNet] = useState(null);
+  const [settlementByUser, setSettlementByUser] = useState({});
 
   const balance = computeBalance(bets);
-  const realisedBalance = computeRealisedBalance(bets.filter(b => b.match_id !== '_topup'));
+  // realisedBalance = settlement-plan-normalized net if available (matches the
+  // real payout), else fall back to raw ledger math. Ensures "Net Win/Loss"
+  // shown anywhere always equals what user actually receives/owes.
+  const rawRealisedBalance = computeRealisedBalance(bets.filter(b => b.match_id !== '_topup'));
+  const realisedBalance = settlementNet !== null ? settlementNet : rawRealisedBalance;
   const realBets = bets.filter(b => b.match_id !== '_topup' && b.kind !== 'penalty' && b.status !== 'cancelled');
   const penaltyBets = bets.filter(b => b.kind === 'penalty' && b.status !== 'cancelled');
   const pendingBets = realBets.filter(b => b.status === 'pending');
@@ -158,6 +164,8 @@ export function BettingProvider({ children }) {
           if (direct.totalBets != null) setTotalBets(direct.totalBets);
           if (direct.challenges) setChallenges(direct.challenges);
           if (direct.specialPools) setSpecialPools(direct.specialPools);
+          if (direct.mySettlementNet !== undefined) setSettlementNet(direct.mySettlementNet);
+          if (direct.settlementByUser) setSettlementByUser(direct.settlementByUser);
           return;
         }
       } catch { /* fall through */ }
@@ -244,6 +252,8 @@ export function BettingProvider({ children }) {
       if (data.totalBets != null) setTotalBets(data.totalBets);
       if (data.challenges) setChallenges(data.challenges);
       if (data.specialPools) setSpecialPools(data.specialPools);
+      if (data.mySettlementNet !== undefined) setSettlementNet(data.mySettlementNet);
+      if (data.settlementByUser) setSettlementByUser(data.settlementByUser);
     };
 
     (async () => {
@@ -400,6 +410,7 @@ export function BettingProvider({ children }) {
     matches, scheduleMap, poolMap, allUsers, totalInPlay, totalBets,
     cupWinnerDeadlineTs, myCupWinnerBet,
     challenges, specialPools,
+    settlementNet, settlementByUser, rawRealisedBalance,
     betSheet, toast,
     // actions
     openBet, closeBet, cancelBet, confirmBet,
@@ -420,6 +431,7 @@ export function BettingProvider({ children }) {
     matches, scheduleMap, poolMap, allUsers, totalInPlay, totalBets,
     cupWinnerDeadlineTs, myCupWinnerBet,
     challenges, specialPools,
+    settlementNet, settlementByUser, rawRealisedBalance,
     betSheet, toast,
     openBet, closeBet, cancelBet, confirmBet,
     handleLogout, handleOpenSpecialBet,

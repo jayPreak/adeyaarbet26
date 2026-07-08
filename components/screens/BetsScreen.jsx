@@ -535,15 +535,28 @@ export function SettlementCard({ user, bets = [] }) {
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   useEffect(() => {
-    fetch('/api/settlement')
-      .then(r => r.json())
-      .then(data => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { fetchSettlementDirect } = await import('@/lib/browserQueries');
+        const direct = await fetchSettlementDirect();
+        if (!cancelled && direct?.positions) {
+          const me = direct.positions.find(p => p.id === user.id);
+          if (me) setMyPosition(me.net);
+          return;
+        }
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch('/api/settlement');
+        const data = await res.json();
+        if (cancelled) return;
         if (data.positions) {
           const me = data.positions.find(p => p.id === user.id);
           if (me) setMyPosition(me.net);
         }
-      })
-      .catch(() => {});
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
   }, [user]);
 
   if (myPosition === null) return null;
@@ -551,6 +564,9 @@ export function SettlementCard({ user, bets = [] }) {
   const resolvedBets = bets.filter(b => b.match_id !== '_topup' && (b.status === 'won' || b.status === 'lost'));
   const totalStaked = resolvedBets.reduce((s, b) => s + b.amount, 0);
   const totalWon = resolvedBets.filter(b => b.status === 'won').reduce((s, b) => s + (b.payout || 0), 0);
+  // Reconciliation with settlement: bet math vs. actual pot payout
+  const rawNet = totalWon - totalStaked;
+  const roundingAdj = myPosition - rawNet;
 
   const isOwing = myPosition < 0;
   const isEven = myPosition === 0;
@@ -645,8 +661,24 @@ export function SettlementCard({ user, bets = [] }) {
             <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>Total won back</span>
             <span className="mono" style={{ fontWeight: 700, color: 'var(--win)' }}>+{CURRENCY_SYMBOL}{totalWon.toLocaleString('en-IN')}</span>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
+            <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>Bet math</span>
+            <span className="mono" style={{ fontWeight: 700 }}>
+              {rawNet >= 0 ? '+' : ''}{CURRENCY_SYMBOL}{rawNet.toLocaleString('en-IN')}
+            </span>
+          </div>
+          {roundingAdj !== 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 4 }}>
+              <span style={{ color: 'var(--ink-3)' }} title="Parimutuel FLOOR() rounds each payout down. The tiny pot surplus that creates gets shaved proportionally from creditors so the settlement plan balances.">
+                Pot rounding
+              </span>
+              <span className="mono" style={{ color: 'var(--ink-3)' }}>
+                {roundingAdj >= 0 ? '+' : ''}{CURRENCY_SYMBOL}{roundingAdj.toLocaleString('en-IN')}
+              </span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ color: 'var(--ink)', fontWeight: 700 }}>Net</span>
+            <span style={{ color: 'var(--ink)', fontWeight: 700 }}>Settlement</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, color: isOwing ? 'var(--loss)' : 'var(--win)' }}>
               {myPosition >= 0 ? '+' : ''}{CURRENCY_SYMBOL}{myPosition.toLocaleString('en-IN')}
             </span>
