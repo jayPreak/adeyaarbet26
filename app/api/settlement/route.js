@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import supabase from '@/lib/supabase';
 import { FRIENDS } from '@/lib/data';
-import { computeSettlement, computeNetPositions } from '@/lib/settlement';
+import { computeSettlement, computeNetPositions, normalizeToZeroSum } from '@/lib/settlement';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -53,16 +53,21 @@ export async function GET() {
   const resolvedProfiles = withBalance(resolvedMap);
   const ledgerProfiles = withBalance(ledgerMap);
 
+  // Normalize positions to zero-sum so displayed "net win/loss" matches the
+  // "settlement plan" transactions exactly (parimutuel rounding parity).
+  const resolvedPositions = normalizeToZeroSum(computeNetPositions(resolvedProfiles));
+  const ledgerPositions   = normalizeToZeroSum(computeNetPositions(ledgerProfiles));
+
   return NextResponse.json({
     transactions: computeSettlement(resolvedProfiles),
-    positions:    computeNetPositions(resolvedProfiles),
+    positions:    resolvedPositions,
     resolved: {
       transactions: computeSettlement(resolvedProfiles),
-      positions:    computeNetPositions(resolvedProfiles),
+      positions:    resolvedPositions,
     },
     withPending: {
       transactions: computeSettlement(ledgerProfiles),
-      positions:    computeNetPositions(ledgerProfiles),
+      positions:    ledgerPositions,
     },
   });
 }
