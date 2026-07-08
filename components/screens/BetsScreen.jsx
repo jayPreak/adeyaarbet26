@@ -420,10 +420,9 @@ export function AchievementBadges({ user }) {
 
   useEffect(() => {
     if (!user) return;
-    fetch('/api/leaderboard')
-      .then(r => r.json())
-      .then(data => {
-        if (!data?.rankings) return;
+    let cancelled = false;
+    const processData = (data) => {
+      if (cancelled || !data?.rankings) return;
         const medals = ['🥇', '🥈', '🥉'];
         const earned = [];
 
@@ -475,10 +474,21 @@ export function AchievementBadges({ user }) {
           earned.push({ medal: `${streak}`, label: 'On Fire', tip: `${streak} wins in a row`, color: '#fb923c', fire: streak >= 3 });
         }
 
-        setBadges(earned);
-      })
-      .catch(() => {});
-  }, [user]);
+      setBadges(earned);
+    };
+    (async () => {
+      try {
+        const { fetchLeaderboardDirect } = await import('@/lib/browserQueries');
+        const direct = await fetchLeaderboardDirect();
+        if (direct) return processData(direct);
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch('/api/leaderboard');
+        processData(await res.json());
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   if (badges.length === 0 && myStreak === 0) return null;
 

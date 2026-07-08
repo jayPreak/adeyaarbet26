@@ -154,10 +154,31 @@ export function UserProfileModal({ entry, onClose }) {
 
   useEffect(() => {
     if (!entry) return;
-    fetch(`/api/bets?user_id=${entry.id}`)
-      .then(r => r.json())
-      .then(data => setBets(Array.isArray(data) ? data : []))
-      .catch(() => setBets([]));
+    let cancelled = false;
+    (async () => {
+      // Fast path: direct Supabase
+      const { default: supabaseBrowser } = await import('@/lib/supabase-browser');
+      if (supabaseBrowser) {
+        try {
+          const { data } = await supabaseBrowser
+            .from('bets')
+            .select('*')
+            .eq('user_id', entry.id)
+            .neq('match_id', '_topup')
+            .order('created_at', { ascending: false });
+          if (!cancelled) setBets(Array.isArray(data) ? data : []);
+          return;
+        } catch { /* fall through */ }
+      }
+      try {
+        const res = await fetch(`/api/bets?user_id=${entry.id}`);
+        const data = await res.json();
+        if (!cancelled) setBets(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setBets([]);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [entry]);
 
   if (!entry) return null;

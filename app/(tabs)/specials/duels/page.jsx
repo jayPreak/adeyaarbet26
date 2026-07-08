@@ -526,11 +526,28 @@ export default function DuelsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const load = useCallback(() => {
-    fetch('/api/challenge')
-      .then(r => r.json())
-      .then(d => setDuels(d.challenges || []))
-      .catch(() => {});
+  const load = useCallback(async () => {
+    // Fast path: direct Supabase
+    const { default: supabaseBrowser } = await import('@/lib/supabase-browser');
+    if (supabaseBrowser) {
+      try {
+        const { data } = await supabaseBrowser
+          .from('challenges')
+          .select(`
+            id, match_id, challenger_id, opponent_id, challenger_pick, amount,
+            status, winner_id, created_at, resolved_at,
+            challenger:profiles!challenges_challenger_id_fkey(display_name, avatar_url),
+            opponent:profiles!challenges_opponent_id_fkey(display_name, avatar_url)
+          `)
+          .order('created_at', { ascending: false });
+        if (Array.isArray(data)) { setDuels(data); return; }
+      } catch { /* fall through */ }
+    }
+    try {
+      const res = await fetch('/api/challenge');
+      const d = await res.json();
+      setDuels(d.challenges || []);
+    } catch { /* ignore */ }
   }, []);
 
   useEffect(() => { load(); }, [load]);

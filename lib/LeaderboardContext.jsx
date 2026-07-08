@@ -11,23 +11,34 @@ export function LeaderboardProvider({ user, children }) {
   const [duelStats, setDuelStats] = useState([]);
 
   useEffect(() => {
-    fetch('/api/leaderboard')
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setRankings(data);
-        } else if (data?.rankings) {
+    let cancelled = false;
+
+    // Leaderboard — direct with API fallback
+    (async () => {
+      const applyLb = (data) => {
+        if (cancelled) return;
+        if (Array.isArray(data)) setRankings(data);
+        else if (data?.rankings) {
           setRankings(data.rankings);
           setBiggestWins(data.biggestWins || []);
           setBiggestLosses(data.biggestLosses || []);
         }
-      })
-      .catch(() => {});
+      };
+      try {
+        const { fetchLeaderboardDirect } = await import('@/lib/browserQueries');
+        const direct = await fetchLeaderboardDirect();
+        if (direct) return applyLb(direct);
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch('/api/leaderboard');
+        applyLb(await res.json());
+      } catch { /* ignore */ }
+    })();
 
-    fetch('/api/challenge')
-      .then(r => r.json())
-      .then(data => {
-        const challenges = data.challenges || [];
+    // Challenges — direct with API fallback
+    (async () => {
+      const applyChallenges = (challenges) => {
+        if (cancelled) return;
         const settled = challenges.filter(c => c.status === 'settled');
         const voided = challenges.filter(c => c.status === 'void');
         const statsMap = {};
@@ -87,8 +98,32 @@ export function LeaderboardProvider({ user, children }) {
 
         arr.sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || a.losses - b.losses);
         setDuelStats(arr);
-      })
-      .catch(() => {});
+      };
+
+      // Direct: pull challenges + join profiles
+      const { default: supabaseBrowser } = await import('@/lib/supabase-browser');
+      if (supabaseBrowser) {
+        try {
+          const { data } = await supabaseBrowser
+            .from('challenges')
+            .select(`
+              id, match_id, challenger_id, opponent_id, challenger_pick, amount,
+              status, winner_id, created_at, resolved_at,
+              challenger:profiles!challenges_challenger_id_fkey(display_name, avatar_url),
+              opponent:profiles!challenges_opponent_id_fkey(display_name, avatar_url)
+            `)
+            .order('created_at', { ascending: false });
+          if (Array.isArray(data)) { applyChallenges(data); return; }
+        } catch { /* fall through */ }
+      }
+      try {
+        const res = await fetch('/api/challenge');
+        const d = await res.json();
+        applyChallenges(d.challenges || []);
+      } catch { /* ignore */ }
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   return (
