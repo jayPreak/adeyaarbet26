@@ -1218,17 +1218,20 @@ export function PlaceBetSheet({ match, pick, onClose, onConfirm, poolInfo, exist
 // ── Toast ────────────────────────────────────────────────────
 export function Toast({ message, onDone }) {
   const isError = message?.startsWith('Error');
+  const [leaving, setLeaving] = useState(false);
+  const dismiss = () => { setLeaving(true); setTimeout(onDone, 200); };
   useEffect(() => {
-    const t = setTimeout(onDone, isError ? 30000 : 2400);
+    if (isError) return;
+    const t = setTimeout(dismiss, 3000);
     return () => clearTimeout(t);
-  }, [onDone, isError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isError]);
+  const cleanMessage = isError ? message.replace(/^Error:\s*/, '') : message;
   return (
-    <div className="toast" style={isError ? { borderColor: 'var(--loss)' } : undefined}>
-      <span>{isError ? '✗' : '✓'}</span>
-      <span style={{ flex: 1 }}>{message}</span>
-      {isError && (
-        <button onClick={onDone} style={{ background: 'none', border: 'none', color: 'var(--ink-3)', fontSize: 16, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>✕</button>
-      )}
+    <div className={`toast-top ${isError ? 'toast-top--error' : 'toast-top--success'} ${leaving ? 'toast-top--leaving' : ''}`}>
+      <span className="toast-top__icon">{isError ? '⚠' : '✓'}</span>
+      <span className="toast-top__msg">{cleanMessage}</span>
+      <button onClick={dismiss} className="toast-top__close" aria-label="Dismiss">✕</button>
     </div>
   );
 }
