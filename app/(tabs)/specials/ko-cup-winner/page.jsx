@@ -216,7 +216,7 @@ export default function KOCupWinnerPage() {
           </div>
           <input
             type="range" className="slider"
-            min={500} max={MAX_BET} step={50}
+            min={250} max={MAX_BET} step={50}
             value={amount}
             onChange={e => setAmount(Number(e.target.value))}
             style={{ marginBottom: 8 }}

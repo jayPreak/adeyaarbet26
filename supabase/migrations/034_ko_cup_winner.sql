@@ -45,8 +45,11 @@ BEGIN
   END IF;
 
   -- Higher minimum for knockout-stage specials
-  IF p_kind IN ('ko_cup_winner', 'final_four') AND p_amount < 500 THEN
+  IF p_kind = 'final_four' AND p_amount < 500 THEN
     RAISE EXCEPTION 'Minimum bet is 500 for this special';
+  END IF;
+  IF p_kind = 'ko_cup_winner' AND p_amount < 250 THEN
+    RAISE EXCEPTION 'Minimum bet is 250 for this special';
   END IF;
 
   PERFORM 1 FROM public.profiles WHERE id = p_user_id FOR UPDATE;
