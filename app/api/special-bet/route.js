@@ -58,21 +58,26 @@ export async function GET(request) {
     .from('bets')
     .select('id, user_id, pick, amount, status, payout, profiles(display_name, avatar_url)')
     .eq('match_id', matchId)
-    .eq('kind', kind)
-    .neq('status', 'cancelled');
+    .eq('kind', kind);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const pending = (bets || []).filter(b => b.status === 'pending');
-  const total = pending.reduce((s, b) => s + b.amount, 0);
-  const bettorCount = new Set(pending.map(b => b.user_id)).size;
+  const allBets = bets || [];
+  const hasSettled = allBets.some(b => b.status === 'won' || b.status === 'lost');
+  const allRefunded = !hasSettled && allBets.length > 0 && allBets.every(b => b.status === 'cancelled');
+  const settled = hasSettled || allRefunded;
+  const nonCancelled = allBets.filter(b => b.status !== 'cancelled');
+  const poolBets = settled ? nonCancelled : nonCancelled.filter(b => b.status === 'pending');
+
+  const total = poolBets.reduce((s, b) => s + b.amount, 0);
+  const bettorCount = new Set(poolBets.map(b => b.user_id)).size;
 
   const byOption = {};
-  for (const b of pending) {
+  for (const b of poolBets) {
     byOption[b.pick] = (byOption[b.pick] || 0) + b.amount;
   }
 
-  const picks = pending.map(b => ({
+  const picks = poolBets.map(b => ({
     userId: b.user_id,
     displayName: b.profiles?.display_name || '?',
     avatarUrl: b.profiles?.avatar_url || null,
@@ -81,10 +86,10 @@ export async function GET(request) {
   }));
 
   const myBets = userId
-    ? pending.filter(b => b.user_id === userId).map(b => ({ id: b.id, pick: b.pick, amount: b.amount }))
+    ? allBets.filter(b => b.user_id === userId && (settled || b.status === 'pending')).map(b => ({ id: b.id, pick: b.pick, amount: b.amount, status: b.status, payout: b.payout }))
     : [];
 
-  return NextResponse.json({ pool: { total, bettorCount, byOption }, picks, myBets });
+  return NextResponse.json({ pool: { total, bettorCount, byOption, settled, refunded: allRefunded }, picks, myBets });
 }
 
 export async function POST(request) {

@@ -49,7 +49,7 @@ export default function FinalFourBetModal({ open, onClose, user, onPlaced, match
   const [pool, setPool] = useState(null);
   const [picks, setPicks] = useState([]);
   const [selected, setSelected] = useState(new Set());
-  const [amount, setAmount] = useState(500);
+  const [amount, setAmount] = useState(100);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -141,7 +141,7 @@ export default function FinalFourBetModal({ open, onClose, user, onPlaced, match
     }
   }
 
-  const presets = [250, 500, 1000, 2000];
+  const presets = [100, 250, 500, 1000];
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
@@ -244,7 +244,7 @@ export default function FinalFourBetModal({ open, onClose, user, onPlaced, match
               </div>
               <input
                 type="range" className="slider"
-                min={500} max={MAX_BET} step={50}
+                min={100} max={MAX_BET} step={50}
                 value={amount}
                 onChange={e => setAmount(Number(e.target.value))}
                 style={{ marginBottom: 8 }}
