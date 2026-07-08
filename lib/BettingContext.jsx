@@ -279,17 +279,25 @@ export function BettingProvider({ children }) {
         return;
       }
 
-      // Track 2: FIFA data — server-only (CORS). Non-blocking.
-      const fifa = await fetchFifaData();
-      if (cancelled || !fifa) return;
-      if (fifa.fifaMatches) setFifaData(fifa.fifaMatches);
-      if (fifa.knockout) setKnockoutData(fifa.knockout);
+      // Track 2: FIFA data — server-only (CORS). Fire-and-forget.
+      // Route to dedicated endpoint so it doesn't drag in the full init payload.
+      try {
+        const res = await fetch('/api/fifa/matches?shape=split');
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.fifaMatches)) setFifaData(data.fifaMatches);
+          if (Array.isArray(data.knockout)) setKnockoutData(data.knockout);
+        }
+      } catch { /* non-blocking */ }
     })();
 
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user?.id]);
 
-  // Auto-resolve: throttled, fire-and-forget after init
+  // Auto-resolve: throttled, fire-and-forget after init.
+  // refreshData() already refreshes pools + specialPools, so refreshPools is
+  // redundant here — dropping it saves a duplicate full Supabase round.
   useEffect(() => {
     if (!user) return;
     const key = 'adeyaar_auto_resolve_ts';
@@ -299,13 +307,10 @@ export function BettingProvider({ children }) {
     fetch('/api/auto-resolve')
       .then(r => r.json())
       .then(data => {
-        if (data.resolved?.length > 0) {
-          refreshData();
-          refreshPools();
-        }
+        if (data.resolved?.length > 0) refreshData();
       })
       .catch(() => {});
-  }, [user]);
+  }, [user?.id]);
 
 
   const matches = useMemo(() => {

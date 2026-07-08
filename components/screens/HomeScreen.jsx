@@ -60,7 +60,8 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [bets]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bets.length]);
 
   const mapItems = (data) => data
     .filter(a => a.type !== 'penalty_applied')

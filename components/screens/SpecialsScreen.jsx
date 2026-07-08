@@ -10,7 +10,6 @@ import FinalFourBetModal, { qfDeadlineTs } from '@/components/FinalFourBetModal'
 import TotalGoalsBetModal from '@/components/TotalGoalsBetModal';
 import { TOTAL_GOALS_LINE } from '@/lib/props';
 import supabaseBrowser from '@/lib/supabase-browser';
-import { cupWinnerDeadlineFromKickoffs } from '@/lib/cup-winner';
 
 const THIRD_QUAL_MATCH_ID = 'THIRD_QUALIFIERS';
 const THIRD_QUAL_KIND = 'third_place_qualifiers';
@@ -922,7 +921,7 @@ function SettledSpecials({ specials, myBetsData, poolsData }) {
 }
 
 export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allUsers = [], matches = [], onToast }) {
-  const { refreshData, specialPools: initSpecialPools } = useBetting();
+  const { refreshData, specialPools: initSpecialPools, cupWinnerDeadlineTs } = useBetting();
   const [poolsData, setPoolsData] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [picksData, setPicksData] = useState({});
@@ -951,36 +950,19 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
     if (newSettled.length) setSettledIds(new Set(newSettled));
   }, [initSpecialPools]);
 
-  // Direct-Supabase fetch: cup-winner deadline + third-place-qualifiers.
-  // Falls back to API if browser client unavailable.
+  // Cup-winner deadline comes from BettingContext (already fetched in init) —
+  // no duplicate match_schedule query needed.
+  useEffect(() => {
+    if (cupWinnerDeadlineTs) {
+      setDeadlines(prev => ({ ...prev, cup_winner: cupWinnerDeadlineTs }));
+    }
+  }, [cupWinnerDeadlineTs]);
+
+  // Third-place-qualifiers: not in the init batch, fetch here.
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      // Cup-winner deadline (from match_schedule kickoffs)
-      if (supabaseBrowser) {
-        const { data: sched } = await supabaseBrowser
-          .from('match_schedule')
-          .select('id, kickoff_ts');
-        if (!cancelled && sched) {
-          const groupSched = sched.filter(r => !/^\d+$/.test(r.id));
-          const deadline = cupWinnerDeadlineFromKickoffs(groupSched);
-          if (deadline) setDeadlines(prev => ({ ...prev, cup_winner: deadline }));
-        }
-      } else {
-        try {
-          const res = await fetch(`/api/cup-winner-bet?user_id=${user?.id || ''}`);
-          const data = await res.json();
-          if (cancelled) return;
-          if (!initSpecialPools) {
-            setPoolsData(prev => ({ ...prev, cup_winner: data.pool }));
-            setPicksData(prev => ({ ...prev, cup_winner: data.picks || [] }));
-            setMyBetsData(prev => ({ ...prev, cup_winner: data.myBet || null }));
-          }
-          if (data.deadlineTs) setDeadlines(prev => ({ ...prev, cup_winner: data.deadlineTs }));
-        } catch { /* ignore */ }
-      }
-
       // Third-place qualifiers
       if (supabaseBrowser) {
         const { data: bets } = await supabaseBrowser
@@ -1025,7 +1007,7 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
     })();
 
     return () => { cancelled = true; };
-  }, [user, bets, initSpecialPools]);
+  }, [user?.id]);
 
   const expandedSpecial = expanded ? SPECIALS.find(s => s.id === expanded) : null;
 
