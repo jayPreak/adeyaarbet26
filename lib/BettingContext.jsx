@@ -304,21 +304,28 @@ export function BettingProvider({ children }) {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  // Auto-resolve: throttled, fire-and-forget after init.
-  // refreshData() already refreshes pools + specialPools, so refreshPools is
-  // redundant here — dropping it saves a duplicate full Supabase round.
+  // Auto-resolve: TRUE fire-and-forget. Previously it awaited the response
+  // (which takes 5-8s: FIFA fetch + DB writes) and then called refreshData.
+  // That saturated the Supabase free-tier connection pool and blocked the
+  // browser's own direct queries. Now:
+  //   - Kick off after 5s so init/FIFA/first render have priority.
+  //   - Fire-and-forget with keepalive so the response body is never awaited.
+  //     Any resolved matches show up on the NEXT refreshData / page load —
+  //     no thread of the current session waits on it.
+  //   - Throttled to 15 min per browser session.
+  //   - Daily cron with ?penalties=true is the ultimate backstop.
   useEffect(() => {
     if (!user) return;
     const key = 'adeyaar_auto_resolve_ts';
     const last = parseInt(sessionStorage.getItem(key) || '0', 10);
-    if (Date.now() - last < 60000) return;
-    sessionStorage.setItem(key, String(Date.now()));
-    fetch('/api/auto-resolve')
-      .then(r => r.json())
-      .then(data => {
-        if (data.resolved?.length > 0) refreshData();
-      })
-      .catch(() => {});
+    if (Date.now() - last < 15 * 60 * 1000) return;
+    const t = setTimeout(() => {
+      sessionStorage.setItem(key, String(Date.now()));
+      // keepalive: browser lets this outlive the current tab if the user
+      // navigates away. No await, no .then — completely detached.
+      try { fetch('/api/auto-resolve', { keepalive: true }); } catch {}
+    }, 5000);
+    return () => clearTimeout(t);
   }, [user?.id]);
 
 
