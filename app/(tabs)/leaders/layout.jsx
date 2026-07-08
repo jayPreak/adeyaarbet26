@@ -7,8 +7,7 @@ import { LeaderboardProvider } from '@/lib/LeaderboardContext';
 
 const TABS = [
   { id: 'rankings', path: '/leaders/rankings', label: 'Rankings' },
-  { id: 'payouts',  path: '/leaders/payouts',  label: 'Top Payouts' },
-  { id: 'losses',   path: '/leaders/losses',   label: 'Biggest Losses' },
+  { id: 'duels',    path: '/leaders/duels',    label: 'Duels' },
   { id: 'rollers',  path: '/leaders/rollers',  label: 'High Rollers' },
 ];
 
