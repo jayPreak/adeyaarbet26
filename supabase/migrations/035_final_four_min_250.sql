@@ -6,9 +6,9 @@ CREATE OR REPLACE FUNCTION public.place_special_bet(
   p_pick TEXT,
   p_amount INT,
   p_multi_pick BOOLEAN DEFAULT FALSE
-) RETURNS UUID AS $$
+) RETURNS BIGINT AS $$
 DECLARE
-  v_id UUID;
+  v_id BIGINT;
   v_balance INT;
   v_kickoff TIMESTAMPTZ;
 BEGIN

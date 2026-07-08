@@ -916,7 +916,7 @@ function SettledSpecials({ specials, myBetsData, poolsData }) {
 }
 
 export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allUsers = [], matches = [], onToast }) {
-  const { refreshData } = useBetting();
+  const { refreshData, specialPools: initSpecialPools } = useBetting();
   const [poolsData, setPoolsData] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [picksData, setPicksData] = useState({});
@@ -926,42 +926,39 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
   const [finalFourOpen, setFinalFourOpen] = useState(false);
   const [totalGoalsOpen, setTotalGoalsOpen] = useState(false);
 
+  // Use data from init route if available (zero extra API calls)
   useEffect(() => {
-    // Cup-winner data
+    if (!initSpecialPools) return;
+    const newPools = {};
+    const newPicks = {};
+    const newMyBets = {};
+    const newSettled = [];
+    for (const [k, v] of Object.entries(initSpecialPools)) {
+      newPools[k] = { total: v.pool?.total || 0, bettorCount: v.pool?.bettorCount || 0, byTeam: v.pool?.byOption || {} };
+      newPicks[k] = v.picks || [];
+      newMyBets[k] = v.myBets?.[0] || null;
+      if (v.pool?.settled) newSettled.push(k);
+    }
+    setPoolsData(prev => ({ ...prev, ...newPools }));
+    setPicksData(prev => ({ ...prev, ...newPicks }));
+    setMyBetsData(prev => ({ ...prev, ...newMyBets }));
+    if (newSettled.length) setSettledIds(new Set(newSettled));
+  }, [initSpecialPools]);
+
+  // Fallback: fetch cup-winner deadline + third-place-qualifiers (not in init batch)
+  useEffect(() => {
     fetch(`/api/cup-winner-bet?user_id=${user?.id || ''}`)
       .then(r => r.json())
       .then(data => {
-        setPoolsData(prev => ({ ...prev, cup_winner: data.pool }));
-        setPicksData(prev => ({ ...prev, cup_winner: data.picks || [] }));
-        setMyBetsData(prev => ({ ...prev, cup_winner: data.myBet || null }));
+        if (!initSpecialPools) {
+          setPoolsData(prev => ({ ...prev, cup_winner: data.pool }));
+          setPicksData(prev => ({ ...prev, cup_winner: data.picks || [] }));
+          setMyBetsData(prev => ({ ...prev, cup_winner: data.myBet || null }));
+        }
         if (data.deadlineTs) setDeadlines(prev => ({ ...prev, cup_winner: data.deadlineTs }));
       })
       .catch(() => {});
 
-    // Continent data
-    fetch(`/api/special-bet?match_id=CONTINENT&kind=continent${user?.id ? `&user_id=${user.id}` : ''}`)
-      .then(r => r.json())
-      .then(data => {
-        setPoolsData(prev => ({ ...prev, continent: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, byTeam: data.pool?.byOption || {} } }));
-        setPicksData(prev => ({ ...prev, continent: data.picks || [] }));
-        setMyBetsData(prev => ({ ...prev, continent: data.myBets?.[0] || null }));
-        if (data.pool?.settled) setSettledIds(prev => new Set([...prev, 'continent']));
-      })
-      .catch(() => {});
-
-
-    // H2H data
-    fetch(`/api/special-bet?match_id=MESSI_V_RONALDO&kind=h2h${user?.id ? `&user_id=${user.id}` : ''}`)
-      .then(r => r.json())
-      .then(data => {
-        setPoolsData(prev => ({ ...prev, h2h: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, byTeam: data.pool?.byOption || {} } }));
-        setPicksData(prev => ({ ...prev, h2h: data.picks || [] }));
-        setMyBetsData(prev => ({ ...prev, h2h: data.myBets?.[0] || null }));
-        if (data.pool?.settled) setSettledIds(prev => new Set([...prev, 'h2h']));
-      })
-      .catch(() => {});
-
-    // Third place qualifiers data
     fetch(`/api/third-place-qualifier-bet${user?.id ? `?user_id=${user.id}` : ''}`)
       .then(r => r.json())
       .then(data => {
@@ -970,57 +967,6 @@ export default function SpecialsScreen({ user, onOpenSpecialBet, bets = [], allU
         setMyBetsData(prev => ({ ...prev, third_place_qualifiers: data.myBet || null }));
       })
       .catch(() => {});
-
-    // R32 Flop
-    fetch(`/api/special-bet?match_id=R32_BIGGEST_LOSER&kind=r32_loser${user?.id ? `&user_id=${user.id}` : ''}`)
-      .then(r => r.json())
-      .then(data => {
-        setPoolsData(prev => ({ ...prev, r32_loser: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0 } }));
-        setMyBetsData(prev => ({ ...prev, r32_loser: data.myBets?.[0] || null }));
-        if (data.pool?.settled) setSettledIds(prev => new Set([...prev, 'r32_loser']));
-      })
-      .catch(() => {});
-
-    // R32 Bagholder
-    fetch(`/api/special-bet?match_id=R32_BIGGEST_WINNER&kind=r32_winner${user?.id ? `&user_id=${user.id}` : ''}`)
-      .then(r => r.json())
-      .then(data => {
-        setPoolsData(prev => ({ ...prev, r32_winner: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0 } }));
-        setMyBetsData(prev => ({ ...prev, r32_winner: data.myBets?.[0] || null }));
-        if (data.pool?.settled) setSettledIds(prev => new Set([...prev, 'r32_winner']));
-      })
-      .catch(() => {});
-
-    // Final Four
-    fetch(`/api/special-bet?match_id=FINAL_FOUR&kind=final_four${user?.id ? `&user_id=${user.id}` : ''}`)
-      .then(r => r.json())
-      .then(data => {
-        setPoolsData(prev => ({ ...prev, final_four: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0 } }));
-        setMyBetsData(prev => ({ ...prev, final_four: data.myBets?.[0] || null }));
-        if (data.pool?.settled) setSettledIds(prev => new Set([...prev, 'final_four']));
-      })
-      .catch(() => {});
-
-    // Total tournament goals
-    fetch(`/api/special-bet?match_id=TOTAL_GOALS&kind=total_goals${user?.id ? `&user_id=${user.id}` : ''}`)
-      .then(r => r.json())
-      .then(data => {
-        setPoolsData(prev => ({ ...prev, total_goals: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, byTeam: data.pool?.byOption || {} } }));
-        setMyBetsData(prev => ({ ...prev, total_goals: data.myBets?.[0] || null }));
-        if (data.pool?.settled) setSettledIds(prev => new Set([...prev, 'total_goals']));
-      })
-      .catch(() => {});
-
-    // KO Cup Winner
-    fetch(`/api/special-bet?match_id=KO_CUP_WINNER&kind=ko_cup_winner${user?.id ? `&user_id=${user.id}` : ''}`)
-      .then(r => r.json())
-      .then(data => {
-        setPoolsData(prev => ({ ...prev, ko_cup_winner: { total: data.pool?.total || 0, bettorCount: data.pool?.bettorCount || 0, byTeam: data.pool?.byOption || {} } }));
-        setMyBetsData(prev => ({ ...prev, ko_cup_winner: data.myBets?.[0] || null }));
-        if (data.pool?.settled) setSettledIds(prev => new Set([...prev, 'ko_cup_winner']));
-      })
-      .catch(() => {});
-
   }, [user, bets]);
 
   const expandedSpecial = expanded ? SPECIALS.find(s => s.id === expanded) : null;

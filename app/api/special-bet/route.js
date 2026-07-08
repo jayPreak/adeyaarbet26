@@ -12,6 +12,38 @@ export async function GET(request) {
   const kind = searchParams.get('kind');
   const userId = searchParams.get('user_id');
   const summary = searchParams.get('summary');
+  const batch = searchParams.get('batch');
+
+  if (batch === 'true') {
+    const kinds = ['continent', 'h2h', 'r32_loser', 'r32_winner', 'final_four', 'total_goals', 'ko_cup_winner'];
+    const { data: bets, error } = await supabase
+      .from('bets')
+      .select('id, user_id, match_id, pick, amount, status, payout, kind, profiles(display_name, avatar_url)')
+      .in('kind', kinds);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const result = {};
+    for (const k of kinds) {
+      const kBets = (bets || []).filter(b => b.kind === k);
+      const hasSettled = kBets.some(b => b.status === 'won' || b.status === 'lost');
+      const allRefunded = !hasSettled && kBets.length > 0 && kBets.every(b => b.status === 'cancelled');
+      const settled = hasSettled || allRefunded;
+      const nonCancelled = kBets.filter(b => b.status !== 'cancelled');
+      const poolBets = settled ? nonCancelled : nonCancelled.filter(b => b.status === 'pending');
+
+      const total = poolBets.reduce((s, b) => s + b.amount, 0);
+      const bettorCount = new Set(poolBets.map(b => b.user_id)).size;
+      const byOption = {};
+      for (const b of poolBets) { byOption[b.pick] = (byOption[b.pick] || 0) + b.amount; }
+      const picks = poolBets.map(b => ({ userId: b.user_id, displayName: b.profiles?.display_name || '?', avatarUrl: b.profiles?.avatar_url || null, pick: b.pick, amount: b.amount }));
+      const myBets = userId
+        ? kBets.filter(b => b.user_id === userId && (settled || b.status === 'pending')).map(b => ({ id: b.id, pick: b.pick, amount: b.amount, status: b.status, payout: b.payout }))
+        : [];
+
+      result[k] = { pool: { total, bettorCount, byOption, settled, refunded: allRefunded }, picks, myBets };
+    }
+    return NextResponse.json(result);
+  }
 
   if (!matchId || !kind) {
     return NextResponse.json({ error: 'match_id and kind required' }, { status: 400 });

@@ -24,7 +24,7 @@ export async function GET(request) {
 
   // Fire all DB queries + FIFA fetch in parallel
   const fifaController = new AbortController();
-  const fifaTimer = setTimeout(() => fifaController.abort(), 2000);
+  const fifaTimer = setTimeout(() => fifaController.abort(), 1200);
 
   const [betsRes, schedRes, poolRes, profilesRes, cupWinnerRes, fifaRes, challengesRes] = await Promise.all([
     // User bets
@@ -144,6 +144,27 @@ export async function GET(request) {
   const totalInPlay = nonCancelledBets.reduce((s, b) => s + b.amount, 0);
   const totalBets = nonCancelledBets.length;
 
+  // Special pools — computed from allBets so specials page doesn't need extra API calls
+  const specialKinds = ['continent', 'h2h', 'r32_loser', 'r32_winner', 'final_four', 'total_goals', 'ko_cup_winner', 'cup_winner'];
+  const specialPools = {};
+  for (const k of specialKinds) {
+    const kBets = allBets.filter(b => b.kind === k);
+    const hasSettled = kBets.some(b => b.status === 'won' || b.status === 'lost');
+    const allRefunded = !hasSettled && kBets.length > 0 && kBets.every(b => b.status === 'cancelled');
+    const settled = hasSettled || allRefunded;
+    const nonCancK = kBets.filter(b => b.status !== 'cancelled');
+    const poolBets = settled ? nonCancK : nonCancK.filter(b => b.status === 'pending');
+    const total = poolBets.reduce((s, b) => s + b.amount, 0);
+    const bettorCount = new Set(poolBets.map(b => b.user_id)).size;
+    const byOption = {};
+    for (const b of poolBets) { byOption[b.pick] = (byOption[b.pick] || 0) + b.amount; }
+    const picks = poolBets.map(b => ({ userId: b.user_id, displayName: b.profiles?.display_name || '?', avatarUrl: b.profiles?.avatar_url || null, pick: b.pick, amount: b.amount }));
+    const myBets = userId
+      ? kBets.filter(b => b.user_id === userId && (settled || b.status === 'pending')).map(b => ({ id: b.id, pick: b.pick, amount: b.amount, status: b.status, payout: b.payout }))
+      : [];
+    specialPools[k] = { pool: { total, bettorCount, byOption, settled, refunded: allRefunded }, picks, myBets };
+  }
+
   return NextResponse.json({
     bets: betsRes.data || [],
     schedule,
@@ -156,5 +177,6 @@ export async function GET(request) {
     totalInPlay,
     totalBets,
     challenges: challengesRes.data || [],
+    specialPools,
   });
 }

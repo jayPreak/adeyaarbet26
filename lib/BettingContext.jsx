@@ -113,6 +113,7 @@ export function BettingProvider({ children }) {
   const [totalInPlay, setTotalInPlay] = useState(0);
   const [totalBets, setTotalBets] = useState(0);
   const [challenges, setChallenges] = useState([]);
+  const [specialPools, setSpecialPools] = useState(null);
 
   const balance = computeBalance(bets);
   const realisedBalance = computeRealisedBalance(bets.filter(b => b.match_id !== '_topup'));
@@ -195,6 +196,7 @@ export function BettingProvider({ children }) {
         if (data.totalInPlay != null) setTotalInPlay(data.totalInPlay);
         if (data.totalBets != null) setTotalBets(data.totalBets);
         if (data.challenges) setChallenges(data.challenges);
+        if (data.specialPools) setSpecialPools(data.specialPools);
       })
       .catch(() => { setBetsLoaded(true); });
   }, [user]);
@@ -319,7 +321,7 @@ export function BettingProvider({ children }) {
     totalWon, totalLost, totalOpen,
     matches, scheduleMap, poolMap, allUsers, totalInPlay, totalBets,
     cupWinnerDeadlineTs, myCupWinnerBet,
-    challenges,
+    challenges, specialPools,
     betSheet, toast,
     // actions
     openBet, closeBet, cancelBet, confirmBet,
@@ -339,7 +341,7 @@ export function BettingProvider({ children }) {
     totalWon, totalLost, totalOpen,
     matches, scheduleMap, poolMap, allUsers, totalInPlay, totalBets,
     cupWinnerDeadlineTs, myCupWinnerBet,
-    challenges,
+    challenges, specialPools,
     betSheet, toast,
     openBet, closeBet, cancelBet, confirmBet,
     handleLogout, handleOpenSpecialBet,
