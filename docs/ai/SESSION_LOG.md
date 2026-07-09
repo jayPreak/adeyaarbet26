@@ -18,26 +18,6 @@ Newest entries at the TOP (below this header block).
 
 ---
 
-## 2026-07-09 — UX/a11y safeguards
-- **Task:** Improve accessibility + prevent accidental real-money cancels.
-- **Changes:**
-  - `app/globals.css` — global `:focus-visible` ring (gold outline) for a/button/input/select/
-    textarea/[role=button]/[tabindex]. The app previously had ~1 `:focus` rule total.
-  - Added `if (!confirm('Cancel this bet? Your stake will be refunded.')) return;` to every
-    special-bet cancel handler: FinalFour, H2H, GoalScorer, ThirdPlaceQualifier, TotalGoals
-    modals; R32BetPage; and the ko-cup-winner / final-four / total-goals pages.
-- **Decisions:** the main match-bet `cancelBet` in `BettingContext` already confirms, so left
-  it. Did NOT touch `GoldenBootBetModal.jsx` (deleted in the dead-code PR) or CupWinner/Continent
-  (no `handleCancel` — they cancel via a different path). Used the native `confirm()` to match
-  the existing match-cancel pattern rather than introduce a modal component.
-- **Gotchas / learnings:** the 5 special modals + 3 special pages each carry a near-identical
-  cancel handler — a shared `useSpecialBet` hook would remove this copy-paste (see audit).
-- **Verification:** `npm test` 356 pass; `next build` succeeds.
-- **Left undone / follow-ups:** win/loss cards still signal by color only (add a ✓/✗ glyph);
-  empty states are thin on some screens.
-
----
-
 ## 2026-07-05 — Set up AI documentation system
 - **Task:** Make the repo self-documenting for AI work: doc-update protocol enforced
   before every commit, human changelog, AI session log, current-state file,

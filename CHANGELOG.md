@@ -12,18 +12,6 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
-## 2026-07-09
-- **[feat]** UX/accessibility safeguards. (1) Added a visible keyboard-focus ring across
-  all buttons/links/inputs — the app had almost no focus styles, so keyboard and
-  switch-control users couldn't tell what was selected. (2) Every special-bet cancel now
-  asks "Cancel this bet? Your stake will be refunded." before refunding — previously only
-  the main match-bet cancel confirmed, so one stray tap on a special could refund real
-  money with no undo.
-  _Files: app/globals.css, components/{FinalFour,H2H,GoalScorer,ThirdPlaceQualifier,TotalGoals}BetModal.jsx,
-  components/R32BetPage.jsx, app/(tabs)/specials/{ko-cup-winner,final-four,total-goals}/page.jsx. By: Claude Code._
-
----
-
 ## 2026-07-05
 - **[docs]** Set up the AI documentation system: rewrote stale parts of `CLAUDE.md`
   (the app shell is now `app/(tabs)/layout.jsx` + `BettingContext`, not the old
