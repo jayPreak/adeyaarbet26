@@ -255,7 +255,7 @@ ON CONFLICT (id) DO UPDATE SET kickoff_ts = EXCLUDED.kickoff_ts;
 
 - [ ] **Step 2: Apply the migration**
 
-Run: `SUPABASE_DB_PASSWORD='74HnD*BcjH_ZD!5' supabase db push`
+Run: `SUPABASE_DB_PASSWORD='<from-1password>' supabase db push`
 Expected: migration `011` applied.
 
 - [ ] **Step 3: Verify the deadline**

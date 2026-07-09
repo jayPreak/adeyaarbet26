@@ -26,7 +26,7 @@ pending → cancelled (refunded)
 payout = FLOOR(stake / winning_pool * total_pool)
 ```
 
-## DB Schema (prod: qwjgjawzkscuxtpfnomn)
+## DB Schema (prod)
 
 ### Tables
 - `bets` — id, user_id, match_id, pick, amount, status, created_at, payout, **kind** (default 'match')
@@ -111,16 +111,16 @@ payout = FLOOR(stake / winning_pool * total_pool)
 - `/api/topup` — DEPRECATED (exists but UI removed)
 
 ## Deploy
-- Push to `upstream` remote (jayPreak/adeyaarbet26) for Vercel auto-deploy
-- Current HEAD: c496d83 + uncommitted clean rewrite
-- DB access: `SUPABASE_DB_PASSWORD='74HnD*BcjH_ZD!5' npx supabase db query --linked "SQL"` (from supabase/ dir)
-- Project ref: qwjgjawzkscuxtpfnomn
-- Anon key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3amdqYXd6a3NjdXh0cGZub21uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNDYzMDIsImV4cCI6MjA4OTkyMjMwMn0.wBX681XEyS03frIPy9BLp6F3jm4iCA8tji3urFCjeWY
+- Push to the deploy remote (`jayPreak/adeyaarbet26`) for Vercel auto-deploy
+- DB access: `SUPABASE_DB_PASSWORD='<from-1password>' npx supabase db query --linked "SQL"` (from supabase/ dir)
+- Project ref / anon key / DB password: pull from Vercel env vars or your local `.env.local`.
+  Never commit real credentials to this file — see `.env.example` for the shape.
 
 ## .env.local (for local dev pointing at prod)
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://qwjgjawzkscuxtpfnomn.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 ```
 
 ## Pending Work / Known Issues

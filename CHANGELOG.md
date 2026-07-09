@@ -12,6 +12,16 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-09
+- **[fix]** Redacted committed credentials from docs ahead of open-sourcing: the
+  Postgres DB password, the Supabase project ref, and the anon JWT were sitting in
+  plain text in `docs/ARCHITECTURE.md` and one plan doc. Replaced with placeholders.
+  ⚠️ These are still in git *history* — the DB password MUST be rotated in Supabase
+  before the repo is made public.
+  _Files: docs/ARCHITECTURE.md, docs/superpowers/plans/2026-06-11-schedule-sync-and-bet-cutoffs.md. By: Claude Code._
+
+---
+
 ## 2026-07-05
 - **[docs]** Set up the AI documentation system: rewrote stale parts of `CLAUDE.md`
   (the app shell is now `app/(tabs)/layout.jsx` + `BettingContext`, not the old
