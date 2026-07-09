@@ -18,6 +18,19 @@ Newest entries at the TOP (below this header block).
 
 ---
 
+## 2026-07-09 — Lower Final minimum bet to 500 (PR #46)
+- **Task:** Make the Final's minimum bet 500 instead of 1000.
+- **Change:** `lib/currency.js` `STAGE_MINIMUMS.FIN` 1000 → 500; updated the two `getMinBet`
+  tests (`min-bet.test.js`, `penalty.test.js`) that pinned `FIN-1 → 1000`.
+- **Decision:** No migration — the server `bet_min()` RPC (migration 026) already returns 500
+  for `FIN-%`. This was pure client/server drift; the UI was stricter than the backend.
+- **Gotcha:** Same drift still exists on QF (client 250 / server 200), SF (350 / 300) and
+  3RD (client 350 / server **500** — client lets you attempt a sub-500 bet the server rejects).
+  Left as-is (out of scope); flagged in PR #46.
+- **Verification:** 356/356 tests pass, `next build` clean.
+- **Doc note:** This entry lives on the doc-consolidation branch (#45) so it doesn't
+  re-introduce the append-conflict; PR #46 itself carries only code + tests.
+
 ## 2026-07-09 — Audit fix PRs #40–#44 (consolidated entry)
 - **Task:** Multi-PR audit cleanup ahead of open-sourcing. Each concern shipped as its own
   fork PR against `jayPreak:main`. This single entry documents #40–#44 together because the

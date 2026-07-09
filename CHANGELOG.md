@@ -13,6 +13,10 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 ---
 
 ## 2026-07-09
+- **[fix]** Lowered the **Final**'s minimum bet from ₹1000 to ₹500. The server already
+  enforced ₹500 (the `bet_min` RPC), but the client `getMinBet()` still said ₹1000, so the
+  UI blocked Final bets the backend would have accepted. Client now matches the server.
+  _Files: lib/currency.js, __tests__/min-bet.test.js, __tests__/penalty.test.js. By: Claude Code (PR #46)._
 - **[fix]** Reliability + logging fixes from the audit: a Final Four modal was calling
   `qfDeadlineTs()` with a stray argument; two JSX conditionals could leak a literal `0`
   onto the screen (total-goals projection, live-watch banner); the auto-resolve
