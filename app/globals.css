@@ -1527,3 +1527,19 @@ body {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Accessibility: a visible keyboard-focus ring across all interactive elements.
+   The app previously had almost no :focus styles, so keyboard / switch-control
+   users had no indication of what was focused. :focus-visible keeps it keyboard-only
+   (mouse clicks don't draw the ring). */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

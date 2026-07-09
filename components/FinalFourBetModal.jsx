@@ -139,6 +139,7 @@ export default function FinalFourBetModal({ open, onClose, user, onPlaced, match
 
   async function handleCancel() {
     if (!myBet?.id || !user) return;
+    if (!confirm('Cancel this bet? Your stake will be refunded.')) return;
     setSubmitting(true);
     setError(null);
     try {

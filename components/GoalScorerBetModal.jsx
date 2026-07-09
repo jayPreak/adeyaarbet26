@@ -249,6 +249,7 @@ export default function GoalScorerBetModal({ open, onClose, matchId, user, onPla
 
   async function handleCancel() {
     if (!user || !matchId) return;
+    if (!confirm('Cancel this bet? Your stake will be refunded.')) return;
     setSubmitting(true);
     setError(null);
     try {
