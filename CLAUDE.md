@@ -324,6 +324,59 @@ silently do nothing — a classic wasted-session trap.
 ### 12. CSS/Theming
 All styles are inline or in `app/globals.css`. CSS vars: `--ink`, `--ink-2`, `--ink-3`, `--surface-2`, `--line`, `--gold`, `--win`, `--loss`. Dark theme only. Mobile-first (phone frame on desktop via media queries).
 
+### 13. ⛔ Direct-Supabase browser reads MUST paginate — PostgREST caps at 1000 rows
+Reads now go **directly from the browser** to Supabase (bypassing Vercel cold
+starts) via `lib/initDirect.js`, `lib/browserQueries.js`, `lib/specialsQuery.js`.
+PostgREST's default `max-rows` is **1000**. The `bets` table is already >1000 rows.
+**Any query that fetches "all bets" (pools, leaderboard, settlement, specialPools)
+MUST add `.range(0, 9999)`** or rows are silently dropped → wrong pool totals,
+wrong Net Win/Loss, specials showing 0 bettors. This shipped to prod once
+(cup_winner showed 0/8). Verify row counts against `SELECT count(*) FROM bets`.
+
+### 14. Net Win/Loss = settlement-normalized, NOT raw ledger
+`realisedBalance` shown in the header/leaderboard is the **zero-sum-normalized**
+settlement position (`settlementByUser` / `mySettlementNet` from `initDirect.js`),
+NOT `computeRealisedBalance()`. Parimutuel `FLOOR()` payouts create a small surplus
+(more paid out than staked); `normalizeToZeroSum()` in `lib/settlement.js` shaves it
+from creditors so the displayed number equals what the Settlement Plan actually pays.
+If you change one path (API leaderboard route vs. browserQueries vs. initDirect) you
+MUST change all three or users see different numbers on different screens.
+
+### 15. Rules of Hooks — no hooks after conditional `return`
+Two prod crashes this session (React #300 + #310) came from a `useMemo`/`useEffect`
+placed AFTER an early `if (x) return null` / `if (open) return` in a component body.
+When the condition flips between renders the hook count changes → crash. ALL hooks
+(useState/useEffect/useMemo/useCallback/useRef) go at the TOP, before any conditional
+return. Hooks inside event handlers/nested functions are fine.
+
+### 16. Modal data loaders need an epoch/cancel guard
+Modals stay mounted (they render `null` when closed after hooks run) and their async
+`loadData()`/`loadPool()` helpers `await` then setState. Without a guard, a rapid
+open→close→reopen or matchId switch lets a stale response stomp fresh state (money-
+facing: GoalScorer/MatchPropsSheet leaked one match's pool into another). Pattern:
+`const epoch = ++loadEpoch.current;` then `if (epoch !== loadEpoch.current) return;`
+before every setState; bump the ref on close.
+
+### 17. Toast renders via portal to `document.body`
+`Toast` in `components/index.jsx` uses `createPortal(..., document.body)`. It was
+previously mounted inside `.app`/`.phone-frame` (which has `overflow:hidden` + stacking
+contexts on desktop) and never appeared. Don't move it back inside the frame.
+
+### 18. Betting deadlines: server RPC is the ONLY real gate; never pin to a constant
+`place_special_bet` enforces timing via `qf_deadline()` (= `MIN(kickoff_ts) WHERE id
+LIKE 'QF-%'`) and `cup_winner_deadline()`. These derive from `match_schedule` — do NOT
+hardcode/pin them (migration 033 pinned `qf_deadline` and closed Final Four betting 30
+min early; 036 reverted it). Client `qfDeadlineTs(matches)` mirrors the server by
+deriving from the live `matches` array. Client constants are UX-only and can only be
+stricter than the server, never looser.
+
+### 19. `resolvesTs` ≠ betting deadline
+In `lib/specials.js`, `resolvesTs` is when a special **settles** (moves to the collapsed
+"Settled Specials" section, which is NOT clickable). `deadlineTs`/server RPC is when
+**betting closes**. Setting `resolvesTs` to the betting deadline makes a still-pending
+bet jump to Settled and become unopenable. Final Four closes at first QF kickoff but
+resolves only after all QFs finish (~`2026-07-12T04:00Z`).
+
 ---
 
 ## Adding a New Feature — Checklist

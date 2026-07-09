@@ -22,8 +22,16 @@ export function computeAliveTeams(matches) {
       let loser = null;
       if (h > a) loser = m.away;
       else if (a > h) loser = m.home;
-      else if (m.homePen != null && m.awayPen != null) {
-        loser = m.homePen > m.awayPen ? m.away : m.home;
+      else {
+        // Level after 90/ET → decided by penalties. Knockouts can't end in a
+        // true draw, so if scores are level we MUST have valid, non-equal pen
+        // scores to know who advanced. If FIFA hasn't posted pen scores yet
+        // (brief lag after the final whistle), eliminate NO ONE this pass —
+        // the next refresh, once pens are in, will resolve it correctly.
+        // Never eliminate a team on a tie we can't break.
+        if (m.homePen != null && m.awayPen != null && m.homePen !== m.awayPen) {
+          loser = m.homePen > m.awayPen ? m.away : m.home;
+        }
       }
       if (loser) eliminated.add(loser);
     }
