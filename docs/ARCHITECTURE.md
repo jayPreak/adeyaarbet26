@@ -123,6 +123,169 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 ```
 
+## Live Match Stream + Chat (Home page, 2026-07-10)
+
+**Overview.** For live World Cup matches, Home renders two collapsible panels near
+the featured/hero card: `LiveStreamPanel` (video) and `LiveChatPanel` (public chat).
+Both are **entirely client-side** — no server involvement, no DB rows, no money
+touched. If either breaks, no financial impact.
+
+### Data model
+- `lib/streams.js` — static, hand-maintained map keyed by our internal match ids
+  (`QF-1`, `QF-2`, …). Each entry has:
+  - `sources[]` — array of `{label, url}` for stream mirrors (embed URLs).
+  - `chatChannel` — the streamed.pk top-level match id used as the WebSocket
+    channel name. This is a different id from any single `source.id`.
+- `getStreams(matchId)` and `getChatChannel(matchId)` are the only public helpers.
+- Refresh recipe is in the file header (curl streamed.pk API, paste URLs).
+
+### 1. The video player (`components/LiveStreamPanel.jsx`)
+
+Explaining this to a backend engineer who has never touched an iframe:
+
+- We are **not** running the stream. streamed.pk (a third-party unofficial PPV
+  aggregator) publishes free web pages at URLs like
+  `https://embed.st/embed/admin/ppv-france-vs-morocco/1` that already contain
+  their own video player, HLS logic, ads, DRM handling — the whole pipeline.
+- An `<iframe src="...">` element is essentially the browser's `include()` for
+  another origin: our page tells the browser "load that URL in a nested viewport
+  and render it there". The nested document runs in its **own origin**
+  (`embed.st`), gets its **own JS context**, and cannot read or write anything
+  from our page — that isolation is enforced by the browser's Same-Origin Policy,
+  not by us. We hand it a rectangle; it does the rest.
+- We control almost nothing about the playback:
+  - `allow="encrypted-media; picture-in-picture"` — Feature-Policy directives
+    that grant the child frame permission to use EME (for DRM'd streams) and
+    request PiP. Without them the player would silently fail on some feeds.
+  - `allowfullscreen` — grants Fullscreen API access to the child frame.
+  - We do NOT set `sandbox` — most PPV players do popups and same-origin
+    tricks that break under a strict sandbox. Tradeoff: they can attempt
+    popups from within the iframe. Acceptable for our friend group.
+- **Only mount the iframe when the panel is open.** A mounted iframe autoplays
+  and consumes data even if it's offscreen. `LiveStreamPanel` short-circuits
+  the JSX (`{open && <iframe .../>}`) so collapsing actually stops the stream.
+- **Switching sources** is just `setSourceIdx(i)` → the `<iframe src>` changes →
+  browser tears down the old document and loads the new one. The `key={active.url}`
+  prop makes React rebuild the node instead of trying to reuse it (some
+  players don't handle in-place `src` swaps gracefully).
+- **What we can never do from the iframe:**
+  - Read the video buffer / detect play state / know if it's actually playing.
+  - Send commands to the player (no `postMessage` API is documented for these).
+  - Intercept or block ads.
+  - Detect that the stream died. Best signal we have is user feedback ("try
+    another source"), which is why the source-switcher is prominent.
+- **What could break at runtime:**
+  - streamed.pk / embed.st ToS change → they add a `frame-ancestors` CSP header
+    → our iframe silently renders "refused to connect". The stream just doesn't
+    play; nothing else on the page is affected.
+  - URL slugs rotate (they occasionally do). Fix = refresh `lib/streams.js`.
+  - Their DNS changes / provider goes down. Same: iframe blank, page fine.
+
+### 2. The chat (`components/LiveChatPanel.jsx`)
+
+Explaining the WebSocket to a backend engineer:
+
+- streamed.pk's own web page opens a WebSocket to
+  `wss://chat.cdn-lab.shop/chat?channel=<streamedpk-match-id>` from within its
+  page. We reverse-engineered the wire protocol from a HAR capture (see
+  session log 2026-07-10) and open the **exact same** WebSocket **from our
+  browser** — no proxying, no server component.
+- Because it's browser→WSS directly, the request carries `Origin: <our-site>`.
+  Cloudflare (which fronts `chat.cdn-lab.shop`) currently does **not** enforce
+  an Origin allowlist, so it accepts the handshake. If they ever start
+  enforcing it, we'll see WS close with a 1008/4403 code and the panel will
+  show "Offline · Retry". That's the whole failure mode.
+- **Protocol (all JSON text frames, both directions):**
+  - Client → server:
+    - `{event:"ping", client:"<64-hex>"}` — heartbeat. We send once on open.
+      `client` is a random per-session token; the server doesn't seem to
+      validate it, but we send one to match what streamed.pk itself sends.
+    - `{event:"username", username:"foo"}` — claim a display name. Server
+      replies `{event:"username", username, taken:true|false}`.
+    - `{event:"message", message:"..."}` — post a message. Server broadcasts
+      to all subscribers on the channel with a random `id` and assigned `color`.
+  - Server → client:
+    - `{event:"burst", messages:[…]}` — initial recent-history dump on join.
+    - `{event:"message", id, username, message, color, sticky?}` — new message.
+    - `{event:"delete", id}` — moderator deleted a message (remove from UI).
+    - `{event:"count", count}` — live viewer count (periodic).
+    - `{event:"ratelimit", ends: <epoch-ms>}` — "slow mode" hit. Client must
+      wait until `ends` before the next send is accepted.
+- **Turnstile (Cloudflare anti-bot).** streamed.pk's own page sends a
+  `{event:"turnstile", token:"..."}` frame during send. We do NOT send one
+  and sending currently works anyway — either the token is optional, or the
+  server only checks it under abuse conditions. If they start enforcing it,
+  we'll fail to send with no client-visible error (the server just drops the
+  frame). Detection: user says "my messages don't appear". Fix would be
+  embedding their Turnstile widget under their site key — which won't
+  validate from our origin — so realistic fallback is read-only.
+- **State machine in the component:**
+  ```
+  idle ──open panel──► connecting ──ws.onopen──► open
+                            │                      │
+                            │                      ├── ws.onclose (open ref true)
+                            │                      │       └─► reconnecting (backoff)
+                            │                      │
+                            │                      └── panel closed → teardown → idle
+                            │
+                            └── panel closed / error 1008/4403 → gaveup
+  reconnecting ──timer fires──► connecting (attempt++)
+  reconnecting ──6 attempts fail──► gaveup (user Retry required)
+  ```
+- **Reconnect policy.** Exponential backoff `1s, 2s, 4s, 8s, 15s, 15s`. Also
+  triggered on `visibilitychange` when the tab returns to foreground with a
+  dead socket (mobile Safari kills backgrounded WS aggressively). After 6
+  failed attempts we go to `gaveup` and show a manual **Retry** button.
+- **Username claim on reconnect.** After the socket is proved dead, we've
+  lost server-side session state. On reconnect we re-send the previously
+  accepted `{event:"username", username}` from `usernameToClaimRef`. If the
+  reconnect is fast enough, streamed.pk considers the old session still
+  attached and returns `taken:true` — the user will see an error. This is a
+  known race; realistic workaround is to append a numeric suffix and retry.
+  Not implemented; hasn't been an issue for our friend group.
+- **Auto-scroll behavior.** Sticky-bottom: if user is within 40px of the
+  bottom, new messages scroll into view; if they've scrolled up to read
+  history, we leave them alone. Tracked via `stickyBottomRef` updated in
+  the container's `onScroll`.
+- **Memory cap.** `MAX_RENDERED = 200`. Old messages are dropped from state
+  when new ones come in. Prevents DOM growth over long matches.
+- **Local error boundary.** `LiveChatPanel` wraps its own renderer in a
+  React ErrorBoundary that **fails closed** (renders nothing). A crash in
+  chat can NEVER break the Home page.
+- **What we can never do:**
+  - Guarantee delivery of a send. WSS `.send()` doesn't return a receipt.
+    We assume success if we don't see an error and don't see our message
+    echoed back with our username within a few seconds. UI just optimistically
+    clears the input.
+  - Enforce moderation. Server-side moderators may delete our messages via
+    `{event:"delete", id}` and we honor it. We have no way to appeal.
+
+### Files touched
+- `lib/streams.js` — data map + accessors.
+- `components/LiveStreamPanel.jsx` — video iframe + source switcher.
+- `components/LiveChatPanel.jsx` — WebSocket + reconnect + UI.
+- `components/screens/HomeScreen.jsx` — renders both above `<HeroMatch>`
+  when the featured match is `status === 'live'`.
+- `app/chat-probe/page.js` — dev-only diagnostic page for testing the WS
+  from arbitrary origins. Safe to leave in prod (no side effects, unlinked).
+
+### Known / anticipated failure modes for future debuggers
+- **Video iframe renders blank.** Either the `MATCH_STREAMS` URL 404'd or
+  embed.st added `frame-ancestors` CSP. Refresh URLs; if all embed.st URLs
+  now refuse, we're stuck with iframe-only providers that opt out of this.
+- **Chat panel stuck on "Connecting…".** WS handshake hanging. Check devtools
+  Network → WS tab. Most likely Cloudflare started rejecting our Origin.
+  Panel will eventually give up and show Retry.
+- **Chat panel says "Offline · code 1008".** Origin blocked. Would need a
+  server-side WS proxy (Vercel Edge Function) to spoof Origin.
+- **Sends silently do nothing.** Turnstile enforcement turned on. See above.
+- **Ratelimit permanent-seeming.** Cloudflare per-IP rate limits on that
+  channel. Wait it out; not a bug.
+- **Chat renders 30 minutes of history on join.** `burst` is streamed.pk-controlled;
+  we cap the DOM at 200 messages, so it's cosmetic only.
+- **Home crashes with a chat error.** Shouldn't happen — `ChatErrorBoundary`
+  catches it. If it does, that boundary itself is broken; check its class.
+
 ## Pending Work / Known Issues
 1. **Leaderboard boring** — everyone shows negative since no matches resolved. Need to make it engaging (total staked, biggest bettor, etc.)
 2. **Pick buttons in PlaceBetSheet** — text color may appear dark on some devices (CSS fix added for `.sheet .odds-btn__label`)
