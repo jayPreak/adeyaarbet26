@@ -33,8 +33,8 @@ describe('getMinBet', () => {
     expect(getMinBet('FIN-1')).toBe(500);
   });
 
-  test('3rd place (3RD-1) returns 350', () => {
-    expect(getMinBet('3RD-1')).toBe(350);
+  test('3rd place (3RD-1) returns 400', () => {
+    expect(getMinBet('3RD-1')).toBe(400);
   });
 
   test('null/undefined returns 50', () => {
