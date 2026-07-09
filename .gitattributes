@@ -1,0 +1,6 @@
+# Append-at-top log files: many parallel PRs edit the same region and would
+# otherwise conflict on every merge. The built-in `union` merge driver keeps
+# both sides' lines instead of raising a conflict. (GitHub honors the built-in
+# union driver; custom drivers are not run server-side.)
+CHANGELOG.md merge=union
+docs/ai/SESSION_LOG.md merge=union
