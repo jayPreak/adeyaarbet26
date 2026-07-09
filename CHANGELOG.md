@@ -12,6 +12,19 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-09
+- **[chore]** Removed dead code and a heavy asset ahead of open-sourcing: the legacy
+  `AdeYaarApp.jsx` monolith shell (426 lines, not rendered), `GoldenBootBetModal.jsx`
+  (would crash if ever mounted — its special isn't registered), and the 8 MB
+  `stadium-crowd.mp4` splash video (the splash only shows before the tournament opener,
+  which has passed — swapped the video for a lightweight gradient). Updated the docs
+  that pointed at these files.
+  _Files: components/AdeYaarApp.jsx (del), components/GoldenBootBetModal.jsx (del),
+  public/stadium-crowd.mp4 (del), components/CountdownSplash.jsx, CLAUDE.md,
+  components/CLAUDE.md, docs/ai/STATE.md. By: Claude Code._
+
+---
+
 ## 2026-07-05
 - **[docs]** Set up the AI documentation system: rewrote stale parts of `CLAUDE.md`
   (the app shell is now `app/(tabs)/layout.jsx` + `BettingContext`, not the old
