@@ -18,18 +18,22 @@ Newest entries at the TOP (below this header block).
 
 ---
 
-## 2026-07-09 — Lower Final minimum bet to 500 (PR #46)
-- **Task:** Make the Final's minimum bet 500 instead of 1000.
-- **Change:** `lib/currency.js` `STAGE_MINIMUMS.FIN` 1000 → 500; updated the two `getMinBet`
-  tests (`min-bet.test.js`, `penalty.test.js`) that pinned `FIN-1 → 1000`.
-- **Decision:** No migration — the server `bet_min()` RPC (migration 026) already returns 500
-  for `FIN-%`. This was pure client/server drift; the UI was stricter than the backend.
-- **Gotcha:** Same drift still exists on QF (client 250 / server 200), SF (350 / 300) and
-  3RD (client 350 / server **500** — client lets you attempt a sub-500 bet the server rejects).
-  Left as-is (out of scope); flagged in PR #46.
+## 2026-07-09 — Align knockout bet minimums, client + server (PR #46)
+- **Task:** Set knockout minimums to QF 250, SF 350, 3rd-place 400, Final 500 (from 1000).
+- **Change:** `lib/currency.js` `STAGE_MINIMUMS` FIN 1000→500, 3RD 350→400 (QF/SF already
+  250/350); `supabase/migrations/036_align_ko_bet_minimums.sql` redefines `bet_min()` to
+  QF 250, SF 350, FIN 500, 3RD 400 (was QF 200, SF 300, FIN 500, 3RD 500 in migration 026);
+  updated the pinned `getMinBet` tests.
+- **Decision:** The UI `getMinBet()` and the server `bet_min()` RPC are two sources of truth
+  for the same values (UI needs the number locally for slider/disable). They had drifted;
+  036 re-syncs the server to the client. Final values: R32 50, R16 100, QF 250, SF 350,
+  FIN 500, 3RD 400.
+- **Gotcha:** 3rd-place was user-visible broken — UI allowed a 350–499 bet the server (500)
+  rejected with "Bet below minimum". **Migration 036 must be applied to the Supabase DB**
+  for the server side to change; merging the PR alone does not apply migrations here.
 - **Verification:** 356/356 tests pass, `next build` clean.
 - **Doc note:** This entry lives on the doc-consolidation branch (#45) so it doesn't
-  re-introduce the append-conflict; PR #46 itself carries only code + tests.
+  re-introduce the append-conflict; PR #46 itself carries only code + migration + tests.
 
 ## 2026-07-09 — Audit fix PRs #40–#44 (consolidated entry)
 - **Task:** Multi-PR audit cleanup ahead of open-sourcing. Each concern shipped as its own
