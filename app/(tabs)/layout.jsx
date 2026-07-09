@@ -2,13 +2,17 @@
 
 import { Component, useEffect } from 'react';
 import { BettingProvider, useBetting } from '@/lib/BettingContext';
+import dynamic from 'next/dynamic';
 import { AppHeader, TabBar, PlaceBetSheet, Toast, SpecialNotification } from '@/components';
 import CountdownGate from '@/components/CountdownGate';
-import CupWinnerBetModal from '@/components/CupWinnerBetModal';
-import ContinentBetModal from '@/components/ContinentBetModal';
-import H2HBetModal from '@/components/H2HBetModal';
-import ThirdPlaceQualifierBetModal from '@/components/ThirdPlaceQualifierBetModal';
 import { useAutoReload } from '@/lib/useAutoReload';
+
+// Lazy-load the special-bet modals — they're rarely opened, so keep their code
+// out of the initial shell bundle. Each becomes its own chunk fetched on first open.
+const CupWinnerBetModal = dynamic(() => import('@/components/CupWinnerBetModal'));
+const ContinentBetModal = dynamic(() => import('@/components/ContinentBetModal'));
+const H2HBetModal = dynamic(() => import('@/components/H2HBetModal'));
+const ThirdPlaceQualifierBetModal = dynamic(() => import('@/components/ThirdPlaceQualifierBetModal'));
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -107,18 +111,26 @@ function TabsShell({ children }) {
         </div>
       )}
 
-      <div data-theme={theme}>
-        <CupWinnerBetModal open={cupWinnerOpen} onClose={() => setCupWinnerOpen(false)} user={user} myCupWinnerBet={myCupWinnerBet} onPlaced={() => { refreshCupWinnerBet(); refreshData(); }} deadlineTs={cupWinnerDeadlineTs} />
-      </div>
-      <div data-theme={theme}>
-        <ContinentBetModal open={continentOpen} onClose={() => setContinentOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
-      </div>
-      <div data-theme={theme}>
-        <H2HBetModal open={h2hOpen} onClose={() => setH2hOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
-      </div>
-      <div data-theme={theme}>
-        <ThirdPlaceQualifierBetModal open={thirdPlaceQualOpen} onClose={() => setThirdPlaceQualOpen(false)} user={user} onPlaced={() => { refreshData(); }} matches={matches} />
-      </div>
+      {cupWinnerOpen && (
+        <div data-theme={theme}>
+          <CupWinnerBetModal open onClose={() => setCupWinnerOpen(false)} user={user} myCupWinnerBet={myCupWinnerBet} onPlaced={() => { refreshCupWinnerBet(); refreshData(); }} deadlineTs={cupWinnerDeadlineTs} />
+        </div>
+      )}
+      {continentOpen && (
+        <div data-theme={theme}>
+          <ContinentBetModal open onClose={() => setContinentOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
+        </div>
+      )}
+      {h2hOpen && (
+        <div data-theme={theme}>
+          <H2HBetModal open onClose={() => setH2hOpen(false)} user={user} onPlaced={() => { refreshData(); }} />
+        </div>
+      )}
+      {thirdPlaceQualOpen && (
+        <div data-theme={theme}>
+          <ThirdPlaceQualifierBetModal open onClose={() => setThirdPlaceQualOpen(false)} user={user} onPlaced={() => { refreshData(); }} matches={matches} />
+        </div>
+      )}
     </div>
   );
 }
