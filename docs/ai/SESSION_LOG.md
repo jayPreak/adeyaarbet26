@@ -18,22 +18,6 @@ Newest entries at the TOP (below this header block).
 
 ---
 
-## 2026-07-09 — Import engineering best-practices into CLAUDE.md
-- **Task:** Fold the maintainer's engineering standards into the project `CLAUDE.md`.
-- **Changes:** new "Engineering Principles" section — behavioural-tests-first, pure domain
-  helpers, separation of concerns, no silent error swallowing, and a code-review-triggers
-  checklist. Adapted the maintainer's global rules to this repo's JS/Next/Supabase stack
-  (dropped the Python/uv/pytest specifics) and used real repo examples (ledger.js purity,
-  the duplicate bet modals, the 46-field BettingContext).
-- **Decisions:** did NOT import the "context.md telephone book" convention — this repo already
-  has an equivalent doc system (CLAUDE.md + docs/ai/{SESSION_LOG,STATE}); adding a foreign
-  convention would duplicate it.
-- **Verification:** doc-only; `npm test` still 356 pass.
-- **Left undone / follow-ups:** NEXT — audit `__tests__/` to confirm every test is behavioural
-  (per the new rule the maintainer emphasised).
-
----
-
 ## 2026-07-05 — Set up AI documentation system
 - **Task:** Make the repo self-documenting for AI work: doc-update protocol enforced
   before every commit, human changelog, AI session log, current-state file,
