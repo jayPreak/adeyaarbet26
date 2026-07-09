@@ -18,24 +18,6 @@ Newest entries at the TOP (below this header block).
 
 ---
 
-## 2026-07-09 — Lazy-mount special modals
-- **Task:** Reduce per-render work in the app shell (speed goal).
-- **Changes:** `app/(tabs)/layout.jsx` — the 4 special modals (CupWinner, Continent, H2H,
-  ThirdPlaceQualifier) were statically imported and rendered unconditionally (they returned
-  null when closed but still ran their hooks/effects every shell render). Converted to
-  `next/dynamic` + gated render on the open flag, so they mount only when opened.
-- **Decisions / honesty:** measured per-route "First Load JS" is basically unchanged — those
-  modals weren't the bundle's weight — so this is a *runtime* win (fewer mounted components /
-  effects per render), not a bundle win. Did NOT attempt the bigger lever: splitting the
-  46-field `BettingContext` value (which re-renders the whole tree on any change) — that's a
-  risky refactor touching every consumer, better done deliberately with review, not in an
-  automated pass on a real-money app.
-- **Verification:** `npm test` 356 pass; `next build` compiles.
-- **Left undone / follow-ups:** BettingContext value split; code-split the 1400-line
-  `components/index.jsx`; host FIFA flag images locally instead of the FIFA CDN.
-
----
-
 ## 2026-07-05 — Set up AI documentation system
 - **Task:** Make the repo self-documenting for AI work: doc-update protocol enforced
   before every commit, human changelog, AI session log, current-state file,

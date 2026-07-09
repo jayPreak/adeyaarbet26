@@ -12,16 +12,6 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
-## 2026-07-09
-- **[perf]** The four special-bet modals (cup winner, continent, H2H, third-place) used to
-  be mounted in the app shell at all times — running their state and effects on every
-  render even while closed. They now mount only when opened (and their code is
-  `next/dynamic`-split into separate chunks fetched on first open). Less work on every
-  screen render.
-  _Files: app/(tabs)/layout.jsx. By: Claude Code._
-
----
-
 ## 2026-07-05
 - **[docs]** Set up the AI documentation system: rewrote stale parts of `CLAUDE.md`
   (the app shell is now `app/(tabs)/layout.jsx` + `BettingContext`, not the old
