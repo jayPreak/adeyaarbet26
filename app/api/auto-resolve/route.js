@@ -138,13 +138,16 @@ export async function GET(request) {
     try {
       const { data } = await db.rpc('apply_all_pending_penalties');
       penaltiesResult = data;
-    } catch {
+    } catch (e) {
       // non-fatal — proceed with match resolution regardless
+      console.error('[auto-resolve] apply_all_pending_penalties failed:', e?.message || e);
     }
   } else {
     // Fire-and-forget: kick off penalties in the background but don't wait.
     // If the process dies before it completes, the nightly cron cleans up.
-    db.rpc('apply_all_pending_penalties').then(({ data }) => { penaltiesResult = data; }).catch(() => {});
+    db.rpc('apply_all_pending_penalties')
+      .then(({ data }) => { penaltiesResult = data; })
+      .catch((e) => console.error('[auto-resolve] background penalties failed:', e?.message || e));
   }
 
   let fifaResults;

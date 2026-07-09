@@ -12,6 +12,18 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-09
+- **[fix]** Reliability pass. Fixed 4 bugs SonarQube flagged: a Final Four modal calling
+  `qfDeadlineTs()` with a stray argument, two JSX conditionals that could render a literal
+  `0`/falsy value on screen (`total-goals` projection, live-watch banner), and a
+  fire-and-forget fetch with no error handling. Also added error logging at the silent
+  failure points — auto-resolve penalties and the FIFA/auto-resolve background fetches
+  now log instead of swallowing (the app previously had zero `console.error/warn`, so
+  prod failures vanished).
+  _Files: app/api/auto-resolve/route.js, lib/BettingContext.jsx, components/FinalFourBetModal.jsx, components/index.jsx, app/(tabs)/specials/total-goals/page.jsx. By: Claude Code._
+
+---
+
 ## 2026-07-05
 - **[docs]** Set up the AI documentation system: rewrote stale parts of `CLAUDE.md`
   (the app shell is now `app/(tabs)/layout.jsx` + `BettingContext`, not the old
