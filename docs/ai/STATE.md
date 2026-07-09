@@ -19,6 +19,10 @@ _Last updated: 2026-07-05_
   titles (client-side achievements), news tab, live commentary links.
 
 ## Known issues / risks
+- **⚠️ Committed secrets in git history (open-source blocker):** the Postgres DB
+  password, project ref, and anon JWT were committed in docs. They're redacted from
+  the working tree (2026-07-09) but remain in history. Rotate the DB password in
+  Supabase and scrub history (BFG / git-filter-repo) before making the repo public.
 - **`SUPABASE_SERVICE_ROLE_KEY` has been missing from Vercel env vars** — breaks
   service_role-only RPCs in prod (duels settlement, `settle_special`). Verify it is
   set before relying on auto-resolve settling props/duels.
