@@ -31,6 +31,23 @@ Newest entries at the TOP (below this header block).
 - **Verification:** real `next lint` → 0 errors, exit 0; `npm test` 356 pass; `next build` exit 0.
 - **Left undone / follow-ups:** could add Playwright e2e as a separate job later (needs a test DB).
   This eslintrc must land on main (via this PR) for the other PRs' CI to lint cleanly.
+## 2026-07-09 — Repo audit + open-source prep (multi-PR)
+- **Task:** Full audit (UI/UX, speed, bugs, CI/CD, SonarQube). Ship fixes as multiple
+  focused PRs. Repo is being prepped for open source, so higher quality bar.
+- **PR: redact-committed-secrets** — scrubbed the Postgres DB password, Supabase project
+  ref, and anon JWT from `docs/ARCHITECTURE.md` and one plan doc. All were committed in
+  plain text.
+- **Gotchas / learnings:** Secrets remain in git *history* — redaction commits do not
+  remove them. The DB password (`SUPABASE_DB_PASSWORD`) MUST be rotated in Supabase
+  before the repo goes public. Anon key is public-by-design (RLS-protected) but was
+  rotated-worthy hygiene anyway. PRs come from fork `pratyush-skima/adeyaarbet26`
+  (no push access to `jayPreak/adeyaarbet26`).
+- **SonarQube baseline (2026-07-09):** 0 vulns, 4 bugs, 411 smells (mostly nested
+  ternaries S3358 ×201 + complexity S3776 ×77), 5 hotspots (all Math.random for
+  animation / dev script → Safe), 7.7% duplication. Reliability rating D from the 4 bugs.
+- **Verification:** `git grep` confirms no secrets remain in tracked files.
+- **Left undone / follow-ups:** rotate DB password; scrub git history (BFG/filter-repo)
+  if required before publishing; remaining PRs (CI, observability, cleanup, UX, speed).
 
 ---
 

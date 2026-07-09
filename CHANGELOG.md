@@ -20,6 +20,12 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
   prompt interactively and couldn't run in CI. The cosmetic `react/no-unescaped-entities`
   rule is disabled (it trips on ordinary English apostrophes); real rules stay as warnings.
   _Files: .github/workflows/ci.yml, .eslintrc.json. By: Claude Code._
+- **[fix]** Redacted committed credentials from docs ahead of open-sourcing: the
+  Postgres DB password, the Supabase project ref, and the anon JWT were sitting in
+  plain text in `docs/ARCHITECTURE.md` and one plan doc. Replaced with placeholders.
+  ⚠️ These are still in git *history* — the DB password MUST be rotated in Supabase
+  before the repo is made public.
+  _Files: docs/ARCHITECTURE.md, docs/superpowers/plans/2026-06-11-schedule-sync-and-bet-cutoffs.md. By: Claude Code._
 
 ---
 
