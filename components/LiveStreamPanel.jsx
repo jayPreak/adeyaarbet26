@@ -8,8 +8,8 @@ import LiveChatPanel from '@/components/LiveChatPanel';
 // Collapsible live-stream panel. Display-only — no money/betting.
 // Iframe only mounted when expanded so offscreen streams don't autoplay/eat data.
 // Desktop-only "Theater" mode opens a full-screen modal with stream + chat side-by-side.
-export default function LiveStreamPanel({ match }) {
-  const [open, setOpen] = useState(true);
+export default function LiveStreamPanel({ match, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
   const [sourceIdx, setSourceIdx] = useState(0);
   const [theater, setTheater] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);

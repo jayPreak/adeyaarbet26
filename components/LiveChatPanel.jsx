@@ -52,12 +52,21 @@ function InnerChatPanel({ channel, embedded = false, fillHeight = false }) {
   const connectedRef = useRef(false);
   const usernameToClaimRef = useRef('');
   const scrollRef = useRef(null);
+  const bottomSentinelRef = useRef(null);
   const stickyBottomRef = useRef(true);
+  const observerRef = useRef(null);
+  const stableOpenTimerRef = useRef(null);
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(LS_USERNAME);
-      if (saved) setUsername(saved);
+      // Guard against legacy bad writes ("undefined"/"null"/whitespace)
+      if (saved && saved !== 'undefined' && saved !== 'null' && saved.trim()) {
+        setUsername(saved.trim());
+      } else if (saved) {
+        // Clean up bad legacy value
+        try { localStorage.removeItem(LS_USERNAME); } catch { /* ignore */ }
+      }
     } catch { /* ignore */ }
   }, []);
 
@@ -77,8 +86,24 @@ function InnerChatPanel({ channel, embedded = false, fillHeight = false }) {
 
   const teardown = () => {
     clearReconnectTimer();
+    if (stableOpenTimerRef.current) {
+      clearTimeout(stableOpenTimerRef.current);
+      stableOpenTimerRef.current = null;
+    }
+    detachWs(wsRef.current);
     if (wsRef.current) { try { wsRef.current.close(); } catch { /* ignore */ } }
     wsRef.current = null;
+  };
+
+  // Remove event handlers so a dying socket doesn't fire onclose→scheduleReconnect
+  // AFTER we've already opened its replacement (the "chat drops+reconnects on
+  // every visibility flip / retry" bug).
+  const detachWs = (ws) => {
+    if (!ws) return;
+    ws.onopen = null;
+    ws.onmessage = null;
+    ws.onerror = null;
+    ws.onclose = null;
   };
 
   const scheduleReconnect = useCallback(() => {
@@ -103,7 +128,11 @@ function InnerChatPanel({ channel, embedded = false, fillHeight = false }) {
   const connect = useCallback(() => {
     if (!channel) return;
     clearReconnectTimer();
-    if (wsRef.current) { try { wsRef.current.close(); } catch { /* ignore */ } }
+    if (wsRef.current) {
+      detachWs(wsRef.current);
+      try { wsRef.current.close(); } catch { /* ignore */ }
+      wsRef.current = null;
+    }
 
     const url = `wss://chat.cdn-lab.shop/chat?channel=${encodeURIComponent(channel)}`;
     setStatus(attemptRef.current === 0 ? 'connecting' : 'reconnecting');
@@ -122,12 +151,22 @@ function InnerChatPanel({ channel, embedded = false, fillHeight = false }) {
 
     ws.onopen = () => {
       setStatus('open');
-      attemptRef.current = 0;
       setReconnectIn(0);
+      // Do NOT reset attemptRef here — server may accept the handshake then
+      // close moments later (post-open reject). Instead, only trust the
+      // connection after it's been stable for 5s, which prevents a tight
+      // reconnect loop that would never trip the 6-attempt cap.
+      if (stableOpenTimerRef.current) clearTimeout(stableOpenTimerRef.current);
+      stableOpenTimerRef.current = setTimeout(() => {
+        stableOpenTimerRef.current = null;
+        attemptRef.current = 0;
+      }, 5000);
       try { ws.send(JSON.stringify({ event: 'ping', client: clientTokenRef.current })); } catch { /* ignore */ }
-      const claim = usernameToClaimRef.current || username;
-      if (claim) {
-        try { ws.send(JSON.stringify({ event: 'username', username: claim })); } catch { /* ignore */ }
+      // Only auto-re-claim when we've previously accepted a username this session
+      // (usernameToClaimRef is only set from server-confirmed username=false response).
+      const claim = usernameToClaimRef.current;
+      if (claim && typeof claim === 'string' && claim.trim() && claim !== 'undefined' && claim !== 'null') {
+        try { ws.send(JSON.stringify({ event: 'username', username: claim.trim() })); } catch { /* ignore */ }
       }
     };
     ws.onmessage = (ev) => {
@@ -149,13 +188,19 @@ function InnerChatPanel({ channel, embedded = false, fillHeight = false }) {
         return;
       }
       if (data.event === 'username') {
-        if (data.taken === false) {
+        const claimed = typeof data.username === 'string' ? data.username.trim() : '';
+        if (data.taken === false && claimed) {
           setUsernameConfirmed(true);
-          usernameToClaimRef.current = data.username;
-          try { localStorage.setItem(LS_USERNAME, data.username); } catch { /* ignore */ }
+          usernameToClaimRef.current = claimed;
+          try { localStorage.setItem(LS_USERNAME, claimed); } catch { /* ignore */ }
         } else if (data.taken === true) {
           setUsernameConfirmed(false);
-          setError(`Username "${data.username}" is taken. Pick another.`);
+          // Suppress the useless "undefined is taken" case entirely
+          if (claimed && claimed !== 'undefined' && claimed !== 'null') {
+            setError(`Username "${claimed}" is taken. Pick another.`);
+          } else {
+            setError(null);
+          }
         }
         return;
       }
@@ -166,6 +211,10 @@ function InnerChatPanel({ channel, embedded = false, fillHeight = false }) {
     };
     ws.onerror = () => { /* onclose fires after */ };
     ws.onclose = (e) => {
+      if (stableOpenTimerRef.current) {
+        clearTimeout(stableOpenTimerRef.current);
+        stableOpenTimerRef.current = null;
+      }
       setUsernameConfirmed(false);
       if (!connectedRef.current) { setStatus('closed'); return; }
       if (e.code === 1008 || e.code === 4403 || e.code === 4001) {
@@ -207,19 +256,36 @@ function InnerChatPanel({ channel, embedded = false, fillHeight = false }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected, connect]);
 
+  // IntersectionObserver watches a bottom sentinel: if it's visible, user is
+  // "at the bottom" and we should stick; if it scrolls out of view, they're
+  // reading history — leave them alone. This survives content growth,
+  // reflow, mobile keyboard resize etc. that a distance-from-bottom check
+  // silently gets wrong.
   useEffect(() => {
-    if (!scrollRef.current) return;
-    if (stickyBottomRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    if (!scrollRef.current || !bottomSentinelRef.current) return;
+    if (observerRef.current) observerRef.current.disconnect();
+    const io = new IntersectionObserver(
+      (entries) => {
+        stickyBottomRef.current = entries[0]?.isIntersecting ?? true;
+      },
+      { root: scrollRef.current, threshold: 0.01, rootMargin: '0px 0px 40px 0px' }
+    );
+    io.observe(bottomSentinelRef.current);
+    observerRef.current = io;
+    return () => io.disconnect();
+  }, [connected]); // re-bind when list gets mounted/unmounted
 
-  const onScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    stickyBottomRef.current = distFromBottom < 40;
-  };
+  useEffect(() => {
+    if (!scrollRef.current || !bottomSentinelRef.current) return;
+    if (!stickyBottomRef.current) return;
+    // Wait one frame so the new message is laid out before we scroll
+    const raf = requestAnimationFrame(() => {
+      if (bottomSentinelRef.current) {
+        bottomSentinelRef.current.scrollIntoView({ block: 'end' });
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [messages]);
 
   const registerUsername = () => {
     if (!wsRef.current || wsRef.current.readyState !== 1) return;
@@ -357,7 +423,6 @@ function InnerChatPanel({ channel, embedded = false, fillHeight = false }) {
       {/* Message list */}
       <div
         ref={scrollRef}
-        onScroll={onScroll}
         style={{
           ...(fillHeight ? { flex: 1, minHeight: 0 } : { height: 260 }),
           overflowY: 'auto',
@@ -385,6 +450,7 @@ function InnerChatPanel({ channel, embedded = false, fillHeight = false }) {
             <span style={{ color: 'var(--ink-2)' }}>: {m.message}</span>
           </div>
         ))}
+        <div ref={bottomSentinelRef} style={{ height: 1 }} aria-hidden="true" />
       </div>
 
       {/* Compose / register / gaveup — BELOW the messages */}

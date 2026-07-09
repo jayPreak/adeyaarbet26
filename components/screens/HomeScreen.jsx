@@ -221,13 +221,15 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
 
   return (
     <div>
-      {featured?.status === 'live' && <LiveStreamPanel match={featured} />}
+      {featured?.status === 'live' && <LiveStreamPanel match={featured} defaultOpen={false} />}
 
       {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending' && (b.kind === 'match' || b.kind === 'penalty'))} onCancelBet={onCancelBet} userId={user?.id} />}
 
-      {/* Live-stream (+ embedded chat) panels for any other live matches */}
+      {/* Additional live-stream panels default to COLLAPSED — only the
+          featured hero-stream autoplays, preventing multiple iframes running
+          in parallel (audio doubling + 2x bandwidth on doubleheaders). */}
       {live.filter(m => m.id !== featured?.id).map(m => (
-        <LiveStreamPanel key={`stream-${m.id}`} match={m} />
+        <LiveStreamPanel key={`stream-${m.id}`} match={m} defaultOpen={false} />
       ))}
 
       {/* Live matches (exclude the featured/hero match to avoid duplicate) */}
