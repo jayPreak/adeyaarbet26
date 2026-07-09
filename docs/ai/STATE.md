@@ -5,7 +5,7 @@ Update this whenever your change alters what's live, fixes/introduces a known is
 or creates a pending manual step. Keep it current — this is state, not history
 (history goes in SESSION_LOG.md).
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-10_
 
 ## Tournament phase
 - FIFA World Cup 2026, mid-tournament (knockout stage era: R32/QF features shipped,
@@ -17,6 +17,10 @@ _Last updated: 2026-07-05_
   qualifiers, R32 picks, match props (scoreline / over-under / pens), friend duels
   (challenges), Final Four, Total Goals (rescaled to 96-match window), leaderboard
   titles (client-side achievements), news tab, live commentary links.
+- **Live match stream panel on Home** (2026-07-10): collapsible embedded video
+  player above the hero card for live matches, with source-switch buttons.
+  Sources hardcoded in `lib/streams.js` (streamed.pk snapshot). QF-1…QF-3
+  populated; QF-4/SF/FIN pending stream availability. Display-only.
 
 ## Known issues / risks
 - **⚠️ Committed secrets in git history (open-source blocker):** the Postgres DB
@@ -32,6 +36,11 @@ _Last updated: 2026-07-05_
 - No server-side auth on API routes (accepted risk for friend group).
 - `components/AdeYaarApp.jsx` is dead code and still in the tree — deleting it is a
   candidate cleanup, but verify nothing imports it first.
+
+## Pending manual steps (before/during tournament)
+- Extend `lib/streams.js` `MATCH_STREAMS` with mirrors for SF-1, SF-2, FIN-1,
+  3RD-1, and QF-4 once streamed.pk populates them. Refresh recipe is in the
+  file header.
 
 ## Pending manual steps (end of tournament)
 - Settle: cup winner (`settle_cup_winner`), continent/h2h/golden boot

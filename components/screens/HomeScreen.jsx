@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { CURRENCY_SYMBOL } from '@/lib/currency';
 import { HeroMatch, SectionHead, MatchCard } from '@/components';
+import LiveStreamPanel from '@/components/LiveStreamPanel';
 import { fetchActivityDirect } from '@/lib/browserQueries';
 
 function relativeTime(iso) {
@@ -239,7 +240,14 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
         </div>
       )}
 
+      {featured?.status === 'live' && <LiveStreamPanel match={featured} />}
+
       {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending' && (b.kind === 'match' || b.kind === 'penalty'))} onCancelBet={onCancelBet} userId={user?.id} />}
+
+      {/* Live-stream panels for any other live matches (not the featured/hero) */}
+      {live.filter(m => m.id !== featured?.id).map(m => (
+        <LiveStreamPanel key={`stream-${m.id}`} match={m} />
+      ))}
 
       {/* Live matches (exclude the featured/hero match to avoid duplicate) */}
       {live.filter(m => m.id !== featured?.id).length > 0 && (

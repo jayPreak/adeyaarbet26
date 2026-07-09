@@ -21,6 +21,11 @@ AdeYaarApp.jsx silently does nothing.
 - `MatchPropsSheet.jsx` — match props + duels bottom sheet.
 - `CountdownGate.jsx` / `CountdownSplash.jsx` / `MiniCountdown.jsx`, `LineupSheet.jsx`,
   `SearchOverlay.jsx`, `R32BetPage.jsx` — misc.
+- `LiveStreamPanel.jsx` — collapsible embedded live-video player rendered on Home
+  above the hero card when a match is live. Reads mirror URLs from
+  `lib/streams.js:getStreams(matchId)`; renders nothing if the id has no mapping.
+  Iframe is only mounted while expanded (autoplay + data usage). Display-only —
+  no money/betting logic.
 
 ## Conventions
 - Never show raw `match_id`/`pick` to users — use `getSpecial(kind).formatPick(pick)`

@@ -12,6 +12,20 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-10
+- **[feat]** Live match stream on Home page. When a match is live, a collapsible
+  "📺 Watch <Home> vs <Away> — live" bar now appears above the hero match card
+  (and above any other live match card on Home). Tapping expands an embedded
+  video player with source-switch buttons so users can flip between mirrors if a
+  feed buffers/dies. Streams are hardcoded per match id in `lib/streams.js` — no
+  runtime API call to the third-party streaming site. Display-only feature: no
+  money, betting, pool, or settlement logic touched. Snapshot of mirror URLs
+  taken 2026-07-10 covering QF-1 through QF-4; extend `MATCH_STREAMS` for SF/FIN.
+  _Files: lib/streams.js (new), components/LiveStreamPanel.jsx (new),
+  components/screens/HomeScreen.jsx. By: Claude Code._
+
+---
+
 ## 2026-07-09
 - **[chore]** Added CI. A GitHub Actions workflow now runs lint + the Jest suite +
   a production build on every push to `main` and every pull request, so regressions

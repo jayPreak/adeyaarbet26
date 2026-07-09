@@ -18,6 +18,52 @@ Newest entries at the TOP (below this header block).
 
 ---
 
+## 2026-07-10 — Live match stream on Home (per FEATURE_live-stream.md spec)
+- **Task:** Implement the pre-written spec at `docs/ai/FEATURE_live-stream.md` — a
+  collapsible embedded live-video panel on the Home page for live matches, with
+  a row of source-switch buttons so users can flip between stream mirrors.
+- **Changes:**
+  - `lib/streams.js` — NEW. Hardcoded `MATCH_STREAMS` map keyed by our static
+    match ids (`QF-1`…`QF-4`), each value = array of `{label, url}` mirrors.
+    Snapshot fetched from streamed.pk `/api/matches/football` + `/api/stream/{source}/{id}`
+    on 2026-07-10. `getStreams(matchId)` returns `[]` for unknown ids.
+  - `components/LiveStreamPanel.jsx` — NEW. Collapsed by default. Renders
+    nothing when the match has no stream mapping. When expanded, mounts a
+    single 16:9 iframe (`allow="encrypted-media; picture-in-picture"`,
+    `allowFullScreen`, `loading="lazy"`) with source-switch buttons below.
+    Iframe is NOT rendered while collapsed, so it doesn't autoplay/eat data.
+  - `components/screens/HomeScreen.jsx` — imported `LiveStreamPanel`; rendered
+    ABOVE `<HeroMatch>` when `featured?.status === 'live'`, and above the
+    non-featured live match cards.
+- **Decisions:**
+  - Followed the spec's "no runtime API call" decision — the map is a static
+    build-time snapshot. Refresh instructions are in `lib/streams.js` header.
+  - Did NOT add an iframe `sandbox` attribute yet (spec suggests testing without
+    first; too-strict sandboxes break embedded players).
+  - Skipped SF/FIN/3RD in the map — those matches don't exist on streamed.pk
+    yet (QFs still being played). Add closer to those kickoffs.
+  - QF-4 (Argentina vs Switzerland) shipped with an empty array — streams
+    weren't populated at snapshot time. Panel simply won't render until URLs
+    are added.
+- **Gotchas / learnings:**
+  - `streamed.pk` `admin` source returns `embed.st` URLs matching exactly the
+    verbatim iframe examples in the spec — the spec's slug pattern
+    (`ppv-{home}-vs-{away}/{sourceNo}`) held for both matches checked.
+  - `golf` source `/api/stream/golf/{id}` returned empty for `23636` and
+    `23656` (not always populated). Preferred `admin` mirrors when available.
+- **Verification:**
+  - `rm -rf .next && npm run build` → passes, `/home` route builds at 6.2 kB.
+  - `npm test` → 356/356 pass.
+  - Manual browser: (user to verify — dev server not started here).
+- **Left undone / follow-ups:**
+  - Populate SF-1, SF-2, FIN-1, 3RD-1 in `MATCH_STREAMS` when streams appear
+    on streamed.pk.
+  - Populate QF-4 mirrors when they appear.
+  - Optional: add `sandbox="allow-scripts allow-same-origin allow-presentation"`
+    if PPV embeds prove abusive with popups.
+
+---
+
 ## 2026-07-09 — Add CI (GitHub Actions)
 - **Task:** Set up CI/CD — the repo had none (only a local pre-commit hook + a Vercel cron).
 - **Changes:** `.github/workflows/ci.yml` — runs `npm run lint`, `npm test`, `npm run build`
