@@ -15,8 +15,11 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 ## 2026-07-09
 - **[chore]** Added CI. A GitHub Actions workflow now runs lint + the Jest suite +
   a production build on every push to `main` and every pull request, so regressions
-  get caught before merge instead of only by the local pre-commit hook.
-  _Files: .github/workflows/ci.yml. By: Claude Code._
+  get caught before merge instead of only by the local pre-commit hook. Also added a
+  committed ESLint config (`.eslintrc.json`) — there wasn't one, so `next lint` used to
+  prompt interactively and couldn't run in CI. The cosmetic `react/no-unescaped-entities`
+  rule is disabled (it trips on ordinary English apostrophes); real rules stay as warnings.
+  _Files: .github/workflows/ci.yml, .eslintrc.json. By: Claude Code._
 
 ---
 

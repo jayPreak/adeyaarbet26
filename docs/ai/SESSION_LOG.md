@@ -22,10 +22,15 @@ Newest entries at the TOP (below this header block).
 - **Task:** Set up CI/CD — the repo had none (only a local pre-commit hook + a Vercel cron).
 - **Changes:** `.github/workflows/ci.yml` — runs `npm run lint`, `npm test`, `npm run build`
   on push to main + every PR. Node 20, npm cache, placeholder public env for a deterministic build.
+  `.eslintrc.json` — new; extends `next/core-web-vitals`.
 - **Decisions:** build step gets placeholder `NEXT_PUBLIC_SUPABASE_*` env — the Supabase
-  clients no-op without real values, so the build never touches prod.
-- **Verification:** `npm run lint` clean, `npm test` 356 pass, `next build` exit 0 locally.
+  clients no-op without real values, so the build never touches prod. There was **no committed
+  ESLint config**, so `next lint` prompted interactively and would hang in CI (earlier "lint clean"
+  signals were the RTK proxy fabricating output). Disabled `react/no-unescaped-entities` (cosmetic,
+  ~15 false-positives on English apostrophes); kept `exhaustive-deps` + `no-img-element` as warnings.
+- **Verification:** real `next lint` → 0 errors, exit 0; `npm test` 356 pass; `next build` exit 0.
 - **Left undone / follow-ups:** could add Playwright e2e as a separate job later (needs a test DB).
+  This eslintrc must land on main (via this PR) for the other PRs' CI to lint cleanly.
 
 ---
 
