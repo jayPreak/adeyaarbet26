@@ -18,24 +18,6 @@ Newest entries at the TOP (below this header block).
 
 ---
 
-## 2026-07-09 — Reliability: Sonar bugs + error logging
-- **Task:** Fix the 4 bugs SonarQube flagged and stop silently swallowing prod errors.
-- **Changes:**
-  - `components/FinalFourBetModal.jsx` — `qfDeadlineTs(matches)` → `qfDeadlineTs()` (fn takes no args).
-  - `app/(tabs)/specials/total-goals/page.jsx` — `{projectedTotal && …}` → `{projectedTotal > 0 && …}` (S6439 value leak).
-  - `components/index.jsx` — `kickoffMs &&` → `!!kickoffMs &&` in the live-watch banner (S6439 value leak).
-  - `lib/BettingContext.jsx` — auto-resolve fire-and-forget now `.catch()`-logs (S4822); FIFA fetch catch logs.
-  - `app/api/auto-resolve/route.js` — both penalty-RPC catches now `console.error` instead of swallowing.
-- **Gotchas / learnings:** the whole app had **zero** `console.error/warn` — every failure was
-  silent. Also discovered there's **no committed ESLint config**; `next lint` prompts interactively,
-  so the earlier "lint clean" signals were the RTK proxy fabricating output. Adding an eslintrc is
-  handled in the CI PR.
-- **Verification:** `npm test` 356 pass.
-- **Left undone / follow-ups:** the other ~53 comment-only catches are mostly benign fall-throughs;
-  left them to keep this PR tight.
-
----
-
 ## 2026-07-05 — Set up AI documentation system
 - **Task:** Make the repo self-documenting for AI work: doc-update protocol enforced
   before every commit, human changelog, AI session log, current-state file,
