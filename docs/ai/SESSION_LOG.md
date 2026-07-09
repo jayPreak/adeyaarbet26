@@ -18,26 +18,6 @@ Newest entries at the TOP (below this header block).
 
 ---
 
-## 2026-07-09 — Remove dead code + 8 MB splash video
-- **Task:** Delete dead code / heavy assets flagged in the audit, ahead of open-sourcing.
-- **Changes:** deleted `components/AdeYaarApp.jsx` (verified: nothing imports it),
-  `components/GoldenBootBetModal.jsx` (nothing imports it; `getSpecial('golden_boot')`
-  returns null so it would crash if mounted), `public/stadium-crowd.mp4` (8 MB).
-  `CountdownSplash.jsx` — replaced the `<video>` base layer with a static gradient.
-  Updated `CLAUDE.md`, `components/CLAUDE.md`, `docs/ai/STATE.md` to drop the dead-code notes.
-- **Decisions:** deliberately did NOT touch `lib/migrate.js` / `lib/db.js` / `/api/setup`
-  — `migrate.js` is stale (embeds only 4 of 35 migrations) but is still imported by the
-  setup route, so removing it is a larger, separate change. Also did NOT rename the
-  duplicate `030_*.sql` migration files: both are already applied to prod and Supabase
-  tracks migrations by version prefix, so renaming would look like a new unapplied migration.
-- **Verification:** `npm test` 356 pass; `next build` succeeds; grep confirms no code refs
-  to the deleted files.
-- **Left undone / follow-ups:** stale `lib/migrate.js` + `lib/db.js` + `/api/setup` chain
-  (candidate for a follow-up PR); broader stale-doc fixes in root CLAUDE.md (old load
-  sequence, "no auth") could be a docs PR.
-
----
-
 ## 2026-07-05 — Set up AI documentation system
 - **Task:** Make the repo self-documenting for AI work: doc-update protocol enforced
   before every commit, human changelog, AI session log, current-state file,
