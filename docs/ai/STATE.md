@@ -30,8 +30,8 @@ _Last updated: 2026-07-05_
 - `continent`, `h2h`, `golden_boot` still have no auto-settlement (manual SQL or
   `settle_special` at tournament end).
 - No server-side auth on API routes (accepted risk for friend group).
-- `components/AdeYaarApp.jsx` is dead code and still in the tree — deleting it is a
-  candidate cleanup, but verify nothing imports it first.
+- (Resolved 2026-07-09) `components/AdeYaarApp.jsx` and `components/GoldenBootBetModal.jsx`
+  dead code removed; the 8 MB `public/stadium-crowd.mp4` splash video removed too.
 
 ## Pending manual steps (end of tournament)
 - Settle: cup winner (`settle_cup_winner`), continent/h2h/golden boot

@@ -142,16 +142,12 @@ function OpenerStrip({ size }) {
 function Backdrop() {
   return (
     <>
-      <video
-        autoPlay muted loop playsInline preload="auto"
-        src="/stadium-crowd.mp4"
-        style={{
-          position: 'absolute', inset: 0,
-          width: '100%', height: '100%',
-          objectFit: 'cover', zIndex: 0,
-          filter: 'brightness(0.5) saturate(1.2) contrast(1.05)',
-        }}
-      />
+      {/* Static gradient base (replaced an 8 MB looping stadium video — the
+          overlay layers below already carry the visual weight). */}
+      <div style={{
+        position: 'absolute', inset: 0, zIndex: 0,
+        background: 'radial-gradient(120% 90% at 50% 0%, #10131a 0%, #07080a 70%)',
+      }} />
       <div style={{
         position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1,
         background: 'radial-gradient(70% 60% at 50% 50%, rgba(7,8,10,0.55) 0%, rgba(7,8,10,0.82) 70%, rgba(7,8,10,0.92) 100%)',

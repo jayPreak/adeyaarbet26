@@ -3,11 +3,11 @@
 Read root `CLAUDE.md` first. Before committing changes here, follow its
 Documentation Protocol (CHANGELOG.md + docs/ai/SESSION_LOG.md + this file if stale).
 
-## ⛔ AdeYaarApp.jsx is DEAD CODE
-It is not rendered anywhere. The live app shell is `app/(tabs)/layout.jsx`
-("TabsShell": ErrorBoundary + BettingProvider + AppHeader + TabBar + shared modals).
-State lives in `lib/BettingContext.jsx` (`useBetting()`). Wiring anything into
-AdeYaarApp.jsx silently does nothing.
+## App shell
+The live app shell is `app/(tabs)/layout.jsx` ("TabsShell": ErrorBoundary +
+BettingProvider + AppHeader + TabBar + shared modals). State lives in
+`lib/BettingContext.jsx` (`useBetting()`).
+(The old `AdeYaarApp.jsx` monolith shell was dead code and was removed 2026-07-09.)
 
 ## Layout
 - `index.jsx` — shared widgets: MatchCard, HeroMatch, PlaceBetSheet, BetCard,

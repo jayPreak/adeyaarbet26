@@ -85,8 +85,6 @@ app/(tabs)/               — REAL app shell (route group). layout.jsx = TabsShe
   home/ fixtures/ specials/ leaders/ account/ news/ tournament/ — one route per tab
 
 components/
-  AdeYaarApp.jsx           — ⚠️ DEAD CODE. Legacy monolith shell, no longer rendered.
-                             Do NOT wire new state/modals here. Real shell = app/(tabs)/layout.jsx.
   index.jsx                — Shared widgets: MatchCard, HeroMatch, PlaceBetSheet, BetCard,
                              AppHeader, TabBar, Flag, SectionHead, Toast, useBettingOpen hook
   screens/                 — Screen bodies rendered by the (tabs) route pages:
@@ -218,7 +216,7 @@ All specials are registered in `lib/specials.js:SPECIALS[]`. Each has:
 2. Add the kind to `bets_kind_check` constraint (new migration)
 3. The `/api/special-bet` route handles GET/POST/DELETE generically via `place_special_bet` / `cancel_special_bet` RPCs
 4. Add UI: card in `SpecialsScreen.jsx` + expanded detail view + modal for placement
-5. Wire modal open state in `lib/BettingContext.jsx` and render the modal in `app/(tabs)/layout.jsx` (NOT `AdeYaarApp.jsx` — dead code)
+5. Wire modal open state in `lib/BettingContext.jsx` and render the modal in `app/(tabs)/layout.jsx`
 6. If auto-settlement is needed, add logic to `auto-resolve/route.js`
 
 ---
@@ -229,8 +227,6 @@ All specials are registered in `lib/specials.js:SPECIALS[]`. Each has:
 App state lives in `lib/BettingContext.jsx` (`BettingProvider`), mounted in
 `app/(tabs)/layout.jsx` (the real shell — "TabsShell"). Screens consume via `useBetting()`.
 Key state: `user`, `bets`, `matches`, `scheduleMap`, `balance`, `poolMap`, `allUsers`.
-**⚠️ `components/AdeYaarApp.jsx` is DEAD CODE** — the old monolith shell. Never wire new
-state or modals there; anything added to it silently does nothing in the live app.
 
 ### Screen Navigation
 Next.js App Router route group `app/(tabs)/` — one directory per tab
@@ -316,10 +312,10 @@ service_role-only RPCs in production (e.g. duels settlement via `settle_challeng
 Routes fall back to the anon client (`supabaseAdmin || supabase`) which then fails RLS.
 If a service_role RPC works locally but not in prod, check Vercel env vars first.
 
-### 11. `AdeYaarApp.jsx` Is Dead Code
-`components/AdeYaarApp.jsx` looks like the app root but is NOT rendered. The live shell
-is `app/(tabs)/layout.jsx` + `lib/BettingContext.jsx`. Changes wired into AdeYaarApp
-silently do nothing — a classic wasted-session trap.
+### 11. The live shell is `app/(tabs)/layout.jsx`, not a monolith component
+The app shell is `app/(tabs)/layout.jsx` + `lib/BettingContext.jsx`. (A legacy
+`components/AdeYaarApp.jsx` monolith used to sit here as dead code — removed 2026-07-09.
+Don't reintroduce a parallel shell.)
 
 ### 12. CSS/Theming
 All styles are inline or in `app/globals.css`. CSS vars: `--ink`, `--ink-2`, `--ink-3`, `--surface-2`, `--line`, `--gold`, `--win`, `--loss`. Dark theme only. Mobile-first (phone frame on desktop via media queries).
@@ -333,7 +329,7 @@ All styles are inline or in `app/globals.css`. CSS vars: `--ink`, `--ink-2`, `--
 3. **If it needs a new bet kind:** Add to `bets_kind_check` via migration. Add to `SPECIALS` in `lib/specials.js` with `formatPick()`.
 4. **If it reads schedule data:** Use `scheduleMap` from props, not a fresh fetch. Match IDs are ALWAYS static strings (A1, B1, etc.).
 5. **If it fetches FIFA API:** Never await on the response path. Use fire-and-forget or a separate route with timeout.
-6. **If it adds a modal:** Add open state in `lib/BettingContext.jsx`, render in `app/(tabs)/layout.jsx` alongside the other modals. (`AdeYaarApp.jsx` is dead code — never touch it.)
+6. **If it adds a modal:** Add open state in `lib/BettingContext.jsx`, render in `app/(tabs)/layout.jsx` alongside the other modals.
 7. **If it shows bet labels:** Use `getSpecial(kind).formatPick(pick)` for specials, `getTeam(match.home).name` for match bets. Never show raw `match_id` or `pick` values to users.
 8. **Update the docs** per the Documentation Protocol at the top of this file: `CHANGELOG.md`, `docs/ai/SESSION_LOG.md`, `docs/ai/STATE.md`, and any stale `CLAUDE.md`.
 9. **Before pushing:** `rm -rf .next && npm run build` must pass. `npm test` must pass. Push to `upstream` (not `origin`).
