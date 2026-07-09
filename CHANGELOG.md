@@ -12,6 +12,14 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-09
+- **[chore]** Added CI. A GitHub Actions workflow now runs lint + the Jest suite +
+  a production build on every push to `main` and every pull request, so regressions
+  get caught before merge instead of only by the local pre-commit hook.
+  _Files: .github/workflows/ci.yml. By: Claude Code._
+
+---
+
 ## 2026-07-05
 - **[docs]** Set up the AI documentation system: rewrote stale parts of `CLAUDE.md`
   (the app shell is now `app/(tabs)/layout.jsx` + `BettingContext`, not the old

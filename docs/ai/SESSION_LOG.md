@@ -18,6 +18,17 @@ Newest entries at the TOP (below this header block).
 
 ---
 
+## 2026-07-09 — Add CI (GitHub Actions)
+- **Task:** Set up CI/CD — the repo had none (only a local pre-commit hook + a Vercel cron).
+- **Changes:** `.github/workflows/ci.yml` — runs `npm run lint`, `npm test`, `npm run build`
+  on push to main + every PR. Node 20, npm cache, placeholder public env for a deterministic build.
+- **Decisions:** build step gets placeholder `NEXT_PUBLIC_SUPABASE_*` env — the Supabase
+  clients no-op without real values, so the build never touches prod.
+- **Verification:** `npm run lint` clean, `npm test` 356 pass, `next build` exit 0 locally.
+- **Left undone / follow-ups:** could add Playwright e2e as a separate job later (needs a test DB).
+
+---
+
 ## 2026-07-05 — Set up AI documentation system
 - **Task:** Make the repo self-documenting for AI work: doc-update protocol enforced
   before every commit, human changelog, AI session log, current-state file,
