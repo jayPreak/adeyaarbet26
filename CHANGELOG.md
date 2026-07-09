@@ -13,6 +13,46 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 ---
 
 ## 2026-07-09
+- **[fix]** Aligned all knockout minimum bets across the UI and the server, which had
+  drifted apart. Final values: R32 50, R16 100, QF 250, SF 350, Final 500, 3rd-place 400.
+  The **Final** was ₹1000 on the client but ₹500 on the server (UI blocked valid bets); the
+  **3rd-place** match was ₹350 on the client but ₹500 on the server (UI *allowed* a bet the
+  server then rejected). Both now agree. Needs migration 036 applied to the DB.
+  _Files: lib/currency.js, supabase/migrations/036_align_ko_bet_minimums.sql,
+  __tests__/min-bet.test.js, __tests__/penalty.test.js. By: Claude Code (PR #46)._
+- **[fix]** Reliability + logging fixes from the audit: a Final Four modal was calling
+  `qfDeadlineTs()` with a stray argument; two JSX conditionals could leak a literal `0`
+  onto the screen (total-goals projection, live-watch banner); the auto-resolve
+  fire-and-forget fetch had no error handling. Also added `console.error` logging at the
+  auto-resolve penalty settle and the FIFA/background fetch — the app previously swallowed
+  every failure silently, so prod errors vanished without a trace.
+  _Files: app/api/auto-resolve/route.js, lib/BettingContext.jsx, components/FinalFourBetModal.jsx,
+  components/index.jsx, app/(tabs)/specials/total-goals/page.jsx. By: Claude Code._
+- **[chore]** Removed dead code: the `AdeYaarApp.jsx` monolith shell (426 lines, no longer
+  rendered), `GoldenBootBetModal.jsx` (its special isn't registered — would crash if mounted),
+  and the 8 MB `stadium-crowd.mp4` splash video (the splash only played before kickoff, which
+  has passed — swapped for a lightweight gradient). Updated the CLAUDE.md references that
+  pointed at these files.
+  _Files: components/AdeYaarApp.jsx (del), components/GoldenBootBetModal.jsx (del),
+  public/stadium-crowd.mp4 (del), components/CountdownSplash.jsx, CLAUDE.md, components/CLAUDE.md,
+  docs/ai/STATE.md. By: Claude Code._
+- **[feat]** UX/accessibility safeguards. (1) A visible keyboard-focus ring on all
+  buttons/links/inputs — the app had almost no focus styles, so keyboard and switch-control
+  users couldn't tell what was selected. (2) Every special-bet cancel now asks "Cancel this
+  bet? Your stake will be refunded." before refunding — only the main match-bet cancel
+  confirmed before, so one stray tap on a special could refund real money with no undo.
+  _Files: app/globals.css, components/{FinalFour,H2H,GoalScorer,ThirdPlaceQualifier,TotalGoals}BetModal.jsx,
+  components/R32BetPage.jsx, app/(tabs)/specials/{ko-cup-winner,final-four,total-goals}/page.jsx. By: Claude Code._
+- **[perf]** The four special-bet modals (cup winner, continent, H2H, third-place qualifier)
+  used to be mounted in the app shell at all times — running their state and effects on every
+  screen render even while closed. They now mount only when opened, and their code is
+  `next/dynamic`-split into separate chunks fetched on first open. Less work per render.
+  _Files: app/(tabs)/layout.jsx. By: Claude Code._
+- **[docs]** Added an "Engineering Principles" section to `CLAUDE.md` — behavioural tests
+  first (assert outputs, never internal calls), pure domain helpers, strict separation of
+  concerns, no silent error swallowing, and a code-review-triggers checklist. Written with
+  examples from this repo so it's concrete, not generic.
+  _Files: CLAUDE.md. By: Claude Code._
 - **[chore]** Added CI. A GitHub Actions workflow now runs lint + the Jest suite +
   a production build on every push to `main` and every pull request, so regressions
   get caught before merge instead of only by the local pre-commit hook. Also added a

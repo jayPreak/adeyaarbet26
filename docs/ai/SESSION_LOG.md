@@ -18,6 +18,54 @@ Newest entries at the TOP (below this header block).
 
 ---
 
+## 2026-07-09 — Align knockout bet minimums, client + server (PR #46)
+- **Task:** Set knockout minimums to QF 250, SF 350, 3rd-place 400, Final 500 (from 1000).
+- **Change:** `lib/currency.js` `STAGE_MINIMUMS` FIN 1000→500, 3RD 350→400 (QF/SF already
+  250/350); `supabase/migrations/036_align_ko_bet_minimums.sql` redefines `bet_min()` to
+  QF 250, SF 350, FIN 500, 3RD 400 (was QF 200, SF 300, FIN 500, 3RD 500 in migration 026);
+  updated the pinned `getMinBet` tests.
+- **Decision:** The UI `getMinBet()` and the server `bet_min()` RPC are two sources of truth
+  for the same values (UI needs the number locally for slider/disable). They had drifted;
+  036 re-syncs the server to the client. Final values: R32 50, R16 100, QF 250, SF 350,
+  FIN 500, 3RD 400.
+- **Gotcha:** 3rd-place was user-visible broken — UI allowed a 350–499 bet the server (500)
+  rejected with "Bet below minimum". **Migration 036 must be applied to the Supabase DB**
+  for the server side to change; merging the PR alone does not apply migrations here.
+- **Verification:** 356/356 tests pass, `next build` clean.
+- **Doc note:** This entry lives on the doc-consolidation branch (#45) so it doesn't
+  re-introduce the append-conflict; PR #46 itself carries only code + migration + tests.
+
+## 2026-07-09 — Audit fix PRs #40–#44 (consolidated entry)
+- **Task:** Multi-PR audit cleanup ahead of open-sourcing. Each concern shipped as its own
+  fork PR against `jayPreak:main`. This single entry documents #40–#44 together because the
+  per-PR SESSION_LOG/CHANGELOG edits were removed from those branches (see gotcha below).
+- **PRs:**
+  - **#40 fix/reliability-bugs-and-logging** — `qfDeadlineTs()` stray arg; two JSX `0`-leak
+    guards (`total-goals`, live-watch); error handling on the auto-resolve fire-and-forget;
+    `console.error` at auto-resolve penalty settle + FIFA/background fetch (app had zero
+    error logging → prod failures vanished).
+  - **#41 chore/remove-dead-code** — deleted `AdeYaarApp.jsx` (426-line unrendered monolith),
+    `GoldenBootBetModal.jsx` (unregistered special, would crash), `stadium-crowd.mp4` (8 MB,
+    splash only plays pre-kickoff which has passed → gradient). Verified no imports first.
+  - **#42 feat/ux-a11y-safeguards** — global `:focus-visible` ring; confirm-before-cancel on
+    every special-bet + duel cancel path (only match-bet cancel confirmed before).
+  - **#43 perf/lazy-load-modals** — 4 always-mounted special modals → `next/dynamic`, gated on
+    open flag. Runtime win (no effects on closed modals every render), not a bundle-size claim.
+  - **#44 docs/engineering-principles** — added "Engineering Principles" section to `CLAUDE.md`
+    (behavioural-tests-first, pure helpers, no silent swallows, code-review triggers).
+- **Gotcha / learning (IMPORTANT for future parallel PRs):** all N open PRs appended to the
+  same top-of-file region of `CHANGELOG.md` and `docs/ai/SESSION_LOG.md`. Once #38/#39 merged,
+  every later PR 3-way-conflicted there on every merge. Fix: reverted each branch's edits to
+  those two files back to their merge-base (net diff = 0 → git auto-resolves, no manual
+  conflict), and consolidated the content here in one PR. Added `.gitattributes` with
+  `merge=union` on both log files so future parallel edits auto-concatenate instead of
+  conflicting. **Doc protocol still applies — but doc-log edits should land in a single PR,
+  or via the union driver, not appended in parallel across many open PRs.**
+- **Verification:** `git merge-tree` confirms all five branches merge clean against `origin/main`
+  and pairwise; PR diffs no longer include the two log files.
+- **Left undone / follow-ups:** rotate the Postgres DB password + scrub git history before the
+  repo goes public; the larger LOC/reuse/testability refactor is planned separately.
+
 ## 2026-07-09 — Add CI (GitHub Actions)
 - **Task:** Set up CI/CD — the repo had none (only a local pre-commit hook + a Vercel cron).
 - **Changes:** `.github/workflows/ci.yml` — runs `npm run lint`, `npm test`, `npm run build`
