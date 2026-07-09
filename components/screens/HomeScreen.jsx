@@ -221,7 +221,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
 
   return (
     <div>
-      {featured?.status === 'live' && <LiveStreamPanel match={featured} defaultOpen={false} />}
+      {featured?.status === 'live' && <LiveStreamPanel match={featured} />}
 
       {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending' && (b.kind === 'match' || b.kind === 'penalty'))} onCancelBet={onCancelBet} userId={user?.id} />}
 
