@@ -31,9 +31,12 @@ export function computeAliveTeams(matches) {
   return [...inKo].filter(c => !eliminated.has(c)).sort();
 }
 
-// Pinned deadline: Wed 8 Jul 2026, 11:30 PM IST = 2026-07-08T18:00:00Z.
+// Deadline = first QF kickoff, matching the server-side qf_deadline() RPC
+// (MIN(kickoff_ts) WHERE id LIKE 'QF-%'). QF1 kicks off 2026-07-09 19:30 UTC
+// = 1:00 AM IST on Jul 10. Client mirrors the server so the UI doesn't close
+// betting earlier than the server actually enforces.
 export function qfDeadlineTs() {
-  return new Date('2026-07-08T18:00:00Z').getTime();
+  return new Date('2026-07-09T19:30:00Z').getTime();
 }
 
 export default function FinalFourBetModal({ open, onClose, user, onPlaced, matches = [] }) {
