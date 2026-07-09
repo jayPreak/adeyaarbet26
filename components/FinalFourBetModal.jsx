@@ -32,11 +32,16 @@ export function computeAliveTeams(matches) {
 }
 
 // Deadline = first QF kickoff, matching the server-side qf_deadline() RPC
-// (MIN(kickoff_ts) WHERE id LIKE 'QF-%'). QF1 kicks off 2026-07-09 19:30 UTC
-// = 1:00 AM IST on Jul 10. Client mirrors the server so the UI doesn't close
-// betting earlier than the server actually enforces.
-export function qfDeadlineTs() {
-  return new Date('2026-07-09T19:30:00Z').getTime();
+// (MIN(kickoff_ts) WHERE id LIKE 'QF-%'). Derive it from the live schedule
+// (matches array) so it's always exact and never drifts from the server.
+// Falls back to the pinned first-QF kickoff if schedule data isn't loaded yet.
+const QF_KICKOFF_FALLBACK = new Date('2026-07-09T20:00:00Z').getTime();
+export function qfDeadlineTs(matches = []) {
+  const qfKickoffs = matches
+    .filter(m => (m.id || '').startsWith('QF-') && m.kickoffTs)
+    .map(m => new Date(m.kickoffTs).getTime())
+    .filter(t => !isNaN(t));
+  return qfKickoffs.length ? Math.min(...qfKickoffs) : QF_KICKOFF_FALLBACK;
 }
 
 export default function FinalFourBetModal({ open, onClose, user, onPlaced, matches = [] }) {

@@ -9,7 +9,7 @@ import { fetchSpecialDirect } from '@/lib/specialsQuery';
 
 export default function TotalGoalsPage() {
   const { user, matches, refreshData, allUsers } = useBetting();
-  const deadline = qfDeadlineTs();
+  const deadline = qfDeadlineTs(matches);
   const closed = Date.now() >= deadline;
   const soFar = goalsSoFar(matches);
   const finishedCount = matches.filter(m => m.status === 'finished').length;

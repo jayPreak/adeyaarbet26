@@ -28,7 +28,7 @@ export default function FinalFourPage() {
   const [error, setError] = useState(null);
   const [now, setNow] = useState(Date.now());
 
-  const deadline = qfDeadlineTs();
+  const deadline = qfDeadlineTs(matches);
   const closed = now >= deadline;
   const remaining = deadline - now;
 
