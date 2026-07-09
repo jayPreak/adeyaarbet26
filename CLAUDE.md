@@ -49,6 +49,63 @@ AdeYaar 26 is a friends' FIFA World Cup 2026 parimutuel betting app.
 
 ---
 
+## Engineering Principles (how to write code here)
+
+Standards this project holds contributors and AI agents to. Concrete examples reference
+files in this repo. The overarching goal: code that is **easy to test, easy to delete,
+easy to refactor, easy to maintain** — deep interface, simple usage (Ousterhout).
+
+### Tests MUST be behavioural
+This is the top rule — the suite in `__tests__/` guards real money.
+- **Assert observable outputs, not internal calls.** Test what a function *returns* or what
+  the user *sees*, never that helper X was invoked. A refactor that keeps behaviour must not
+  break a test.
+- The unit under test is the **domain helper** (`lib/ledger.js`, `lib/props.js`,
+  `lib/settlement.js`, …): feed real inputs, assert the money/settlement result. That's why
+  those helpers are pure — see below.
+- **Never** import private/underscored symbols, assert on source text, or mock five
+  internals to make a test pass. If a test only passes because of *how* the code is written,
+  it's testing the wrong thing.
+- Cover the failures, boundaries, and refund/settlement edges — not just the happy path.
+- **Write a parity test BEFORE deleting any duplicate implementation.**
+- `npm test` must be green before every push.
+
+### Architecture
+- **One function, one thing** — split it if the name needs an "and".
+- **Pure functions by default** — explicit inputs, predictable outputs, no hidden globals or
+  time/network reads. The `lib/` settlement helpers are pure *specifically* so both the UI
+  and `app/api/auto-resolve` can reuse them and the tests can pin them.
+- **Separation of concerns:** domain rules live in `lib/`; API routes (`app/api`) orchestrate
+  I/O; components render. Never put money/settlement logic inside a route handler or a
+  component.
+- **Money moves only through Supabase RPCs** with `FOR UPDATE`. Never `insert/update` `bets`
+  from JS. (Balance is computed, never stored — see Invariants.)
+- **Functions over classes.** Classes only for genuine state/resource management.
+
+### Error handling
+- **Never silently swallow errors.** Log with context (`console.error/warn` + a `[tag]`).
+  This app once shipped with *zero* logging — every failure was invisible. Don't regress.
+- Fire-and-forget still needs a `.catch()` that logs.
+- Prefer returning errors as data at boundaries (`NextResponse.json({error}, {status})`) over
+  throwing across layers.
+
+### Code-review triggers (flag these proactively, don't wait to be asked)
+1. **Duplicate implementations** — two ways to do one thing. (See the ~8 near-identical
+   `*BetModal.jsx` files — a shared hook would kill the copy-paste.) Consolidate + parity test.
+2. **Silent error swallows** — `catch {}` / `.catch(() => {})` with no log.
+3. **Too many moving parts** — 8+-arg call paths, a context object threaded through untouched,
+   callbacks of callbacks. (The 46-field `BettingContext` value re-renders the whole tree on
+   any change — the current worst offender; split it deliberately.)
+4. **Module-boundary violations** — domain importing infrastructure; a route reaching around
+   its `lib/` helper.
+5. **Ravioli code** — one-function modules, siblings re-exported sideways, one workflow spread
+   across many files.
+6. **Non-behavioural tests** — see above; flag on sight.
+7. **Shallow modules** — a thin pass-through that only forwards calls; merge upward or deepen.
+8. **Config scattered** — the same constant defined in 3+ files instead of one source.
+
+---
+
 ## Critical Invariants (break these = money bugs)
 
 1. **Balance is COMPUTED, never stored.** `balance = 5000 - SUM(pending stakes) - SUM(lost amounts) + SUM(won payouts)`. See `lib/ledger.js:computeBalance()`. There is NO wallet column.

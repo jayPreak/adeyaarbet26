@@ -12,6 +12,16 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-09
+- **[docs]** Added an "Engineering Principles" section to `CLAUDE.md` — the standards this
+  project expects from contributors and AI agents: behavioural tests first (assert outputs,
+  never internal calls), pure domain helpers, strict separation of concerns, no silent error
+  swallowing, and a code-review-triggers checklist. Written with examples from this repo so
+  it's concrete, not generic.
+  _Files: CLAUDE.md. By: Claude Code._
+
+---
+
 ## 2026-07-05
 - **[docs]** Set up the AI documentation system: rewrote stale parts of `CLAUDE.md`
   (the app shell is now `app/(tabs)/layout.jsx` + `BettingContext`, not the old
