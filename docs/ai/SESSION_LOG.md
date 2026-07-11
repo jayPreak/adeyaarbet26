@@ -18,6 +18,92 @@ Newest entries at the TOP (below this header block).
 
 ---
 
+## 2026-07-11 — Root-caused cancel_bets duel corruption; strict RPCs + trigger; P&L graph duel tooltip
+- **Task:** User (Vaper) reported his two won QF-2 duels were missing from his P&L
+  graph despite showing correctly on the Duels tab. Trace, root-cause, fix, and
+  document.
+- **Investigation (all via `npx supabase db query --linked`):**
+  1. Found 10 `challenges` rows across R16-5, R16-7, QF-2, QF-3 with terminal
+     status (`settled`/`accepted`) but corresponding `bets` rows in `cancelled`
+     status. Vaper's two QF-2 wins were among them.
+  2. Every corrupted bet has `bets.resolved_at = NULL` — the fingerprint of a
+     cancel path that skipped the settle_* RPCs.
+  3. `activity` log shows every corrupted bet correlated 1:1 with a
+     `bet_cancelled` event whose payload has `count` + `refunded` fields
+     (unique fingerprint of `cancel_bets` RPC — other cancel paths log
+     `challenge_id` or `reason`).
+  4. Arithmetic proof: e.g. event 1670 (Pratyush R16-5 count=3 refunded=300)
+     matches exactly bets 1035+1088+1089 = ₹300, all `kind='challenge'`.
+  5. Code inspection: `cancel_bets` (migration 020) does
+     `UPDATE bets ... WHERE user_id=? AND match_id=? AND status='pending'`
+     — no `kind` filter. It sweeps every pending bet including duels.
+- **Fix (4 migrations, all applied to prod):**
+  - `037_cancel_bets_excludes_duels.sql`: add `AND kind <> 'challenge'` to the
+    UPDATE. Duels must go through `cancel_challenge`/`decline_challenge`/
+    `settle_challenges`.
+  - `038_backfill_duel_bet_corruption.sql`: 10 idempotent UPDATEs restoring the
+    broken bet rows per `challenges.winner_id`:
+    - 1166, 1167 (Vaper) → won +200 · Vaper vs Ashin, Vaper vs Jayesh QF-2
+    - 1088 (Pratyush) → won +200 · Manan vs Pratyush R16-5
+    - 1035, 1089, 1135, 1177, 1179, 1217 → lost
+    - 1146 → back to pending (QF-3 duel Manan vs Ashin still accepted)
+  - `039_settle_challenges_strict.sql`: `GET DIAGNOSTICS ROW_COUNT` after each
+    bet UPDATE; RAISE if 0. Turns silent no-ops into hard failures.
+  - `040_duel_bet_state_invariant.sql`: BEFORE UPDATE trigger on `challenges`.
+    Any transition to `settled`/`void`/`expired` must have matching bet states
+    or RAISE. Schema-level guarantee, no RPC discipline required.
+- **UI validation** (`lib/BettingContext.jsx:cancelBet`):
+  - Enumerate the user's pending bets on the match, split match/penalty vs
+    challenge counts.
+  - If only duels present: toast "Duels can't be cancelled from here."
+  - If both: confirm dialog explicitly says the N active duels are preserved.
+  - Local state after success: mirror server behavior — only match/penalty
+    bets marked cancelled, challenges stay pending.
+- **P&L graph duel tooltip enrichment:**
+  - `lib/initDirect.js`: challenges fetch widened from `.in('status', ['open','accepted'])`
+    to all statuses, and payload extended with `challenger_pick`, `amount`,
+    `winner_id`, `challenger_bet_id`, `opponent_bet_id`.
+  - `lib/BettingContext.jsx`: new `allChallenges` state exposes the full
+    history; `challenges` stays narrowed to open+accepted for the active
+    duels UI (no regression).
+  - `components/screens/BetsScreen.jsx:NetWorthGraph`: accepts optional
+    `challenges/allUsers/userId` props. Duel bet label:
+    `"Duel vs <opponent> · <stage> <home v away> · <pick>"`.
+  - `components/screens/LeaderboardScreen.jsx:UserProfileModal`: fetches
+    target user's challenges in parallel with bets and passes them through.
+- **Decisions:**
+  - Backfill order: fixed the 10 rows in prod BEFORE shipping the strict
+    trigger (migration 040) — otherwise the trigger would have blocked my
+    own UPDATE statements. Applied 037 first, then 038, then 039, then 040.
+  - Level 3 fix (schema restructure to eliminate dual-write between `bets` and
+    `challenges`) was rejected as too big mid-tournament. Trigger + strict
+    RPC + kind-filter is the durable defense-in-depth path.
+  - Kept `challenges` filtered to open+accepted for the active-duels UI
+    (`BettingContext.challenges`); added `allChallenges` as separate field
+    for anywhere that needs history.
+- **Verification:**
+  - Post-backfill DB query confirms all 10 rows have correct final state
+    (Vaper's 1166/1167 → `won payout=200`, 1146 → `pending`, others → `lost`).
+  - Migration 037 verified live via user's 11:00 QF-3 cancel today: refunded
+    ₹250/count=1 (one match bet only), the 3 pending QF-3 duels untouched.
+  - `npm run build` passes.
+- **Gotchas / durable learnings (promoted into CLAUDE.md):**
+  - Invariant #6: any bulk-UPDATE on `bets` MUST filter by `kind`.
+  - Invariant #7: `challenges` and `bets` must agree; trigger enforces at DB level.
+  - Failure mode #20: full trace of the cancel_bets duel-nuke bug.
+  - Failure mode #21: P&L graph reads `bets`, duels tab reads `challenges`;
+    two views can diverge without invariant enforcement.
+- **Left undone / follow-ups:**
+  - Add `kind` filter audit for every other RPC that touches `bets` in bulk
+    (grep pass done, resolve_match/place_special_bet/cup winner all check
+    out — deferred formal audit doc).
+  - Consider a partial unique index on `(user_id, match_id, kind) WHERE status='pending'`
+    for singleton kinds. Skipped this session because kind='challenge' legitimately
+    allows multiple pending per user per match (multiple duels), and the schema
+    constraint would need to exclude that.
+
+---
+
 ## 2026-07-10 — Live match stream on Home (per FEATURE_live-stream.md spec)
 - **Task:** Implement the pre-written spec at `docs/ai/FEATURE_live-stream.md` — a
   collapsible embedded live-video panel on the Home page for live matches, with

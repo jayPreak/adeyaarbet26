@@ -6,6 +6,13 @@ Documentation Protocol (CHANGELOG.md + docs/ai/SESSION_LOG.md + this file if sta
 ## Rules for this directory
 - **Money moves ONLY via Supabase RPCs** (`place_bet`, `place_special_bet`,
   `create_challenge`, `settle_*`, …). Never `insert/update` the `bets` table directly.
+- **Any RPC that changes `bets` rows in bulk MUST filter by `kind`.** A
+  `WHERE user_id=X AND match_id=Y AND status='pending'` predicate matches every
+  kind (match/penalty/challenge/goalscorer/scoreline/…). Duels especially are
+  contract bets with a locked opponent and no user-cancel path; sweeping them
+  breaks the `challenges` ↔ `bets` invariant. See root CLAUDE.md #6, #20, #21.
+  Migration 040 trigger on `challenges` UPDATE catches divergence at commit
+  time, but the `kind` filter in the RPC is the first line of defense.
 - **No server-side auth** — routes trust `user_id` from params/body (accepted risk).
 - Use `supabaseAdmin || supabase` for DB ops; `settle_*` and challenge-settlement RPCs
   are service_role-only and FAIL silently in prod if `SUPABASE_SERVICE_ROLE_KEY` is

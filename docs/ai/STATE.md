@@ -5,11 +5,11 @@ Update this whenever your change alters what's live, fixes/introduces a known is
 or creates a pending manual step. Keep it current — this is state, not history
 (history goes in SESSION_LOG.md).
 
-_Last updated: 2026-07-10_
+_Last updated: 2026-07-11_
 
 ## Tournament phase
 - FIFA World Cup 2026, mid-tournament (knockout stage era: R32/QF features shipped,
-  migrations through 033 which pins `qf_deadline()`).
+  migrations through 040). QF-1 & QF-2 settled; QF-3, QF-4, SF, FIN pending.
 - Real money among ~10 friends; settlement happens at tournament end.
 
 ## What's live
@@ -21,6 +21,29 @@ _Last updated: 2026-07-10_
   player above the hero card for live matches, with source-switch buttons.
   Sources hardcoded in `lib/streams.js` (streamed.pk snapshot). QF-1…QF-3
   populated; QF-4/SF/FIN pending stream availability. Display-only.
+- **Live match chat panel** (2026-07-10): WebSocket to `wss://chat.cdn-lab.shop`
+  behind a "Connect to chat" button in the stream card. Autoscroll via
+  IntersectionObserver sentinel, exponential-backoff reconnect (6 attempts),
+  desktop-only theater view modal with stream + chat side-by-side. Local
+  ErrorBoundary fails closed so chat crashes never break Home.
+- **P&L graph duel tooltip** (2026-07-11): tapping a duel node on
+  `NetWorthGraph` (account overview + leaderboard profile modal) shows
+  `Duel vs <opponent> · <stage> <home v away> · <pick>`. Data joined
+  from `challenges` (widened fetch in `lib/initDirect.js`) + `allUsers`.
+
+## Recently fixed (this session, 2026-07-11)
+- **cancel_bets nuked accepted duels** (root cause of 10 corrupted rows across
+  R16-5, R16-7, QF-2, QF-3). Migration 037 adds `kind <> 'challenge'` filter.
+- **10-row backfill** applied (migration 038). Vaper's two QF-2 wins vs Jayesh
+  and Ashin are now `won +200`, other users' losses correctly `lost`, my QF-3
+  accepted duel bet 1146 restored to `pending`.
+- **settle_challenges is strict now** (migration 039): RAISEs on any bet-vs-
+  challenge inconsistency instead of silently no-op'ing.
+- **Trigger on challenges** (migration 040): terminal-state transitions
+  (settled/void/expired) MUST match the underlying bet states or the
+  transaction rolls back.
+- **UI cancel flow** now enumerates match vs duel counts and shows explicit
+  confirmation copy before firing the cancel API.
 
 ## Known issues / risks
 - **⚠️ Committed secrets in git history (open-source blocker):** the Postgres DB

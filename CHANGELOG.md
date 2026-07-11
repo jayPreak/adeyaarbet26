@@ -12,6 +12,30 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-11
+- **[fix]** Fixed a money-consistency bug where clicking "Cancel bet" on a match
+  card also silently cancelled the user's active duels on that match. Ten
+  duels across R16-5, R16-7, and QF-2 were affected — the challenges tab showed
+  them as won/lost correctly, but the P&L graph and net win/loss missed those
+  amounts because the underlying `bets` rows were `cancelled`. Root cause: the
+  `cancel_bets` SQL function's WHERE clause didn't exclude `kind='challenge'`.
+  Fixed at the RPC level (migration 037), backfilled the 10 corrupted rows
+  (038), made the settlement RPC fail loud on any future mismatch (039), and
+  added a database trigger that enforces the invariant "if a challenge is
+  settled, both bets must be won/lost — otherwise abort" (040). The cancel-bet
+  button in the UI now shows an explicit confirmation that duels will NOT be
+  affected.
+  _Files: supabase/migrations/037-040*.sql, lib/BettingContext.jsx, CLAUDE.md,
+  docs/ai/STATE.md, docs/ai/SESSION_LOG.md. By: Claude Code._
+- **[feat]** P&L graph tooltip now shows duel opponent and pick when a node is
+  tapped. Instead of a generic "Duel · +₹200", nodes read
+  "Duel vs Ashin · QF ESP v BEL · ESP · +₹200 (100%)". Works on both the
+  account overview and the leaderboard profile modal.
+  _Files: lib/initDirect.js, lib/BettingContext.jsx, components/screens/BetsScreen.jsx,
+  components/screens/LeaderboardScreen.jsx. By: Claude Code._
+
+---
+
 ## 2026-07-10
 - **[feat]** Live match stream on Home page. When a match is live, a collapsible
   "📺 Watch <Home> vs <Away> — live" bar now appears above the hero match card

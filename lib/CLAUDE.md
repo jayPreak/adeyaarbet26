@@ -29,3 +29,13 @@ Money-math changes MUST keep `npm test` green — tests in `__tests__/` cover th
 - Pure functions here must stay pure — settlement helpers are unit-tested and reused
   by `auto-resolve`.
 - Exclude `match_id = '_topup'` rows from any user-facing bet aggregation.
+- `BettingContext` exposes TWO challenge fields: `challenges` (narrowed to
+  `status IN ('open','accepted')`, current user's participation) for the
+  active-duels UI, and `allChallenges` (full history including settled/void/
+  expired/declined/cancelled) for anywhere that needs to label historical duel
+  bets (e.g. `NetWorthGraph` tooltip). Do NOT collapse them — the active-duels
+  UI treats resolved rows as "not mine anymore" and would show settled duels
+  as still-open if fed the full list.
+- Cancel-bet UX (`cancelBet` in `BettingContext.jsx`) must enumerate what's
+  affected client-side and show explicit copy about duels being preserved.
+  Migration 037 protects duels server-side; the UI mirrors that intent.

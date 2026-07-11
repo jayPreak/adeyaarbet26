@@ -57,6 +57,8 @@ AdeYaar 26 is a friends' FIFA World Cup 2026 parimutuel betting app.
    > **⛔ DO NOT refactor MATCHES to use FIFA IDs as the `id` field.** This was attempted (PR #15 / commit `928932a`) and catastrophically broke the entire app: activity feed showed raw IDs, bet cards couldn't resolve teams, fixtures disappeared, pool tables vanished. The static ID system (`A1`–`L6`) is load-bearing across: `bets.match_id`, `match_schedule.id`, `activity.payload.match_id`, `poolMap` keys, `scheduleMap` keys, `getMatch()` lookups, and every UI component. For knockout stage support, add new static IDs (e.g. `R16_1`, `QF_1`) — do NOT replace the existing scheme with FIFA numeric IDs. Tests explicitly verify static IDs; `npm test` MUST pass before pushing.
 4. **Betting closes 30s before kickoff** — enforced server-side in `place_bet` RPC. UI mirrors this via `useBettingOpen()` hook which uses `getMatchKickoffTs()`.
 5. **`kickoffTs` is an ISO string** from Supabase, NOT epoch ms. `getMatchKickoffTs()` in `lib/data.js` normalizes it to epoch ms. Always use this helper.
+6. **Any RPC that changes `bets.status` in bulk MUST filter by `kind`.** A `WHERE user_id=X AND match_id=Y AND status='pending'` predicate matches ALL kinds (match, penalty, challenge, goalscorer, scoreline, over_under, pens, …). Duels especially are contract bets with a locked opponent — the UI does NOT expose a way to cancel an accepted duel, but any RPC that sweeps `bets` without a `kind` filter can silently nuke them, leaving `challenges` rows pointing at cancelled bets. See failure mode #20 below. Migration 040 enforces the cross-table state invariant via trigger, but the RPC-level `kind` filter is the first line of defense.
+7. **`challenges` and `bets` are two tables that MUST agree.** Duel money lives in `bets` (per-user row with `kind='challenge'`); duel metadata (opponent, pick, winner) lives in `challenges`. The link is `challenges.{challenger_bet_id, opponent_bet_id} → bets.id` (FK exists but only enforces existence, not state). Terminal challenge statuses map to bet statuses: `settled → {won, lost}`, `void → {cancelled, cancelled}`, `expired → {cancelled, null-opponent}`. Migration 040 trigger on `challenges` UPDATE enforces this at commit time — flipping a challenge to a terminal state while bets disagree RAISEs and rolls back the transaction.
 
 ---
 
@@ -116,7 +118,7 @@ lib/
   supabase-browser.js      — Client-side Supabase (for auth, file uploads)
   supabase-server.js       — Server client w/ auth cookies
 
-supabase/migrations/       — Sequential SQL migrations (001–033). RPCs live here;
+supabase/migrations/       — Sequential SQL migrations (001–040). RPCs live here;
                              the LAST migration touching an RPC is its current definition.
 ```
 
@@ -161,7 +163,8 @@ id, user_id, match_id, pick, amount, status, payout, kind, created_at, resolved_
 | `settle_goalscorer(match_id, winner_ids[])` | Settle goalscorer pool. |
 | `settle_special(match_id, kind, winner)` | Generic single-winner pool settle (scoreline, over_under, pens, total_goals, continent, h2h…). service_role only. |
 | `create_challenge / accept_challenge / decline_challenge / cancel_challenge` | Friend duels (1v1). Stakes are `bets` rows with `kind='challenge'` — never touch them directly; the `challenges` table holds duel metadata. |
-| `settle_challenges(match_id, winner)` | Settles/voids/expires duels on a finished match. service_role only, called by auto-resolve. |
+| `settle_challenges(match_id, winner)` | Settles/voids/expires duels. service_role only, called by auto-resolve. As of migration 039, RAISEs if any bet UPDATE affects 0 rows (silent no-op → loud failure). |
+| `cancel_bets(user_id, match_id)` | Mass-cancels the user's `pending` match/penalty bets on a match. As of migration 037, filters `kind <> 'challenge'` — duels are NEVER touched (they have no user-cancel path once accepted). |
 | `settle_final_four(semifinalists[])` | Most-correct-picks wins the FINAL_FOUR pool. service_role only, run manually after SF matchups are known. |
 
 ### Match props & duels (migration 032, added mid-tournament)
@@ -376,6 +379,51 @@ In `lib/specials.js`, `resolvesTs` is when a special **settles** (moves to the c
 **betting closes**. Setting `resolvesTs` to the betting deadline makes a still-pending
 bet jump to Settled and become unopenable. Final Four closes at first QF kickoff but
 resolves only after all QFs finish (~`2026-07-12T04:00Z`).
+
+### 20. ⛔ `cancel_bets` used to nuke accepted duels (fixed in migration 037)
+The `cancel_bets(user, match_id)` RPC (behind the "Cancel bet" button on every
+match card) mass-cancels all pending `bets` rows scoped by `(user_id, match_id,
+status='pending')`. Prior to migration 037 there was NO `kind` filter — so a
+user tapping "Cancel bet" on their match wager would silently cancel their
+active duels on that match too. `challenges` was untouched (still `accepted`,
+still referencing the now-cancelled bet id). When `settle_challenges` fired
+after the match, its `UPDATE bets ... WHERE status='pending'` silently no-op'd
+on those already-cancelled bets, but STILL flipped the challenge to `settled`
+with a `winner_id`. Result: `challenges` said "Vaper won" but `bets` said
+"cancelled" — P&L graph missed his profit, settlement missed the payout.
+
+10 rows across R16-5, R16-7, QF-2, QF-3 corrupted this way. Migration 037 adds
+the `kind <> 'challenge'` filter to `cancel_bets`. Migration 038 backfilled the
+10 rows to their correct won/lost/pending states. Migration 039 made
+`settle_challenges` RAISE (via `GET DIAGNOSTICS ... ROW_COUNT`) when a
+winner/loser bet UPDATE affects 0 rows — silent no-op → loud failure. Migration
+040 adds a BEFORE UPDATE trigger on `challenges` that enforces terminal-state
+transitions (settled/void/expired) match the bet states, catching any future
+divergence at commit time regardless of caller.
+
+**How UI mirrors the fix:** `lib/BettingContext.jsx:cancelBet` enumerates the
+user's pending bets on the match, splits match-kind vs challenge-kind, and
+shows an explicit confirmation (`"Cancel your match bet (₹X)? Your N active
+duels will NOT be cancelled"`). Never mark challenge bets as cancelled in
+local state after the mass-cancel API succeeds — server preserved them, so
+must the client.
+
+### 21. P&L graph reads `bets` but "duels tab" reads `challenges` — two views can diverge
+`components/screens/BetsScreen.jsx:NetWorthGraph` transforms `bets` client-side
+into a running-P&L path. "Duels" tab (`components/screens/SpecialsScreen.jsx`)
+and duel leaderboard (`lib/LeaderboardContext.jsx:83-100`) both read
+`challenges.winner_id` directly. If a duel is `settled` in `challenges` but its
+bet row isn't `won/lost` in `bets` (see #20), duel-tab shows the win but the
+P&L graph doesn't. Migration 040 makes this class of divergence impossible
+going forward. If you add any new view over duels, decide up front which table
+you're reading from and document it — otherwise the two will drift.
+
+For the graph tooltip we join `challenges.{challenger_bet_id, opponent_bet_id}
+→ bets.id` to label duels with the opponent's name. `BettingContext.jsx`
+exposes `allChallenges` (all statuses, current user's participation) for this;
+`LeaderboardScreen.jsx:UserProfileModal` fetches challenges per-user in
+parallel with bets and passes them explicitly. Do NOT reuse `challenges` for
+history — that field is narrowed to open+accepted for the active-duels UI.
 
 ---
 
