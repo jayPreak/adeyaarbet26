@@ -345,7 +345,34 @@ export function BettingProvider({ children }) {
 
   const cancelBet = useCallback(async (matchId) => {
     if (!user || cancelling) return;
-    if (!confirm('Cancel your bet on this match? Your stake will be refunded.')) return;
+
+    // Enumerate what will actually be cancelled. Server (post-migration 037)
+    // only cancels `kind IN ('match','penalty')`; duels are protected. Preview
+    // both counts so the user knows the button is a match-bet cancel, not a
+    // universal wipe.
+    const affected = bets.filter(b =>
+      b.match_id === matchId && b.status === 'pending'
+      && (b.kind === 'match' || b.kind === 'penalty' || !b.kind)
+    );
+    const activeDuels = bets.filter(b =>
+      b.match_id === matchId && b.status === 'pending' && b.kind === 'challenge'
+    );
+
+    if (affected.length === 0 && activeDuels.length > 0) {
+      setToast('Duels can\'t be cancelled from here. They settle when the match ends.');
+      return;
+    }
+    if (affected.length === 0) {
+      setToast('No match bet to cancel on this match.');
+      return;
+    }
+
+    const stakeTotal = affected.reduce((s, b) => s + b.amount, 0);
+    const msg = activeDuels.length > 0
+      ? `Cancel your match bet (${fmtMoney(stakeTotal)}) on this match?\n\nYour ${activeDuels.length} active duel${activeDuels.length > 1 ? 's' : ''} on this match will NOT be cancelled — duels stay live until the match ends.`
+      : `Cancel your match bet (${fmtMoney(stakeTotal)})? Your stake will be refunded.`;
+    if (!confirm(msg)) return;
+
     setCancelling(matchId);
     try {
       const res = await fetch('/api/bets/cancel', {
@@ -355,8 +382,11 @@ export function BettingProvider({ children }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      // Only match/penalty bets flipped server-side; mirror that locally
+      // (do NOT mark challenge bets as cancelled — they're preserved by 037).
       setBets(prev => prev.map(b =>
         b.match_id === matchId && b.status === 'pending'
+          && (b.kind === 'match' || b.kind === 'penalty' || !b.kind)
           ? { ...b, status: 'cancelled' }
           : b
       ));
@@ -367,7 +397,7 @@ export function BettingProvider({ children }) {
     } finally {
       setCancelling(null);
     }
-  }, [user, cancelling, refreshPools]);
+  }, [user, cancelling, bets, refreshPools]);
 
   const handleLogout = useCallback(async () => {
     localStorage.removeItem('adeyaar_user');
