@@ -116,6 +116,7 @@ export function BettingProvider({ children }) {
   const [totalInPlay, setTotalInPlay] = useState(0);
   const [totalBets, setTotalBets] = useState(0);
   const [challenges, setChallenges] = useState([]);
+  const [allChallenges, setAllChallenges] = useState([]);
   const [specialPools, setSpecialPools] = useState(null);
   const [settlementNet, setSettlementNet] = useState(null);
   const [settlementByUser, setSettlementByUser] = useState({});
@@ -170,7 +171,10 @@ export function BettingProvider({ children }) {
           if (direct.myCupWinnerBet !== undefined) setMyCupWinnerBet(direct.myCupWinnerBet);
           if (direct.totalInPlay != null) setTotalInPlay(direct.totalInPlay);
           if (direct.totalBets != null) setTotalBets(direct.totalBets);
-          if (direct.challenges) setChallenges(direct.challenges);
+          if (direct.challenges) {
+            setAllChallenges(direct.challenges);
+            setChallenges(direct.challenges.filter(c => ['open','accepted'].includes(c.status)));
+          }
           if (direct.specialPools) setSpecialPools(direct.specialPools);
           if (direct.mySettlementNet !== undefined) setSettlementNet(direct.mySettlementNet);
           if (direct.settlementByUser) setSettlementByUser(direct.settlementByUser);
@@ -187,7 +191,9 @@ export function BettingProvider({ children }) {
       .then(r => r.json())
       .then(data => {
         const all = data.challenges || [];
-        setChallenges(all.filter(c => ['open', 'accepted'].includes(c.status) && (c.challenger_id === user.id || c.opponent_id === user.id)));
+        const mine = all.filter(c => c.challenger_id === user.id || c.opponent_id === user.id);
+        setAllChallenges(mine);
+        setChallenges(mine.filter(c => ['open', 'accepted'].includes(c.status)));
       })
       .catch(() => {});
   }, [user]);
@@ -259,7 +265,10 @@ export function BettingProvider({ children }) {
       if (data.myCupWinnerBet) setMyCupWinnerBet(data.myCupWinnerBet);
       if (data.totalInPlay != null) setTotalInPlay(data.totalInPlay);
       if (data.totalBets != null) setTotalBets(data.totalBets);
-      if (data.challenges) setChallenges(data.challenges);
+      if (data.challenges) {
+        setAllChallenges(data.challenges);
+        setChallenges(data.challenges.filter(c => ['open','accepted'].includes(c.status)));
+      }
       if (data.specialPools) setSpecialPools(data.specialPools);
       if (data.mySettlementNet !== undefined) setSettlementNet(data.mySettlementNet);
       if (data.settlementByUser) setSettlementByUser(data.settlementByUser);
@@ -460,7 +469,7 @@ export function BettingProvider({ children }) {
     totalWon, totalLost, totalOpen,
     matches, scheduleMap, poolMap, allUsers, totalInPlay, totalBets,
     cupWinnerDeadlineTs, myCupWinnerBet,
-    challenges, specialPools,
+    challenges, allChallenges, specialPools,
     settlementNet, settlementByUser, rawRealisedBalance,
     betSheet, toast,
     // actions
@@ -481,7 +490,7 @@ export function BettingProvider({ children }) {
     totalWon, totalLost, totalOpen,
     matches, scheduleMap, poolMap, allUsers, totalInPlay, totalBets,
     cupWinnerDeadlineTs, myCupWinnerBet,
-    challenges, specialPools,
+    challenges, allChallenges, specialPools,
     settlementNet, settlementByUser, rawRealisedBalance,
     betSheet, toast,
     openBet, closeBet, cancelBet, confirmBet,

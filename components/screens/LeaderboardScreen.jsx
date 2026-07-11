@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 import { NetWorthGraph } from '@/components/screens/BetsScreen';
 import { computeAchievements } from '@/lib/achievements';
+import { useBetting } from '@/lib/BettingContext';
 
 const TABS = [
   { id: 'total', label: 'Rankings' },
@@ -150,23 +151,34 @@ function LeaderRow({ rank, user, entry, isMe, valueMain, valueSub, valueColor, o
 }
 
 export function UserProfileModal({ entry, onClose }) {
+  const { allUsers = [] } = useBetting();
   const [bets, setBets] = useState(null);
+  const [challenges, setChallenges] = useState([]);
 
   useEffect(() => {
     if (!entry) return;
     let cancelled = false;
     (async () => {
-      // Fast path: direct Supabase
       const { default: supabaseBrowser } = await import('@/lib/supabase-browser');
       if (supabaseBrowser) {
         try {
-          const { data } = await supabaseBrowser
-            .from('bets')
-            .select('*')
-            .eq('user_id', entry.id)
-            .neq('match_id', '_topup')
-            .order('created_at', { ascending: false });
-          if (!cancelled) setBets(Array.isArray(data) ? data : []);
+          const [betsRes, chRes] = await Promise.all([
+            supabaseBrowser
+              .from('bets')
+              .select('*')
+              .eq('user_id', entry.id)
+              .neq('match_id', '_topup')
+              .order('created_at', { ascending: false }),
+            supabaseBrowser
+              .from('challenges')
+              .select('id, match_id, status, challenger_id, opponent_id, challenger_pick, amount, winner_id, challenger_bet_id, opponent_bet_id')
+              .or(`challenger_id.eq.${entry.id},opponent_id.eq.${entry.id}`)
+              .range(0, 9999),
+          ]);
+          if (!cancelled) {
+            setBets(Array.isArray(betsRes.data) ? betsRes.data : []);
+            setChallenges(Array.isArray(chRes.data) ? chRes.data : []);
+          }
           return;
         } catch { /* fall through */ }
       }
@@ -229,7 +241,7 @@ export function UserProfileModal({ entry, onClose }) {
         {bets === null ? (
           <div style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)', fontSize: 12 }}>Loading...</div>
         ) : (
-          <NetWorthGraph bets={bets} />
+          <NetWorthGraph bets={bets} challenges={challenges} allUsers={allUsers} userId={entry.id} />
         )}
 
         {/* Extra stats */}

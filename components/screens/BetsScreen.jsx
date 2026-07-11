@@ -17,8 +17,14 @@ const RANGE_OPTIONS = [
   { id: 'all', label: 'All', days: null },
 ];
 
-export function NetWorthGraph({ bets, compact }) {
-  const { matches } = useBetting();
+export function NetWorthGraph({ bets, compact, challenges: challengesProp, allUsers: allUsersProp, userId: userIdProp }) {
+  const ctx = useBetting();
+  const matches = ctx.matches;
+  // Allow the leaderboard profile modal to pass in another user's data;
+  // fall back to the current user's context for the account overview graph.
+  const challenges = challengesProp || ctx.allChallenges || [];
+  const allUsers = allUsersProp || ctx.allUsers || [];
+  const viewingUserId = userIdProp || ctx.user?.id;
   const [tooltip, setTooltip] = useState(null);
   const [range, setRange] = useState('all');
   const svgRef = useRef(null);
@@ -61,9 +67,37 @@ export function NetWorthGraph({ bets, compact }) {
       let matchLabel = b.match_id;
       const isSpecialBet = b.kind && b.kind !== 'match' && b.kind !== 'penalty';
       const isPenalty = b.kind === 'penalty';
+      const isDuel = b.kind === 'challenge';
       if (isPenalty) {
         const m = getMatch(b.match_id);
         matchLabel = m ? `Penalty: ${getTeam(m.home).code} v ${getTeam(m.away).code}` : `Penalty: ${b.match_id}`;
+      } else if (isDuel) {
+        // Duels: "Duel vs {opponent} · {stage/match} · {pick}"
+        // Join bet → challenge via (match_id, kind='challenge', bet_id) — the
+        // challenge row references both bet ids, so match on either side.
+        const ch = challenges.find(c =>
+          c.challenger_bet_id === b.id || c.opponent_bet_id === b.id
+        );
+        let opponentLabel = '';
+        if (ch) {
+          const opponentId = ch.challenger_id === viewingUserId ? ch.opponent_id : ch.challenger_id;
+          const opp = allUsers.find(u => u.id === opponentId);
+          opponentLabel = opp?.display_name || opp?.username || '';
+        }
+        const m = getMatch(b.match_id) || matches.find(x => x.id === b.match_id);
+        const stageTag = fmtKnockoutStage(b.match_id);
+        let matchPart;
+        if (m && m.home && m.away) {
+          matchPart = `${getTeam(m.home).code} v ${getTeam(m.away).code}`;
+          if (stageTag) matchPart = `${stageTag} ${matchPart}`;
+        } else {
+          matchPart = stageTag || b.match_id;
+        }
+        const pickTeam = b.pick === 'home' ? m?.home : b.pick === 'away' ? m?.away : null;
+        const pickLabel = pickTeam ? getTeam(pickTeam).code : (b.pick === 'draw' ? 'Draw' : b.pick);
+        matchLabel = opponentLabel
+          ? `Duel vs ${opponentLabel} · ${matchPart} · ${pickLabel}`
+          : `Duel · ${matchPart} · ${pickLabel}`;
       } else if (isSpecialBet) {
         const def = getSpecial(b.kind);
         matchLabel = def?.title || b.kind;
@@ -101,7 +135,9 @@ export function NetWorthGraph({ bets, compact }) {
     return { points: pts, minY: Math.min(...ys), maxY: Math.max(...ys) };
     // matches is included so knockout bet labels update once FIFA data lands
     // (otherwise nodes stuck on stale "R16 · KO-3" fallback labels)
-  }, [bets, range, matches]);
+    // challenges/allUsers included so duel bets get their opponent label
+    // once both async loads complete.
+  }, [bets, range, matches, challenges, allUsers, viewingUserId]);
 
   const SVG_W = 600, H = 160, PX = 16, PY = 28, Y_AXIS_W = 38;
 
