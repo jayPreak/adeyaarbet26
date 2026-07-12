@@ -861,6 +861,12 @@ function ThirdPlaceDetail({ pool, picks, myBet, user, allUsers, onBack, onPlace 
   );
 }
 
+const SETTLED_SPECIAL_ROUTES = {
+  final_four: '/specials/final-four',
+  total_goals: '/specials/total-goals',
+  ko_cup_winner: '/specials/ko-cup-winner',
+};
+
 function SettledSpecials({ specials, myBetsData, poolsData }) {
   const [open, setOpen] = useState(false);
   return (
@@ -882,36 +888,43 @@ function SettledSpecials({ specials, myBetsData, poolsData }) {
           {specials.map(s => {
             const myBet = myBetsData[s.id];
             const isRefunded = myBet?.status === 'cancelled';
+            const route = SETTLED_SPECIAL_ROUTES[s.id];
+            const Wrapper = route ? 'a' : 'div';
+            const wrapperProps = route ? { href: route, style: { textDecoration: 'none', color: 'inherit' } } : {};
             return (
-              <div key={s.id} style={{
-                padding: '10px 14px', borderRadius: 10,
-                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16 }}>{s.emoji}</span>
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink-2)' }}>{s.title}</span>
+              <Wrapper key={s.id} {...wrapperProps}>
+                <div style={{
+                  padding: '10px 14px', borderRadius: 10,
+                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                  cursor: route ? 'pointer' : 'default',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{s.emoji}</span>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink-2)' }}>{s.title}</span>
+                    {myBet && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                        background: myBet.status === 'won' ? 'rgba(74,222,128,0.12)' : myBet.status === 'lost' ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.06)',
+                        color: myBet.status === 'won' ? 'var(--win)' : myBet.status === 'lost' ? 'var(--loss)' : 'var(--ink-3)',
+                      }}>
+                        {myBet.status === 'won' ? `Won ${fmtMoney(myBet.payout || 0)}` : myBet.status === 'lost' ? `Lost ${fmtMoney(myBet.amount)}` : myBet.status === 'cancelled' ? `Refunded ${fmtMoney(myBet.amount)}` : myBet.status}
+                      </span>
+                    )}
+                    {!myBet && <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>No bet</span>}
+                    {route && <span style={{ fontSize: 12, color: 'var(--ink-3)', marginLeft: 4 }}>›</span>}
+                  </div>
                   {myBet && (
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
-                      background: myBet.status === 'won' ? 'rgba(74,222,128,0.12)' : myBet.status === 'lost' ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.06)',
-                      color: myBet.status === 'won' ? 'var(--win)' : myBet.status === 'lost' ? 'var(--loss)' : 'var(--ink-3)',
-                    }}>
-                      {myBet.status === 'won' ? `Won ${fmtMoney(myBet.payout || 0)}` : myBet.status === 'lost' ? `Lost ${fmtMoney(myBet.amount)}` : myBet.status === 'cancelled' ? `Refunded ${fmtMoney(myBet.amount)}` : myBet.status}
-                    </span>
+                    <div style={{ marginTop: 4, fontSize: 11, color: 'var(--ink-3)', paddingLeft: 24 }}>
+                      Picked: {s.formatPick(myBet.pick)} · {fmtMoney(myBet.amount)}
+                    </div>
                   )}
-                  {!myBet && <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>No bet</span>}
+                  {isRefunded && (
+                    <div style={{ marginTop: 4, fontSize: 10, color: 'var(--ink-3)', paddingLeft: 24, fontStyle: 'italic' }}>
+                      No winner — all bets refunded
+                    </div>
+                  )}
                 </div>
-                {myBet && (
-                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--ink-3)', paddingLeft: 24 }}>
-                    Picked: {s.formatPick(myBet.pick)} · {fmtMoney(myBet.amount)}
-                  </div>
-                )}
-                {isRefunded && (
-                  <div style={{ marginTop: 4, fontSize: 10, color: 'var(--ink-3)', paddingLeft: 24, fontStyle: 'italic' }}>
-                    No winner — all bets refunded
-                  </div>
-                )}
-              </div>
+              </Wrapper>
             );
           })}
         </div>

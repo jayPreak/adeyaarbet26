@@ -35,7 +35,7 @@ export async function GET(request) {
       const bettorCount = new Set(poolBets.map(b => b.user_id)).size;
       const byOption = {};
       for (const b of poolBets) { byOption[b.pick] = (byOption[b.pick] || 0) + b.amount; }
-      const picks = poolBets.map(b => ({ userId: b.user_id, displayName: b.profiles?.display_name || '?', avatarUrl: b.profiles?.avatar_url || null, pick: b.pick, amount: b.amount }));
+      const picks = poolBets.map(b => ({ userId: b.user_id, displayName: b.profiles?.display_name || '?', avatarUrl: b.profiles?.avatar_url || null, pick: b.pick, amount: b.amount, status: b.status, payout: b.payout }));
       const myBets = userId
         ? kBets.filter(b => b.user_id === userId && (settled || b.status === 'pending')).map(b => ({ id: b.id, pick: b.pick, amount: b.amount, status: b.status, payout: b.payout }))
         : [];
@@ -115,6 +115,8 @@ export async function GET(request) {
     avatarUrl: b.profiles?.avatar_url || null,
     pick: b.pick,
     amount: b.amount,
+    status: b.status,
+    payout: b.payout,
   }));
 
   const myBets = userId

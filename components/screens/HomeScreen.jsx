@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { CURRENCY_SYMBOL } from '@/lib/currency';
+import { getSpecialLabel } from '@/lib/specials';
 import { HeroMatch, SectionHead, MatchCard } from '@/components';
 import LiveStreamPanel from '@/components/LiveStreamPanel';
 import { fetchActivityDirect } from '@/lib/browserQueries';
@@ -291,18 +292,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
 }
 
 function formatSpecialMatchLabel(matchId) {
-  if (matchId === 'CUP_WINNER') return 'Cup Winner';
-  if (matchId === 'CONTINENT') return 'Winning Continent';
-  if (matchId === 'MESSI_V_RONALDO') return 'Messi vs Ronaldo';
-  if (matchId === 'GOLDEN_BOOT') return 'Golden Boot';
-  if (matchId === 'THIRD_QUALIFIERS') return '3rd Place Qualifiers';
-  if (matchId === 'R32_BIGGEST_LOSER') return 'KO Flop';
-  if (matchId === 'R32_BIGGEST_WINNER') return 'KO Bagholder';
-  if (matchId?.startsWith('HT_')) {
-    const slug = matchId.slice(3).toLowerCase().replace(/_/g, ' ');
-    return slug.replace(/\b\w/g, c => c.toUpperCase());
-  }
-  return null;
+  return getSpecialLabel(matchId);
 }
 
 function formatActivityText(a, fifaIdMap, matchesById, allUsers) {

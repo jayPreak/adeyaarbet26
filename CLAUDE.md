@@ -223,6 +223,15 @@ All specials are registered in `lib/specials.js:SPECIALS[]`. Each has:
 4. Add UI: card in `SpecialsScreen.jsx` + expanded detail view + modal for placement
 5. Wire modal open state in `lib/BettingContext.jsx` and render the modal in `app/(tabs)/layout.jsx` (NOT `AdeYaarApp.jsx` — dead code)
 6. If auto-settlement is needed, add logic to `auto-resolve/route.js`
+7. Add the short display name to `SPECIAL_LABEL_OVERRIDES` in `lib/specials.js`
+
+### Special bet display labels (NEVER hardcode match_id → name mappings)
+Use `getSpecialLabel(matchId)` from `lib/specials.js` to resolve a special's `match_id`
+(`FINAL_FOUR`, `CUP_WINNER`, etc.) to its short display label. For full label + pick
+together, use `formatBetLabels(bet, { getMatchFn, getTeamFn, fmtStageFn })` which
+handles match bets, specials, and knockouts uniformly. **NEVER** write ad-hoc if/switch
+chains like `if (matchId === 'CUP_WINNER') return 'Cup Winner'` — those drift out of
+sync instantly. The single source of truth is `SPECIAL_LABEL_OVERRIDES` + `SPECIALS[]`.
 
 ---
 

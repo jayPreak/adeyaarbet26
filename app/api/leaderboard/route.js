@@ -3,6 +3,7 @@ import supabase from '@/lib/supabase';
 import { FRIENDS, getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { computeBalance, computeRealisedBalance } from '@/lib/ledger';
 import { normalizeToZeroSum } from '@/lib/settlement';
+import { formatBetLabels } from '@/lib/specials';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -49,6 +50,8 @@ export async function GET() {
     poolsByMatch[b.match_id].bySide[side] = (poolsByMatch[b.match_id].bySide[side] || 0) + b.amount;
   }
 
+  const labelOpts = { getMatchFn: getMatch, getTeamFn: getTeam, fmtStageFn: fmtKnockoutStage };
+
   const result = profiles
     .filter(p => betsByUser[p.id]?.some(b => b.status !== 'cancelled'))
     .map(p => {
@@ -87,30 +90,7 @@ export async function GET() {
         .filter(b => b.status !== 'cancelled')
         .sort((a, b) => b.amount - a.amount);
       const topBets = allNonCancelled.map(b => {
-        let matchLabel = b.match_id;
-        let pickLabel = b.pick;
-        const m = getMatch(b.match_id);
-        const stageTag = fmtKnockoutStage(b.match_id);
-        if (m) {
-          const h = getTeam(m.home);
-          const a = getTeam(m.away);
-          matchLabel = `${h?.code || '?'} vs ${a?.code || '?'}`;
-          if (b.pick === 'home') pickLabel = h?.name || b.pick;
-          else if (b.pick === 'away') pickLabel = a?.name || b.pick;
-          else pickLabel = 'Draw';
-        } else if (b.match_id === 'CUP_WINNER') {
-          matchLabel = 'Cup Winner';
-          const pt = getTeam(b.pick);
-          if (pt) pickLabel = pt.name;
-        } else if (b.match_id === 'CONTINENT') {
-          matchLabel = 'Continent';
-        } else if (b.match_id?.startsWith('HT_')) {
-          matchLabel = 'Halftime';
-          pickLabel = b.pick?.toUpperCase();
-        } else if (stageTag) {
-          matchLabel = stageTag;
-          pickLabel = b.pick === 'home' ? 'Home' : b.pick === 'away' ? 'Away' : 'Draw';
-        }
+        const { matchLabel, pickLabel } = formatBetLabels(b, labelOpts);
         return {
           matchLabel,
           pickLabel,
@@ -153,25 +133,7 @@ export async function GET() {
   const biggestWins = bets
     .filter(b => b.status === 'won' && b.payout > 0 && b.match_id !== '_topup')
     .map(b => {
-      let matchLabel = b.match_id;
-      let pickLabel = b.pick;
-      const m = getMatch(b.match_id);
-      const stageTag = fmtKnockoutStage(b.match_id);
-      if (m) {
-        const h = getTeam(m.home);
-        const a = getTeam(m.away);
-        matchLabel = `${h.code} vs ${a.code}`;
-        if (b.pick === 'home') pickLabel = h.name;
-        else if (b.pick === 'away') pickLabel = a.name;
-        else pickLabel = 'Draw';
-      } else if (b.match_id === 'CUP_WINNER') {
-        matchLabel = 'Cup Winner';
-        const pt = getTeam(b.pick);
-        if (pt) pickLabel = pt.name;
-      } else if (stageTag) {
-        matchLabel = stageTag;
-        pickLabel = b.pick === 'home' ? 'Home' : b.pick === 'away' ? 'Away' : 'Draw';
-      }
+      const { matchLabel, pickLabel } = formatBetLabels(b, labelOpts);
       return {
         userId: b.user_id,
         displayName: profileMap[b.user_id]?.display_name || profileMap[b.user_id]?.username || '?',
@@ -192,25 +154,7 @@ export async function GET() {
   const biggestLosses = bets
     .filter(b => b.status === 'lost' && b.match_id !== '_topup')
     .map(b => {
-      let matchLabel = b.match_id;
-      let pickLabel = b.pick;
-      const m = getMatch(b.match_id);
-      const stageTag = fmtKnockoutStage(b.match_id);
-      if (m) {
-        const h = getTeam(m.home);
-        const a = getTeam(m.away);
-        matchLabel = `${h.code} vs ${a.code}`;
-        if (b.pick === 'home') pickLabel = h.name;
-        else if (b.pick === 'away') pickLabel = a.name;
-        else pickLabel = 'Draw';
-      } else if (b.match_id === 'CUP_WINNER') {
-        matchLabel = 'Cup Winner';
-        const pt = getTeam(b.pick);
-        if (pt) pickLabel = pt.name;
-      } else if (stageTag) {
-        matchLabel = stageTag;
-        pickLabel = b.pick === 'home' ? 'Home' : b.pick === 'away' ? 'Away' : 'Draw';
-      }
+      const { matchLabel, pickLabel } = formatBetLabels(b, labelOpts);
       return {
         userId: b.user_id,
         displayName: profileMap[b.user_id]?.display_name || profileMap[b.user_id]?.username || '?',

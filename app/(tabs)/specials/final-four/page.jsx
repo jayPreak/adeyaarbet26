@@ -34,16 +34,25 @@ export default function FinalFourPage() {
 
   const alive = useMemo(() => computeAliveTeams(matches), [matches]);
   const aliveSet = useMemo(() => new Set(alive), [alive]);
-  // How many of a pick are still alive? Used for "X of 4 still standing".
+
+  const isSettled = pool?.settled === true;
+  // For settled state, the semifinalists are the teams that are alive (survived all QFs)
+  const semifinalists = useMemo(() => {
+    if (!isSettled) return new Set();
+    return aliveSet;
+  }, [isSettled, aliveSet]);
+
   const countCorrect = (pickStr) => {
     if (!pickStr) return 0;
-    return pickStr.split(',').filter(c => aliveSet.has(c)).length;
+    const target = isSettled ? semifinalists : aliveSet;
+    return pickStr.split(',').filter(c => target.has(c)).length;
   };
 
   useEffect(() => {
+    if (isSettled) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [isSettled]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -54,7 +63,7 @@ export default function FinalFourPage() {
       setMyBet(mine);
       setPool(data.pool || null);
       setPicks(data.picks || []);
-      if (mine?.pick) {
+      if (mine?.pick && !mine.status?.match(/won|lost/)) {
         setSelected(new Set(mine.pick.split(',')));
         setAmount(mine.amount);
       }
@@ -137,6 +146,20 @@ export default function FinalFourPage() {
   const totalPool = pool?.total || 0;
   const bettorCount = pool?.bettorCount || 0;
 
+  // Sort picks for display: winners first (by payout desc), then losers (by correct count desc)
+  const sortedPicks = useMemo(() => {
+    return [...picks]
+      .map(p => ({ ...p, _correct: countCorrect(p.pick) }))
+      .sort((a, b) => {
+        if (isSettled) {
+          if (a.status === 'won' && b.status !== 'won') return -1;
+          if (b.status === 'won' && a.status !== 'won') return 1;
+          if (a.status === 'won' && b.status === 'won') return (b.payout || 0) - (a.payout || 0);
+        }
+        return b._correct - a._correct || b.amount - a.amount;
+      });
+  }, [picks, isSettled, semifinalists, aliveSet]);
+
   return (
     <div style={{ padding: '16px', maxWidth: 480 }}>
       {/* Header */}
@@ -155,67 +178,105 @@ export default function FinalFourPage() {
         </div>
       </div>
 
-      {/* Deadline countdown */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 14px', borderRadius: 10, marginBottom: 16,
-        background: closed ? 'rgba(255,61,127,0.06)' : 'rgba(0,255,133,0.04)',
-        border: `1px solid ${closed ? 'rgba(255,61,127,0.2)' : 'rgba(0,255,133,0.15)'}`,
-      }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: closed ? 'var(--loss)' : 'var(--ink-2)' }}>
-          {closed ? 'Betting closed' : 'Closes in'}
-        </span>
-        <span style={{ fontSize: 14, fontWeight: 800, fontFamily: 'var(--font-mono)', color: closed ? 'var(--loss)' : 'var(--gold)' }}>
-          {fmtCountdown(remaining)}
-        </span>
-      </div>
+      {/* Settlement banner — shown when bet is settled */}
+      {isSettled && (
+        <div style={{
+          padding: '14px 16px', borderRadius: 12, marginBottom: 16,
+          background: 'linear-gradient(135deg, rgba(74,222,128,0.08), rgba(54,211,153,0.04))',
+          border: '1px solid rgba(74,222,128,0.25)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--win)', letterSpacing: '0.03em' }}>SETTLED</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Pool: {fmtMoney(totalPool)}</span>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 6 }}>THE SEMIFINALISTS</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {[...semifinalists].sort().map(code => {
+              const team = getTeam(code);
+              return (
+                <span key={code} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '5px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                  background: 'rgba(74,222,128,0.12)', color: 'var(--win)',
+                  border: '1px solid rgba(74,222,128,0.25)',
+                }}>
+                  {team.flag} {team.name}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-      {/* Pool info */}
-      {totalPool > 0 && (
+      {/* Deadline countdown — only shown when NOT settled */}
+      {!isSettled && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px', borderRadius: 10, marginBottom: 16,
+          background: closed ? 'rgba(255,61,127,0.06)' : 'rgba(0,255,133,0.04)',
+          border: `1px solid ${closed ? 'rgba(255,61,127,0.2)' : 'rgba(0,255,133,0.15)'}`,
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: closed ? 'var(--loss)' : 'var(--ink-2)' }}>
+            {closed ? 'Betting closed' : 'Closes in'}
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 800, fontFamily: 'var(--font-mono)', color: closed ? 'var(--loss)' : 'var(--gold)' }}>
+            {fmtCountdown(remaining)}
+          </span>
+        </div>
+      )}
+
+      {/* Pool info — only for unsettled */}
+      {!isSettled && totalPool > 0 && (
         <div style={{ textAlign: 'center', marginBottom: 16, fontSize: 12, color: 'var(--ink-3)' }}>
           Pool: <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{fmtMoney(totalPool)}</span> · {bettorCount} player{bettorCount !== 1 ? 's' : ''}
         </div>
       )}
 
-      {/* My bet — with potential win and alive-count */}
+      {/* My bet result */}
       {myBet && (() => {
-        // Stake-proportional split among users who picked the SAME 4 teams (any order)
-        const normalize = (s) => (s || '').split(',').sort().join(',');
-        const mine = normalize(myBet.pick);
-        const samePick = picks.filter(p => normalize(p.pick) === mine);
-        const samePickTotal = samePick.reduce((s, p) => s + p.amount, 0);
-        const myPotentialWin = totalPool > 0 && samePickTotal > 0
-          ? Math.floor((myBet.amount / samePickTotal) * totalPool)
-          : 0;
         const correct = countCorrect(myBet.pick);
-        const stillAlive = correct === 4;
+        const isWon = myBet.status === 'won';
+        const isLost = myBet.status === 'lost';
+        const betSettled = isWon || isLost;
+
         return (
           <div style={{
             marginBottom: 16, padding: '12px 14px', borderRadius: 10,
-            background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)',
+            background: isWon ? 'rgba(74,222,128,0.08)' : isLost ? 'rgba(248,113,113,0.06)' : 'rgba(74,222,128,0.06)',
+            border: `1px solid ${isWon ? 'rgba(74,222,128,0.3)' : isLost ? 'rgba(248,113,113,0.2)' : 'rgba(74,222,128,0.15)'}`,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <span style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>YOUR PICK</span>
-              <span style={{
-                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
-                background: stillAlive ? 'rgba(74,222,128,0.14)' : 'rgba(255,255,255,0.06)',
-                color: stillAlive ? 'var(--win)' : 'var(--ink-2)',
-              }}>
-                {correct}/4 still alive
-              </span>
+              {betSettled ? (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                  background: isWon ? 'rgba(74,222,128,0.14)' : 'rgba(248,113,113,0.12)',
+                  color: isWon ? 'var(--win)' : 'var(--loss)',
+                }}>
+                  {isWon ? `Won ${fmtMoney(myBet.payout)}` : `Lost ₹${myBet.amount}`}
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                  background: correct === 4 ? 'rgba(74,222,128,0.14)' : 'rgba(255,255,255,0.06)',
+                  color: correct === 4 ? 'var(--win)' : 'var(--ink-2)',
+                }}>
+                  {correct}/4 {isSettled ? 'correct' : 'still alive'}
+                </span>
+              )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               {myBet.pick.split(',').map(code => {
                 const team = getTeam(code);
-                const isAlive = aliveSet.has(code);
+                const isCorrect = isSettled ? semifinalists.has(code) : aliveSet.has(code);
                 return (
                   <span key={code} style={{
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                     padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                    background: isAlive ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.08)',
-                    color: isAlive ? 'var(--ink)' : 'var(--loss)',
-                    textDecoration: isAlive ? 'none' : 'line-through',
-                    opacity: isAlive ? 1 : 0.7,
+                    background: isCorrect ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.08)',
+                    color: isCorrect ? 'var(--ink)' : 'var(--loss)',
+                    textDecoration: isCorrect ? 'none' : 'line-through',
+                    opacity: isCorrect ? 1 : 0.7,
                   }}>
                     {team.flag} {team.name}
                   </span>
@@ -227,18 +288,39 @@ export default function FinalFourPage() {
                 <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>STAKE</div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gold)', fontFamily: 'var(--font-mono)' }}>{fmtMoney(myBet.amount)}</div>
               </div>
-              {myPotentialWin > 0 && (
+              {betSettled && isWon && (
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>IF ALL 4 CORRECT</div>
+                  <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>PAYOUT</div>
                   <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--win)', fontFamily: 'var(--font-mono)' }}>
-                    {fmtMoney(myPotentialWin)}
+                    {fmtMoney(myBet.payout)}
                     <span style={{ fontSize: 11, fontWeight: 600, marginLeft: 4, opacity: 0.85 }}>
-                      (+{Math.round(((myPotentialWin - myBet.amount) / myBet.amount) * 100)}%)
+                      (+{Math.round(((myBet.payout - myBet.amount) / myBet.amount) * 100)}%)
                     </span>
                   </div>
                 </div>
               )}
-              {!closed && (
+              {!betSettled && !isSettled && (() => {
+                const normalize = (s) => (s || '').split(',').sort().join(',');
+                const mine = normalize(myBet.pick);
+                const samePick = picks.filter(p => normalize(p.pick) === mine);
+                const samePickTotal = samePick.reduce((s, p) => s + p.amount, 0);
+                const myPotentialWin = totalPool > 0 && samePickTotal > 0
+                  ? Math.floor((myBet.amount / samePickTotal) * totalPool)
+                  : 0;
+                if (myPotentialWin <= 0) return null;
+                return (
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 10, color: 'var(--ink-3)', fontWeight: 600 }}>IF ALL 4 CORRECT</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--win)', fontFamily: 'var(--font-mono)' }}>
+                      {fmtMoney(myPotentialWin)}
+                      <span style={{ fontSize: 11, fontWeight: 600, marginLeft: 4, opacity: 0.85 }}>
+                        (+{Math.round(((myPotentialWin - myBet.amount) / myBet.amount) * 100)}%)
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+              {!closed && !betSettled && (
                 <button onClick={handleCancel} disabled={submitting} style={{ background: 'none', border: 'none', color: 'var(--loss)', fontSize: 11, fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', alignSelf: 'center' }}>
                   Cancel
                 </button>
@@ -248,56 +330,58 @@ export default function FinalFourPage() {
         );
       })()}
 
-      {/* Team grid */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>
-            {closed ? 'Teams were alive at lock' : 'Teams still alive — pick exactly 4'}
-          </span>
-          {!myBet && (
-            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 14, color: count === REQUIRED ? 'var(--win)' : count > 0 ? 'var(--gold)' : 'var(--ink-3)' }}>
-              {count}/{REQUIRED}
+      {/* Team grid — only show when NOT settled */}
+      {!isSettled && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600 }}>
+              {closed ? 'Teams were alive at lock' : 'Teams still alive — pick exactly 4'}
             </span>
+            {!myBet && (
+              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 14, color: count === REQUIRED ? 'var(--win)' : count > 0 ? 'var(--gold)' : 'var(--ink-3)' }}>
+                {count}/{REQUIRED}
+              </span>
+            )}
+          </div>
+
+          {alive.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '18px 0', fontSize: 12, color: 'var(--ink-3)' }}>
+              Knockout bracket still loading...
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+              {alive.map(code => {
+                const team = getTeam(code);
+                const isSel = selected.has(code);
+                const disabled = closed || myBet || (!isSel && count >= REQUIRED);
+                return (
+                  <button
+                    key={code}
+                    disabled={disabled}
+                    onClick={() => toggleTeam(code)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '10px', borderRadius: 10, cursor: disabled ? 'default' : 'pointer',
+                      background: isSel ? 'rgba(54,211,153,0.14)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${isSel ? 'rgba(54,211,153,0.7)' : 'rgba(255,255,255,0.08)'}`,
+                      color: isSel ? 'var(--win)' : 'var(--ink)',
+                      opacity: disabled && !isSel ? 0.35 : 1,
+                      fontSize: 12, fontWeight: 600, textAlign: 'left',
+                    }}
+                  >
+                    <span style={{ fontSize: 16 }}>{team.flag}</span>
+                    <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{team.name}</span>
+                    {isSel && <span>✓</span>}
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
-
-        {alive.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '18px 0', fontSize: 12, color: 'var(--ink-3)' }}>
-            Knockout bracket still loading...
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
-            {alive.map(code => {
-              const team = getTeam(code);
-              const isSel = selected.has(code);
-              const disabled = closed || myBet || (!isSel && count >= REQUIRED);
-              return (
-                <button
-                  key={code}
-                  disabled={disabled}
-                  onClick={() => toggleTeam(code)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '10px', borderRadius: 10, cursor: disabled ? 'default' : 'pointer',
-                    background: isSel ? 'rgba(54,211,153,0.14)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${isSel ? 'rgba(54,211,153,0.7)' : 'rgba(255,255,255,0.08)'}`,
-                    color: isSel ? 'var(--win)' : 'var(--ink)',
-                    opacity: disabled && !isSel ? 0.35 : 1,
-                    fontSize: 12, fontWeight: 600, textAlign: 'left',
-                  }}
-                >
-                  <span style={{ fontSize: 16 }}>{team.flag}</span>
-                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{team.name}</span>
-                  {isSel && <span>✓</span>}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Amount + submit (only if no bet yet and not closed) */}
-      {!closed && !myBet && (
+      {!closed && !myBet && !isSettled && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ textAlign: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, marginBottom: 6 }}>
             {CURRENCY_SYMBOL}{amount.toLocaleString('en-IN')}
@@ -336,97 +420,121 @@ export default function FinalFourPage() {
         </div>
       )}
 
-      {/* Rules */}
-      <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5 }}>
-          Pick 4 teams you think will make the semifinals. Whoever gets the most correct wins the entire pool. Ties split evenly.
+      {/* Rules — only when not settled */}
+      {!isSettled && (
+        <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5 }}>
+            Pick 4 teams you think will make the semifinals. Whoever gets the most correct wins the entire pool. Ties split evenly.
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Everyone's picks */}
-      {picks.length > 0 && (
+      {/* Everyone's picks — works for both settled and unsettled */}
+      {sortedPicks.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-3)', letterSpacing: '0.04em' }}>
-              EVERYONE'S PICKS
+              {isSettled ? 'RESULTS' : "EVERYONE'S PICKS"}
             </span>
-            <span style={{ fontSize: 10, color: 'var(--ink-3)' }}>
-              {aliveSet.size} teams still alive
-            </span>
+            {!isSettled && (
+              <span style={{ fontSize: 10, color: 'var(--ink-3)' }}>
+                {aliveSet.size} teams still alive
+              </span>
+            )}
           </div>
-          {picks
-            // Sort by picks alive descending (leaderboard-esque)
-            .map(p => ({ ...p, _correct: countCorrect(p.pick) }))
-            .sort((a, b) => b._correct - a._correct || b.amount - a.amount)
-            .map((p, i) => {
-              const normalize = (s) => (s || '').split(',').sort().join(',');
-              const mine = normalize(p.pick);
-              const samePick = picks.filter(x => normalize(x.pick) === mine);
-              const samePickTotal = samePick.reduce((s, x) => s + x.amount, 0);
-              const potentialWin = totalPool > 0 && samePickTotal > 0
-                ? Math.floor((p.amount / samePickTotal) * totalPool)
-                : 0;
-              const correct = p._correct;
-              const isSelf = p.userId === user?.id;
-              return (
-                <div key={i} style={{
-                  padding: '10px 12px', marginBottom: 6, borderRadius: 10,
-                  background: isSelf ? 'rgba(74,222,128,0.06)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${isSelf ? 'rgba(74,222,128,0.18)' : 'rgba(255,255,255,0.06)'}`,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <div style={{
-                      width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                      background: p.avatarUrl ? `url(${p.avatarUrl}) center/cover` : 'rgba(255,255,255,0.08)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 10, color: 'var(--ink-3)',
+          {sortedPicks.map((p, i) => {
+            const correct = p._correct;
+            const isSelf = p.userId === user?.id;
+            const isWinner = p.status === 'won';
+            const isLoser = p.status === 'lost';
+            return (
+              <div key={i} style={{
+                padding: '10px 12px', marginBottom: 6, borderRadius: 10,
+                background: isWinner ? 'rgba(74,222,128,0.06)' : isSelf ? 'rgba(74,222,128,0.04)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${isWinner ? 'rgba(74,222,128,0.2)' : isSelf ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)'}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                    background: p.avatarUrl ? `url(${p.avatarUrl}) center/cover` : 'rgba(255,255,255,0.08)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, color: 'var(--ink-3)',
+                  }}>
+                    {!p.avatarUrl && (p.displayName?.[0] || '?')}
+                  </div>
+                  <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>
+                    {isSelf ? 'You' : p.displayName}
+                  </span>
+                  {isSettled ? (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 5,
+                      background: isWinner ? 'rgba(74,222,128,0.14)' : 'rgba(248,113,113,0.1)',
+                      color: isWinner ? 'var(--win)' : 'var(--loss)',
+                      fontFamily: 'var(--font-mono)',
                     }}>
-                      {!p.avatarUrl && (p.displayName?.[0] || '?')}
-                    </div>
-                    <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>
-                      {isSelf ? 'You' : p.displayName}
+                      {isWinner ? `Won ${fmtMoney(p.payout)}` : `${correct}/4`}
                     </span>
+                  ) : (
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 5,
                       background: correct === 4 ? 'rgba(74,222,128,0.14)' : 'rgba(255,255,255,0.04)',
                       color: correct === 4 ? 'var(--win)' : 'var(--ink-2)',
                       fontFamily: 'var(--font-mono)',
                     }}>{correct}/4 alive</span>
-                    <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--gold)' }}>{fmtMoney(p.amount)}</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 6 }}>
-                    {(p.pick || '').split(',').map(code => {
-                      const team = getTeam(code);
-                      const isAlive = aliveSet.has(code);
-                      return (
-                        <div key={code} style={{
-                          display: 'flex', alignItems: 'center', gap: 4,
-                          padding: '3px 6px', borderRadius: 5,
-                          background: isAlive ? 'rgba(74,222,128,0.06)' : 'rgba(248,113,113,0.06)',
-                          border: `1px solid ${isAlive ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'}`,
-                          fontSize: 10, fontWeight: 600,
-                          color: isAlive ? 'var(--ink)' : 'var(--loss)',
-                          textDecoration: isAlive ? 'none' : 'line-through',
-                          opacity: isAlive ? 1 : 0.65,
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>
-                          <span style={{ fontSize: 12 }}>{team.flag}</span>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{team.code}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {potentialWin > 0 && (
+                  )}
+                  <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--gold)' }}>{fmtMoney(p.amount)}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 6 }}>
+                  {(p.pick || '').split(',').map(code => {
+                    const team = getTeam(code);
+                    const isCorrect = isSettled ? semifinalists.has(code) : aliveSet.has(code);
+                    return (
+                      <div key={code} style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        padding: '3px 6px', borderRadius: 5,
+                        background: isCorrect ? 'rgba(74,222,128,0.06)' : 'rgba(248,113,113,0.06)',
+                        border: `1px solid ${isCorrect ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)'}`,
+                        fontSize: 10, fontWeight: 600,
+                        color: isCorrect ? 'var(--ink)' : 'var(--loss)',
+                        textDecoration: isCorrect ? 'none' : 'line-through',
+                        opacity: isCorrect ? 1 : 0.65,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>
+                        <span style={{ fontSize: 12 }}>{team.flag}</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{team.code}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {!isSettled && (() => {
+                  const normalize = (s) => (s || '').split(',').sort().join(',');
+                  const mine = normalize(p.pick);
+                  const samePick = picks.filter(x => normalize(x.pick) === mine);
+                  const samePickTotal = samePick.reduce((s, x) => s + x.amount, 0);
+                  const potentialWin = totalPool > 0 && samePickTotal > 0
+                    ? Math.floor((p.amount / samePickTotal) * totalPool)
+                    : 0;
+                  if (potentialWin <= 0) return null;
+                  return (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ink-3)' }}>
                       <span>if all 4 correct</span>
                       <span style={{ color: 'var(--win)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
                         → {fmtMoney(potentialWin)}
                       </span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })()}
+                {isSettled && isWinner && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ink-3)' }}>
+                    <span>profit</span>
+                    <span style={{ color: 'var(--win)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                      +{fmtMoney(p.payout - p.amount)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -437,7 +545,7 @@ export default function FinalFourPage() {
         if (notBet.length === 0) return null;
         return (
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>HAVEN'T BET YET ({notBet.length})</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', marginBottom: 8 }}>DIDN'T BET ({notBet.length})</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {notBet.map(u => (
                 <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>

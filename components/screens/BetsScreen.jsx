@@ -4,7 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 import { getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
-import { getSpecial } from '@/lib/specials';
+import { getSpecial, getSpecialLabel } from '@/lib/specials';
 import { useBetting } from '@/lib/BettingContext';
 import { BetCard } from '@/components';
 import { SettlementPlan } from '@/components/screens/LeaderboardScreen';
@@ -99,8 +99,7 @@ export function NetWorthGraph({ bets, compact, challenges: challengesProp, allUs
           ? `Duel vs ${opponentLabel} · ${matchPart} · ${pickLabel}`
           : `Duel · ${matchPart} · ${pickLabel}`;
       } else if (isSpecialBet) {
-        const def = getSpecial(b.kind);
-        matchLabel = def?.title || b.kind;
+        matchLabel = getSpecialLabel(b.match_id) || getSpecial(b.kind)?.title || b.kind;
       } else {
         const m = getMatch(b.match_id) || matches.find(x => x.id === b.match_id);
         const stageTag = fmtKnockoutStage(b.match_id);
@@ -117,12 +116,29 @@ export function NetWorthGraph({ bets, compact, challenges: challengesProp, allUs
         }
       }
 
+      // Resolve pick label for tooltip
+      let pickLabel = b.pick;
+      if (isDuel) {
+        const m = getMatch(b.match_id) || matches.find(x => x.id === b.match_id);
+        const pickTeam = b.pick === 'home' ? m?.home : b.pick === 'away' ? m?.away : null;
+        pickLabel = pickTeam ? getTeam(pickTeam).code : (b.pick === 'draw' ? 'Draw' : b.pick);
+      } else if (isSpecialBet) {
+        const def = getSpecial(b.kind);
+        pickLabel = def?.formatPick?.(b.pick) || b.pick;
+      } else {
+        const m = getMatch(b.match_id) || matches.find(x => x.id === b.match_id);
+        if (m && m.home && m.away) {
+          pickLabel = b.pick === 'home' ? getTeam(m.home).name : b.pick === 'away' ? getTeam(m.away).name : 'Draw';
+        }
+      }
+
       pts.push({
         x: i + 1,
         y: entry.running,
         ts: new Date(b.resolved_at || b.created_at).getTime(),
         bet: {
           matchLabel,
+          pickLabel,
           amount: b.amount,
           payout: b.payout || 0,
           status: b.status,
@@ -314,12 +330,12 @@ export function NetWorthGraph({ bets, compact, challenges: challengesProp, allUs
           background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)' }}>
-            {tooltip.bet.matchLabel}
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            {tooltip.bet.matchLabel} · {tooltip.bet.pickLabel}
           </span>
-          <span style={{ fontSize: 11 }}>
+          <span style={{ fontSize: 11, whiteSpace: 'nowrap', marginLeft: 8 }}>
             {tooltip.bet.status === 'won' ? (
-              <span style={{ color: 'var(--win)' }}>+{fmtMoney(tooltip.bet.payout)} ({tooltip.bet.roi}%)</span>
+              <span style={{ color: 'var(--win)' }}>+{fmtMoney(tooltip.bet.payout - tooltip.bet.amount)} ({tooltip.bet.roi}%)</span>
             ) : (
               <span style={{ color: 'var(--loss)' }}>−{fmtMoney(tooltip.bet.amount)}</span>
             )}
@@ -681,7 +697,7 @@ export function SettlementCard({ user, bets = [] }) {
                 const u = allUsers.find(u => u.id === b.pick);
                 if (u) pickLabel = u.display_name || u.username || pickLabel;
               }
-              label = `${def?.title || b.kind} · ${pickLabel}`;
+              label = `${getSpecialLabel(b.match_id) || def?.title || b.kind} · ${pickLabel}`;
             } else {
               const m = getMatch(b.match_id) || matches.find(x => x.id === b.match_id);
               const stageTag = fmtKnockoutStage(b.match_id);
