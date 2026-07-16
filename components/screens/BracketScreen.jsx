@@ -71,7 +71,7 @@ const STAGE_INFO = [
   { key: 'R16',   label: 'Round of 16',         count: 8  },
   { key: 'QF',    label: 'Quarterfinals',        count: 4  },
   { key: 'SF',    label: 'Semifinals',           count: 2  },
-  { key: 'Final', label: 'Final · Jul 18',       count: 1, gold: true },
+  { key: 'Final', label: 'Final · Jul 20',       count: 1, gold: true },
   { key: '3rd',   label: '3rd Place · Jul 19',   count: 1, gold: true },
 ];
 

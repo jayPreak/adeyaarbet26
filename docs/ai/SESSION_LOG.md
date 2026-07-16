@@ -237,3 +237,24 @@ Newest entries at the TOP (below this header block).
   layer that feeds it. Confirmed no existing bets on FIN-1/3RD-1 (no mis-settlement
   risk from the semantic swap of home/away).
 - **Left undone:** User to commit/push to upstream.
+
+---
+
+## 2026-07-16 (b) — Fix swapped Final/3rd-place kickoff dates
+
+- **Task:** User's reference screenshot: 3rd place (FRA v ENG) is Sun 19 Jul, Final
+  (ESP v ARG) is Mon 20 Jul (IST). App showed them reversed.
+- **Root cause:** `match_schedule` had FIN-1 = 2026-07-18 21:00 UTC (→ 19 Jul 2:30am
+  IST) and 3RD-1 = 2026-07-19 19:00 UTC (→ 20 Jul 12:30am IST) — the two kickoff_ts
+  values were swapped between the static IDs.
+- **Fix:** Ran a prod UPDATE swapping them → FIN-1 = 2026-07-19 19:00 UTC (Mon 20 Jul
+  IST), 3RD-1 = 2026-07-18 21:00 UTC (Sun 19 Jul IST). Also updated hardcoded bracket
+  round-header labels: BracketScreen "Final · Jul 18"→"Jul 20"; DesktopApp
+  "Final · Jul 19"→"Jul 20". (3rd-place header already read "Jul 19".)
+- **Gotchas:** Per-match nodes render kickoff via formatIST(kickoffTs) from the DB;
+  the static STAGE_INFO headers are separate hardcoded strings that must be kept in
+  sync manually. Betting-close cutoff and countdowns key off these kickoffs, so the
+  swap also fixes when Final/3rd betting closes. DB is prod (local dev → prod DB).
+- **Verification:** `/api/init` schedule now returns FIN-1 → Mon 20 Jul 12:30am IST,
+  3RD-1 → Sun 19 Jul 2:30am IST (matches screenshot). `npm run build` clean.
+- **Left undone:** commit + push (this session).

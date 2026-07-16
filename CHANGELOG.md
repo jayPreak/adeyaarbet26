@@ -13,6 +13,14 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 ---
 
 ## 2026-07-16
+- **[fix]** The Final and 3rd-place kickoff dates were swapped. The DB had the
+  Final on Jul 19 IST and 3rd place on Jul 20 IST; the real schedule is 3rd place
+  **Sun 19 Jul** (France vs England) and Final **Mon 20 Jul** (Spain vs Argentina).
+  Swapped the `kickoff_ts` on `FIN-1` (→ 2026-07-19 19:00 UTC) and `3RD-1`
+  (→ 2026-07-18 21:00 UTC) in `match_schedule`, and updated the hardcoded bracket
+  round-header date labels to match.
+  _Files: match_schedule (prod DB), components/screens/BracketScreen.jsx,
+  components/desktop/DesktopApp.jsx. By: Claude Code._
 - **[fix]** The Final and 3rd-place match were showing the wrong teams. The FIFA
   API labels the two matches with stage IDs that our code had mapped backwards:
   stage `289292` (the last match, #104) is the actual Final and stage `289291` is

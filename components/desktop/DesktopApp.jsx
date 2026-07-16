@@ -740,7 +740,7 @@ function DBracketScreen({ matches = MATCHES }) {
                 <DBracketMatch tbd />
               </div>
               <div className="bracket-round" style={{ justifyContent: 'center' }}>
-                <div className="bracket-round__title" style={{ color: 'var(--gold)' }}>Final · Jul 19</div>
+                <div className="bracket-round__title" style={{ color: 'var(--gold)' }}>Final · Jul 20</div>
                 <div className="bracket-match" style={{ borderColor: 'var(--gold)', background: 'var(--gold-soft)' }}>
                   <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--gold)' }}>
                     <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>METLIFE</div>
