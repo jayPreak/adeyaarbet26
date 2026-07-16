@@ -434,6 +434,17 @@ exposes `allChallenges` (all statuses, current user's participation) for this;
 parallel with bets and passes them explicitly. Do NOT reuse `challenges` for
 history — that field is narrowed to open+accepted for the active-duels UI.
 
+### 22. FIFA Final / 3rd-place stage IDs are the reverse of intuition
+The FIFA API assigns stage `289292` to the **Final** (it's match #104, the last match)
+and `289291` to the **3rd-place** playoff (match #103) — the opposite of what the numeric
+order suggests. An earlier mapping had them backwards (`289291`→Final), so the app showed
+the wrong teams for both (2026-07-16 fix). The stage-ID → label/prefix map is DUPLICATED
+across six files — `app/api/init/route.js`, `app/api/fifa/matches/route.js`,
+`app/api/fifa/knockout/route.js`, `app/api/auto-resolve/route.js` (settlement!),
+`app/api/goalscorer-players/[matchId]/route.js` (reversed label→id), and
+`lib/schedule-sync.js`. If you touch one you MUST touch all six or display and settlement
+diverge. Correct: `289292`→Final→`FIN-1`, `289291`→3rd→`3RD-1`.
+
 ---
 
 ## Adding a New Feature — Checklist

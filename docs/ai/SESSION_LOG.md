@@ -208,3 +208,32 @@ Newest entries at the TOP (below this header block).
 - **Verification:** Docs-only change; no build/test needed.
 - **Left undone / follow-ups:** User to review and commit. Consider a pre-commit hook
   or `.claude/settings` hook to hard-enforce the doc protocol.
+
+---
+
+## 2026-07-16 — Fix Final/3rd-place matchups + Final min bet
+
+- **Task:** User reported the Final and 3rd-place match showed the wrong teams;
+  wanted Final = Spain vs Argentina, 3rd = France vs England, and Final min bet 500.
+- **Root cause:** FIFA API returns stage `289291` = FRA vs ENG (match #103) and
+  stage `289292` = ESP vs ARG (match #104, the last match = the true Final). Our
+  stage-ID→label maps had `289291`→Final / `289292`→3rd, i.e. swapped. So the app
+  displayed FRA vs ENG as the Final.
+- **Fix:** Swapped `289291`↔`289292` in every stage-mapping table:
+  init/route.js, fifa/matches/route.js, fifa/knockout/route.js (id→label);
+  auto-resolve/route.js (id→static prefix, used for settlement);
+  goalscorer-players/[matchId]/route.js (label→id, reversed); schedule-sync.js.
+  Now `289292`→Final→FIN-1 (kickoff Jul 18 from DB), `289291`→3rd→3RD-1 (Jul 19).
+- **Min bet:** `lib/currency.js` STAGE_MINIMUMS.FIN 1000→500. Updated two tests
+  (min-bet.test.js, penalty.test.js) that asserted 1000.
+- **Gotchas:** The stage-ID mapping is duplicated across 6 files — all must stay in
+  sync or display/settlement diverge. Static IDs FIN-1/3RD-1 and their kickoffs live
+  in `match_schedule` independent of FIFA; the client assigns the static ID from the
+  (now-corrected) stage label. Match-bet minimums are client-side only (no server
+  RPC gate for match bets).
+- **Verification:** `npm test` 356/356 green; `npm run build` clean. Confirmed live
+  against prod-backed dev server: `/api/fifa/knockout` and `/api/init` both return
+  Final = ESP vs ARG, 3rd = FRA vs ENG. UI is auth-gated so verified at the API
+  layer that feeds it. Confirmed no existing bets on FIN-1/3RD-1 (no mis-settlement
+  risk from the semantic swap of home/away).
+- **Left undone:** User to commit/push to upstream.

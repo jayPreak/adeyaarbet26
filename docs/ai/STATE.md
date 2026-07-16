@@ -11,6 +11,9 @@ _Last updated: 2026-07-11_
 - FIFA World Cup 2026, mid-tournament (knockout stage era: R32/QF features shipped,
   migrations through 040). QF-1 & QF-2 settled; QF-3, QF-4, SF, FIN pending.
 - Real money among ~10 friends; settlement happens at tournament end.
+- Final = **Spain vs Argentina** (FIN-1, Jul 18); 3rd place = **France vs England**
+  (3RD-1, Jul 19). Final min bet is ₹500. (2026-07-16: fixed a swapped FIFA
+  stage-ID mapping that had shown the wrong teams — see CLAUDE.md failure mode #20.)
 
 ## What's live
 - Match bets, cup winner, continent, H2H, golden boot, goalscorer, third-place

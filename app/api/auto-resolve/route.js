@@ -165,8 +165,8 @@ export async function GET(request) {
     '289288': 'R16',
     '289289': 'QF',
     '289290': 'SF',
-    '289291': 'FIN',
-    '289292': '3RD',
+    '289291': '3RD',
+    '289292': 'FIN',
   };
 
   const finished = [];

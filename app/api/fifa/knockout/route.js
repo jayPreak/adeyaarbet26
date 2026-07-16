@@ -7,8 +7,8 @@ const STAGE_MAP = {
   '289288': 'R16',
   '289289': 'QF',
   '289290': 'SF',
-  '289291': 'Final',
-  '289292': '3rd',
+  '289291': '3rd',
+  '289292': 'Final',
 };
 
 function normalize(code) {

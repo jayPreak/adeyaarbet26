@@ -13,7 +13,7 @@ const POSITION_LABELS = { 0: 'GK', 1: 'DEF', 2: 'MID', 3: 'FWD' };
 
 // Knockout stage prefix → FIFA stage ID
 const KO_STAGE_TO_FIFA_ID = {
-  R32: '289287', R16: '289288', QF: '289289', SF: '289290', FIN: '289291', '3RD': '289292',
+  R32: '289287', R16: '289288', QF: '289289', SF: '289290', FIN: '289292', '3RD': '289291',
 };
 
 // Reverse TEAM_CODE_ALIAS so we can look up our code from a FIFA abbreviation.

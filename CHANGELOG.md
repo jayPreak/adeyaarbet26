@@ -12,6 +12,24 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-16
+- **[fix]** The Final and 3rd-place match were showing the wrong teams. The FIFA
+  API labels the two matches with stage IDs that our code had mapped backwards:
+  stage `289292` (the last match, #104) is the actual Final and stage `289291` is
+  the 3rd-place playoff, but we'd mapped `289291`→Final and `289292`→3rd. Swapped
+  the mapping everywhere it appears so the Final now correctly shows **Spain vs
+  Argentina** (Jul 18) and 3rd place shows **France vs England** (Jul 19). This
+  flows through the bracket display, the betting fixtures page, goalscorer player
+  lists, and auto-settlement. No bets existed on either match yet, so nothing was
+  mis-settled. Also lowered the **Final minimum bet from ₹1000 to ₹500**.
+  _Files: app/api/init/route.js, app/api/fifa/matches/route.js,
+  app/api/fifa/knockout/route.js, app/api/auto-resolve/route.js,
+  app/api/goalscorer-players/[matchId]/route.js, lib/schedule-sync.js,
+  lib/currency.js, __tests__/min-bet.test.js, __tests__/penalty.test.js.
+  By: Claude Code._
+
+---
+
 ## 2026-07-11
 - **[fix]** Fixed a money-consistency bug where clicking "Cancel bet" on a match
   card also silently cancelled the user's active duels on that match. Ten
