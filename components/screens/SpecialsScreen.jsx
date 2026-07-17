@@ -224,7 +224,6 @@ function TeamAccordion({ special, sorted, total, picks, myPick }) {
                   <span style={{ width: 100, fontSize: 10, color: 'var(--ink-3)', fontWeight: 600, textAlign: 'right' }}>WINS IF</span>
                 </div>
                 {teamPicks.map((p, i) => {
-                  console.log(p)
                   const possibleWin = amount > 0 ? Math.floor((p.amount / amount) * total) : 0;
                   const roi = p.amount > 0 ? Math.round(((possibleWin - p.amount) / p.amount) * 100) : 0;
                   return (
