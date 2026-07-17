@@ -224,6 +224,7 @@ function TeamAccordion({ special, sorted, total, picks, myPick }) {
                   <span style={{ width: 100, fontSize: 10, color: 'var(--ink-3)', fontWeight: 600, textAlign: 'right' }}>WINS IF</span>
                 </div>
                 {teamPicks.map((p, i) => {
+                  console.log(p)
                   const possibleWin = amount > 0 ? Math.floor((p.amount / amount) * total) : 0;
                   const roi = p.amount > 0 ? Math.round(((possibleWin - p.amount) / p.amount) * 100) : 0;
                   return (
@@ -231,13 +232,13 @@ function TeamAccordion({ special, sorted, total, picks, myPick }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
                         <div style={{
                           width: 20, height: 20, borderRadius: '50%',
-                          background: p.avatar_url ? `url(${p.avatar_url}) center/cover` : 'rgba(255,255,255,0.1)',
+                          background: p.avatarUrl ? `url(${p.avatarUrl}) center/cover` : 'rgba(255,255,255,0.1)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: 9, color: 'var(--ink-3)',
                         }}>
-                          {!p.avatar_url && (p.display_name?.[0] || '?')}
+                          {!p.avatarUrl && (p.displayName?.[0] || '?')}
                         </div>
-                        <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{p.display_name}</span>
+                        <span style={{ fontSize: 12, color: 'var(--ink-2)' }}>{p.displayName}</span>
                       </div>
                       <span style={{ width: 70, fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--ink-2)', textAlign: 'right' }}>
                         {fmtMoney(p.amount)}
