@@ -12,6 +12,21 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-20 (Wrapped redesign)
+- **[feat]** Reskinned all 14 Wrapped story slides to match the polished
+  "AdeYaar Wrapped" design kit — each slide now has its own colour (a family of
+  gradients), bespoke layout and animation: the intro greeting with confetti, a
+  giant shimmering bet count, a rotated "total staked" panel, a tear-off bet
+  slip for your biggest bet (with team flags), an animated hit-rate ring, a
+  raining-money biggest win, a shaking "roughest loss", a giant flag + scrolling
+  team-name banner for your ride-or-die team, a split-screen duel scoreboard, a
+  floating-tags special-bets slide, a podium for your finishing rank, a rising
+  (or falling) net-profit line chart, your betting-persona card, and the trophy
+  outro. All copy and numbers still come from your real data. Knockout/final
+  bets now resolve to proper team flags (previously showed the raw match id).
+  _Files: components/WrappedStory.jsx, components/screens/HomeScreen.jsx.
+  By: Claude Code (design from Claude Design)._
+
 ## 2026-07-20 (Wrapped music)
 - **[feat]** Wrapped now plays background music while you watch. A 🔊/🔇 button
   in the story header mutes/unmutes; music pauses when you hold-to-pause a slide

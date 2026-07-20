@@ -470,3 +470,38 @@ Newest entries at the TOP (below this header block).
   can't be heard in the headless pane, but the mechanism is verified.
 - **Follow-up for the user:** add `public/wrapped-theme.mp3` (a file you own the
   rights to) for music to actually play.
+
+---
+
+## 2026-07-20 — Wrapped slides reskinned from Claude Design kit
+
+- **Task:** Import the "AdeYaar Wrapped" Claude Design project and apply its slide
+  designs to WrappedStory (slides only; Home banner left as-is).
+- **Source:** DesignSync MCP, projectId 1104f9f8-10e4-44f1-8bf1-93ed53a71116,
+  file "AdeYaar Wrapped.dc.html". Read via DesignSync.get_file. Design system:
+  per-slide OKLCH radial gradient `grad(hue)`, kicker `oklch(0.87 0.095 hue)`,
+  14 progress segments, bottom vignette. Hues by slide:
+  [300,262,190,70,132,165,26,275,350,315,92,148,220,85].
+- **Files:** components/WrappedStory.jsx (full reskin — kept computeWrapped,
+  audio, nav, hooks; rebuilt the frame to segs/header/stage/footer and ported
+  each kit slide's markup to JSX with real data). Added `matches` prop +
+  `getM()` resolver so knockout/final bets (not in static getMatch) resolve to
+  team flags. components/screens/HomeScreen.jsx + app/(tabs)/home/page.jsx pass
+  `matches` through.
+- **Data mapping:** intro=name/matches/bets; bets=totalBets/distinctMatches;
+  staked=totalWagered; biggestBet=slip w/ flags via getM; hitRate=winRate ring
+  (dashoffset 553*(1-rate/100)); biggestWin/roughestLoss=profit/stake + betPickText;
+  favTeam=flag+×count; duel=W-L from allChallenges; specials=count + real
+  KIND_PILL labels; rank=#N/podium (highlights user bar if top 3); net=fmtNet +
+  green/red line; personality=emoji/title/traits/blurb; outro=name + Done.
+- **Verification gotcha:** the Electron preview pane renders SSR but does NOT
+  hydrate (sandbox `preloadScripts` errors), so clicks/keys/auto-advance don't
+  drive the story and DOM nodes have no reactFiber. Verified each slide's render
+  instead via a TEMPORARY app/wrapped-preview/page.jsx harness that seeds a
+  per-slide `initialIndex` from `?s=N` (SSR renders that slide directly).
+  Screenshotted slides 1,4,5,8,9,12,13 (+bet-slip flags, ring, clip-path split,
+  marquee, svg line chart, persona pills, trophy outro) — all correct with mock
+  data. Harness + the temporary `initialIndex` prop both removed afterwards.
+- **Verify:** `rm -rf .next && npm run build` clean; `npm test` 356/356.
+- **Note:** kit's slide 00 (Home entry redesign) intentionally NOT applied —
+  user asked for "designs only slides". Existing Home banner kept.

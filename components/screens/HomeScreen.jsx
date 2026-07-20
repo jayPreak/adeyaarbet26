@@ -265,6 +265,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
         open={wrappedOpen}
         onClose={() => setWrappedOpen(false)}
         bets={bets}
+        matches={matches}
         allChallenges={allChallenges}
         settlementByUser={settlementByUser}
         allUsers={allUsers}
