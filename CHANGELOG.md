@@ -12,6 +12,13 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-20 (Wrapped close fix)
+- **[fix]** The close (×) button and the "Done" button on Wrapped didn't close
+  the story — the invisible tap-to-advance layer sat on top of them and ate the
+  taps. Moved that layer behind the content so the buttons work; tapping empty
+  areas still advances/rewinds as before.
+  _Files: components/WrappedStory.jsx. By: Claude Code._
+
 ## 2026-07-20 (Wrapped fix)
 - **[fix]** The giant "bets placed" number on Wrapped slide 2 was a fixed size
   and got clipped by the screen edges for 3-digit totals (e.g. 113). It now

@@ -561,8 +561,17 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
         <div style={{ position: 'absolute', inset: 0, background: slideBg(current.hue), transition: 'background 0.5s ease' }} />
         <div style={{ position: 'absolute', inset: 0, background: VIGNETTE, pointerEvents: 'none' }} />
 
-        {/* Foreground column */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', height: '100%', padding: '18px 22px 24px' }}>
+        {/* Tap zones — BEHIND the content so buttons stay clickable. The content
+            column is pointer-transparent except its buttons, so empty-area taps
+            fall through to these zones (advance/rewind) while X/mute/Done get
+            their own clicks. */}
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 1 }}>
+          <div style={{ width: '32%' }} onPointerDown={onDown} onPointerUp={() => onUp('prev')} onPointerLeave={() => clearTimeout(holdTimer.current)} />
+          <div style={{ width: '68%' }} onPointerDown={onDown} onPointerUp={() => onUp('next')} onPointerLeave={() => clearTimeout(holdTimer.current)} />
+        </div>
+
+        {/* Foreground column (pointer-transparent; buttons re-enable pointers) */}
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', height: '100%', padding: '18px 22px 24px', pointerEvents: 'none' }}>
           {/* Progress segments */}
           <div style={{ display: 'flex', gap: 4, padding: '0 2px' }}>
             {slides.map((_, i) => (
@@ -584,8 +593,8 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
               <span style={{ font: `800 12px/1 ${SANS}`, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.9)' }}>ADEYAAR WRAPPED</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={() => setSoundOn(s => !s)} aria-label={soundOn ? 'Mute music' : 'Unmute music'} style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.14)', border: 'none', color: '#fff', fontSize: 14, cursor: 'pointer', lineHeight: 1 }}>{soundOn ? '🔊' : '🔇'}</button>
-              <button onClick={onClose} aria-label="Close" style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.14)', border: 'none', color: 'rgba(255,255,255,0.85)', fontSize: 19, cursor: 'pointer', lineHeight: 1, paddingBottom: 2 }}>×</button>
+              <button onClick={() => setSoundOn(s => !s)} aria-label={soundOn ? 'Mute music' : 'Unmute music'} style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.14)', border: 'none', color: '#fff', fontSize: 14, cursor: 'pointer', lineHeight: 1, pointerEvents: 'auto' }}>{soundOn ? '🔊' : '🔇'}</button>
+              <button onClick={onClose} aria-label="Close" style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.14)', border: 'none', color: 'rgba(255,255,255,0.85)', fontSize: 19, cursor: 'pointer', lineHeight: 1, paddingBottom: 2, pointerEvents: 'auto' }}>×</button>
             </div>
           </div>
 
@@ -597,7 +606,7 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
           {/* Footer */}
           {current.foot === 'outro' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
-              <button onClick={onClose} style={{ height: 54, borderRadius: 27, background: '#fff', border: 'none', font: `800 16px/1 ${SANS}`, color: '#141414', cursor: 'pointer' }}>Done</button>
+              <button onClick={onClose} style={{ height: 54, borderRadius: 27, background: '#fff', border: 'none', font: `800 16px/1 ${SANS}`, color: '#141414', cursor: 'pointer', pointerEvents: 'auto' }}>Done</button>
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', font: `600 11.5px/1 ${MONO}`, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', marginTop: current.foot === 'rank' ? 12 : 8 }}>
@@ -605,12 +614,6 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
               <span>TAP TO CONTINUE →</span>
             </div>
           )}
-        </div>
-
-        {/* Tap zones (below content chrome, above gradient) */}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 3 }}>
-          <div style={{ width: '32%' }} onPointerDown={onDown} onPointerUp={() => onUp('prev')} onPointerLeave={() => clearTimeout(holdTimer.current)} />
-          <div style={{ width: '68%' }} onPointerDown={onDown} onPointerUp={() => onUp('next')} onPointerLeave={() => clearTimeout(holdTimer.current)} />
         </div>
       </div>
 
