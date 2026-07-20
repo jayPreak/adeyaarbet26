@@ -12,6 +12,20 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-20 (Wrapped)
+- **[feat]** Added a "Your AdeYaar '26 Wrapped" — a Spotify-Wrapped-style
+  full-screen story that replays your tournament in stats: total bets, total
+  staked, biggest bet, hit rate, biggest win, roughest loss, your ride-or-die
+  team, 1v1 duel record, special bets, your finishing rank, your net profit/loss,
+  and a fun "betting personality" verdict. 14 auto-advancing story slides with
+  tap-to-navigate (tap right = next, left = back), hold-to-pause, progress bars,
+  and per-slide gradients — just like Instagram/Spotify stories. It shows up as a
+  colourful banner at the top of the Home page now that the tournament is settled;
+  tap it to play. All stats are computed on the fly from the data the app already
+  has — no new database work.
+  _Files: components/WrappedStory.jsx (new), components/screens/HomeScreen.jsx,
+  app/(tabs)/home/page.jsx. By: Claude Code._
+
 ## 2026-07-20 (final+1)
 - **[chore]** Settled the "Cup Winner Last 8" special (separate pool from the
   group-stage Cup Winner bet) — winner Spain. Nobody in this pool actually

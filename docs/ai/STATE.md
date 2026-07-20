@@ -60,6 +60,12 @@ _Last updated: 2026-07-20_
   owe/receive, from `BetsScreen.jsx`) and `SettlementPlan` (who-pays-whom,
   from `LeaderboardScreen.jsx`) components as-is — no new settlement math was
   added, per the single-source-of-truth rule in failure mode #14.
+- **AdeYaar '26 Wrapped** (`components/WrappedStory.jsx`): Spotify-Wrapped-style
+  14-slide stat story, opened from a gradient banner at the top of Home. Shown
+  behind the same `isTournamentSettled()` gate. All stats computed client-side
+  from existing context data (`bets`, `allChallenges`, `settlementByUser`,
+  `allUsers`) — no new API/RPC/DB. `net` uses the settlement-normalized value
+  (failure mode #14); duel record reads `allChallenges` (full history).
 
 ## Settlement executed (2026-07-20)
 - Ran `scripts/settle-tournament-2026.sql` against prod via `npx supabase db query --linked`

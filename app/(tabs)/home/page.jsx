@@ -12,6 +12,7 @@ export default function HomePage() {
     matches, balance, bets, openBet, cancelBet, user,
     poolMap, allUsers, myCupWinnerBet, setCupWinnerOpen, cupWinnerDeadlineTs,
     setThirdPlaceQualOpen, totalInPlay, totalBets, challenges,
+    allChallenges, settlementByUser,
   } = useBetting();
 
   return (
@@ -32,6 +33,8 @@ export default function HomePage() {
       totalInPlay={totalInPlay}
       totalBets={totalBets}
       challenges={challenges}
+      allChallenges={allChallenges}
+      settlementByUser={settlementByUser}
     />
   );
 }

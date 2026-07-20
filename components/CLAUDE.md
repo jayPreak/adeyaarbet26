@@ -21,6 +21,13 @@ AdeYaarApp.jsx silently does nothing.
 - `MatchPropsSheet.jsx` — match props + duels bottom sheet.
 - `CountdownGate.jsx` / `CountdownSplash.jsx` / `MiniCountdown.jsx`, `LineupSheet.jsx`,
   `SearchOverlay.jsx`, `R32BetPage.jsx` — misc.
+- `WrappedStory.jsx` — Spotify-Wrapped-style full-screen stat story (14 slides)
+  opened from a banner on Home when `isTournamentSettled()`. Self-contained:
+  `computeWrapped()` derives every stat client-side from `bets` / `allChallenges`
+  / `settlementByUser` / `allUsers` (no API/RPC). Uses settlement-normalized `net`
+  (failure mode #14) and `allChallenges` (full history, not the narrowed
+  `challenges`) for the duel record. Story mechanics (auto-advance, tap-nav,
+  hold-to-pause, keyboard, progress bars) live entirely in the component.
 - `LiveStreamPanel.jsx` — collapsible embedded live-video player rendered on Home
   above the hero card when a match is live. Reads mirror URLs from
   `lib/streams.js:getStreams(matchId)`; renders nothing if the id has no mapping.

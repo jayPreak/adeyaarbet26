@@ -9,6 +9,7 @@ import LiveStreamPanel from '@/components/LiveStreamPanel';
 import { fetchActivityDirect } from '@/lib/browserQueries';
 import { SettlementCard } from '@/components/screens/BetsScreen';
 import { SettlementPlan } from '@/components/screens/LeaderboardScreen';
+import WrappedStory from '@/components/WrappedStory';
 
 // Tournament is "settled" once the cup winner special's resolvesTs has
 // passed — same gate SpecialsScreen uses to move cards to "Settled". Once
@@ -29,7 +30,7 @@ function relativeTime(iso) {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenThirdPlaceQual, totalInPlay = 0, totalBets = 0, challenges = [] }) {
+export default function HomeScreen({ matches = [], balance, bets = [], onBet, onCancelBet, onNav, user, poolMap = {}, allUsers = [], myCupWinnerBet, onOpenCupWinner, cupWinnerDeadlineTs, onOpenThirdPlaceQual, totalInPlay = 0, totalBets = 0, challenges = [], allChallenges = [], settlementByUser = {} }) {
   const live = matches.filter(m => m.status === 'live');
   const upcoming = matches
     .filter(m => m.status === 'upcoming')
@@ -125,6 +126,7 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
   };
 
   const [filterUser, setFilterUser] = useState(null);
+  const [wrappedOpen, setWrappedOpen] = useState(false);
 
   if (showAllActivity) {
     const uniqueUsers = [];
@@ -235,6 +237,40 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
 
   return (
     <div>
+      {tournamentSettled && (
+        <button
+          onClick={() => setWrappedOpen(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 12, width: 'calc(100% - 32px)',
+            margin: '14px 16px 10px', padding: '16px 18px', borderRadius: 16, cursor: 'pointer',
+            border: 'none', textAlign: 'left', color: '#fff',
+            background: 'linear-gradient(120deg,#1db954 0%,#8b5cf6 55%,#ec4899 100%)',
+            boxShadow: '0 8px 24px rgba(29,185,84,0.28)',
+          }}
+        >
+          <span style={{ fontSize: 34, lineHeight: 1 }}>🎁</span>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: 'block', fontSize: 16, fontWeight: 900, letterSpacing: '-0.01em' }}>
+              Your AdeYaar '26 Wrapped
+            </span>
+            <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, opacity: 0.9, marginTop: 2 }}>
+              The tournament's over — tap to replay your season in stats
+            </span>
+          </span>
+          <span style={{ fontSize: 20, fontWeight: 900 }}>›</span>
+        </button>
+      )}
+
+      <WrappedStory
+        open={wrappedOpen}
+        onClose={() => setWrappedOpen(false)}
+        bets={bets}
+        allChallenges={allChallenges}
+        settlementByUser={settlementByUser}
+        allUsers={allUsers}
+        user={user}
+      />
+
       {tournamentSettled && (
         <>
           <SectionHead title="🏆 Tournament settled — final money" more="Full plan" onMore={() => onNav('bets')} />

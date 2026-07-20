@@ -402,3 +402,44 @@ Newest entries at the TOP (below this header block).
   4. `git push origin main` this commit.
   5. Decide whether to fix or delete the dead `golden_boot` UI (failure mode
      #23) — separate from settlement, no urgency.
+
+---
+
+## 2026-07-20 — AdeYaar '26 Wrapped (Spotify-Wrapped-style stat story)
+
+- **Task:** Build a Spotify-Wrapped-style stat story (≥10 slides) for the app and
+  surface it on the Home page.
+- **Files touched:**
+  - `components/WrappedStory.jsx` (NEW) — self-contained full-screen story overlay.
+    Computes all stats client-side via `computeWrapped()` from `bets` +
+    `allChallenges` + `settlementByUser` + `allUsers`. 14 slides (some conditional
+    on data presence, deck always ≥12): intro, total bets, total staked, biggest
+    bet, hit rate, biggest win, roughest loss, favourite team, duel W–L, specials
+    count, finishing rank, net result headline, betting personality, outro.
+    Story mechanics: auto-advance (6s/slide, holds on last), tap-right=next /
+    tap-left=prev, hold-to-pause (250ms pointer hold), keyboard (←/→/space/esc),
+    animated progress bars, per-slide gradient bg, entrance animation.
+  - `components/screens/HomeScreen.jsx` — added `WrappedStory` import, new props
+    `allChallenges` + `settlementByUser`, a `wrappedOpen` useState (placed BEFORE
+    the `showAllActivity` early return — Rules of Hooks, failure mode #15), a
+    gradient banner trigger shown when `tournamentSettled`, and the mounted overlay.
+  - `app/(tabs)/home/page.jsx` — pulled `allChallenges` + `settlementByUser` from
+    `useBetting()` and passed them to HomeScreen.
+- **Decisions / gotchas:**
+  - Stats reuse existing context data — no new API routes, RPCs, or DB work.
+    `net` uses `settlementByUser[userId]` (the settlement-normalized number, per
+    failure mode #14) so it matches what the Settlement Plan actually pays.
+  - Excludes `_topup` rows and cancelled bets from all tallies (failure mode #8).
+  - Duel record reads `allChallenges` (full history), NOT the narrowed `challenges`
+    (open+accepted only) — see lib/CLAUDE.md challenge-fields invariant.
+  - Match/team labels resolved via `getMatch`/`getTeam` — never raw ids shown.
+  - Gated behind `isTournamentSettled()` (cup_winner resolvesTs passed), same gate
+    HomeScreen already uses for the final-settlement section.
+- **Verification:** `rm -rf .next && npm run build` → clean. Could not log into the
+  live authenticated app (Google OAuth unavailable in this browser), so verified
+  the component via a TEMPORARY `app/wrapped-preview/page.jsx` harness with mock
+  data driven through the in-app browser: stepped through all 14 slides, confirmed
+  progress bars, tap-nav, flag/label resolution ("🇰🇷 South Korea vs 🇨🇿 Czech
+  Republic"), personality logic (net ₹4,200 → "The Shark"), personalized name, and
+  Done-button close. Harness route deleted afterwards.
+- **Follow-ups:** none required. `git push` pending (user pushes when ready).
