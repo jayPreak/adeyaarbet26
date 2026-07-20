@@ -69,6 +69,20 @@ Newest entries at the TOP (below this header block).
 - **Left undone / follow-ups:** None — all special bets are now settled. Real-money
   settlement via the `settlements` table remains a human decision.
 
+## 2026-07-20 (final+1) — Settled KO Cup Winner Last 8 (Spain)
+- **Task:** User asked to settle the separate "Cup Winner Last 8" (`KO_CUP_WINNER`,
+  kind `ko_cup_winner`) special bet, winner Spain.
+- **Changes:** Checked pending picks first — pool only had ARG/ENG/FRA/NOR, no ESP.
+  Confirmed with the user this would refund everyone (per `settle_special`'s
+  no-winner-matched behavior, migration 016), then ran
+  `settle_special('KO_CUP_WINNER','ko_cup_winner','ESP')` → refunded all 8 pending
+  bets (`reason: "no bets on winner"`). Updated `docs/ai/STATE.md`.
+- **Decisions:** This is NOT a bug — nobody in this specific knockout-stage pool
+  predicted Spain, so the parimutuel-correct outcome is refund, not "everyone loses
+  and money vanishes" (there's no house).
+- **Verification:** Row count matched the pending pool exactly (8 in, 8 refunded).
+- **Left undone / follow-ups:** None — every special bet in the app is now settled.
+
 ## 2026-07-11 — Root-caused cancel_bets duel corruption; strict RPCs + trigger; P&L graph duel tooltip
 - **Task:** User (Vaper) reported his two won QF-2 duels were missing from his P&L
   graph despite showing correctly on the Duels tab. Trace, root-cause, fix, and

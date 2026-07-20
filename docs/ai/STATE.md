@@ -109,9 +109,11 @@ _Last updated: 2026-07-20_
   file header.
 
 ## Pending manual steps (end of tournament)
-- All special-bet settlement is done: cup winner, continent, h2h, golden boot, final four, and
-  total goals (over, 308 goals). Remaining: real-money settlement via the `settlements` table is
-  a human decision (the Home/Bets tabs just show the computed plan).
+- All special-bet settlement is done: cup winner, continent, h2h, golden boot, final four,
+  total goals (over, 308 goals), and KO Cup Winner Last 8 (winner Spain, but nobody in that
+  pool picked ESP — all 8 bets refunded, per `settle_special`'s no-match-refund behavior).
+  Remaining: real-money settlement via the `settlements` table is a human decision (the
+  Home/Bets tabs just show the computed plan).
 
 ## Testing
 - `npm test` — Jest unit tests (financial math). Must pass before push.

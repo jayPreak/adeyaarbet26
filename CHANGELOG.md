@@ -12,6 +12,14 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-20 (final+1)
+- **[chore]** Settled the "Cup Winner Last 8" special (separate pool from the
+  group-stage Cup Winner bet) — winner Spain. Nobody in this pool actually
+  picked Spain, so all 8 pending bets were refunded rather than paid out
+  (that's the settlement RPC's correct behavior when nobody predicted the
+  real winner). Every special bet in the app is now settled.
+  _Files: docs/ai/STATE.md, docs/ai/SESSION_LOG.md. By: Claude._
+
 ## 2026-07-20 (final)
 - **[chore]** Settled the last open special bet: **Total Goals O/U 299.5** →
   over (final tally confirmed at 308 goals), 4 winners, ₹1400 pool. All
