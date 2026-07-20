@@ -6,6 +6,11 @@ import { fmtMoney, fmtNet, CURRENCY_SYMBOL } from '@/lib/currency';
 
 const SLIDE_MS = 6000;
 
+// Background music. Drop a file you own the rights to at public/wrapped-theme.mp3
+// (e.g. the World Cup theme). If the file is missing, playback silently no-ops —
+// the story still works, just without sound.
+const AUDIO_SRC = '/wrapped-theme.mp3';
+
 // ─────────────────────────────────────────────────────────────────────────
 // Stat computation — everything is derived client-side from the same data
 // the rest of the app already holds (bets / challenges / settlement map).
@@ -126,8 +131,20 @@ function Sub({ children, dim }) {
 export default function WrappedStory({ open, onClose, bets, allChallenges = [], settlementByUser = {}, allUsers = [], user }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
   const holdTimer = useRef(null);
   const heldRef = useRef(false);
+  const audioRef = useRef(null);
+
+  // Best-effort play — browsers block autoplay-with-sound until a user gesture,
+  // but the story is opened BY a tap (the Home banner), so the first play()
+  // usually lands. If it's rejected we retry on the next tap (see onUp).
+  const tryPlay = useCallback(() => {
+    const a = audioRef.current;
+    if (!a || !soundOn) return;
+    const p = a.play();
+    if (p && typeof p.catch === 'function') p.catch(() => { /* awaiting gesture */ });
+  }, [soundOn]);
 
   const w = useMemo(
     () => computeWrapped({ bets, allChallenges, settlementByUser, allUsers, userId: user?.id }),
@@ -324,6 +341,18 @@ export default function WrappedStory({ open, onClose, bets, allChallenges = [], 
   // Reset to first slide whenever the story is (re)opened
   useEffect(() => { if (open) { setIndex(0); setPaused(false); } }, [open]);
 
+  // Music lifecycle: play while open + sound on, pause/rewind on close or mute.
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (open && soundOn) {
+      tryPlay();
+    } else {
+      a.pause();
+      if (!open) { try { a.currentTime = 0; } catch { /* ignore */ } }
+    }
+  }, [open, soundOn, tryPlay]);
+
   // Auto-advance
   useEffect(() => {
     if (!open || paused) return;
@@ -348,11 +377,18 @@ export default function WrappedStory({ open, onClose, bets, allChallenges = [], 
 
   const onDown = () => {
     heldRef.current = false;
-    holdTimer.current = setTimeout(() => { heldRef.current = true; setPaused(true); }, 250);
+    holdTimer.current = setTimeout(() => {
+      heldRef.current = true;
+      setPaused(true);
+      if (audioRef.current) audioRef.current.pause();
+    }, 250);
   };
   const onUp = (zone) => {
     clearTimeout(holdTimer.current);
-    if (heldRef.current) { setPaused(false); heldRef.current = false; return; }
+    if (heldRef.current) { setPaused(false); heldRef.current = false; tryPlay(); return; }
+    // Autoplay fallback: if the initial play() was blocked, this tap is a fresh
+    // gesture — try again so sound kicks in by slide 2 at the latest.
+    if (soundOn && audioRef.current?.paused) tryPlay();
     zone === 'prev' ? prev() : next();
   };
 
@@ -368,6 +404,9 @@ export default function WrappedStory({ open, onClose, bets, allChallenges = [], 
       }}
     >
       <div style={{ position: 'relative', width: '100%', maxWidth: 480, height: '100%', overflow: 'hidden', background: current.bg, transition: 'background 0.5s ease' }}>
+        {/* Background music (loops). File is user-supplied — see AUDIO_SRC note. */}
+        <audio ref={audioRef} src={AUDIO_SRC} loop preload="auto" />
+
         {/* Progress bars */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', gap: 4, padding: '10px 12px 0', zIndex: 5 }}>
           {slides.map((_, i) => (
@@ -389,8 +428,14 @@ export default function WrappedStory({ open, onClose, bets, allChallenges = [], 
         {/* Header row */}
         <div style={{ position: 'absolute', top: 22, left: 14, right: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 5 }}>
           <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.9 }}>AdeYaar Wrapped</span>
-          <button onClick={onClose} aria-label="Close"
-            style={{ background: 'rgba(0,0,0,0.25)', border: 'none', color: '#fff', width: 30, height: 30, borderRadius: '50%', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => setSoundOn(s => !s)} aria-label={soundOn ? 'Mute music' : 'Unmute music'}
+              style={{ background: 'rgba(0,0,0,0.25)', border: 'none', color: '#fff', width: 30, height: 30, borderRadius: '50%', fontSize: 15, cursor: 'pointer', lineHeight: 1 }}>
+              {soundOn ? '🔊' : '🔇'}
+            </button>
+            <button onClick={onClose} aria-label="Close"
+              style={{ background: 'rgba(0,0,0,0.25)', border: 'none', color: '#fff', width: 30, height: 30, borderRadius: '50%', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
+          </div>
         </div>
 
         {/* Tap zones */}

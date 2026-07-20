@@ -443,3 +443,30 @@ Newest entries at the TOP (below this header block).
   Republic"), personality logic (net ₹4,200 → "The Shark"), personalized name, and
   Done-button close. Harness route deleted afterwards.
 - **Follow-ups:** none required. `git push` pending (user pushes when ready).
+
+---
+
+## 2026-07-20 — Wrapped background music
+
+- **Task:** Play background music while watching the Wrapped story (user asked
+  for the Shakira 2026 FIFA song).
+- **Copyright reality:** Could NOT bundle the actual Shakira/FIFA track —
+  copyrighted commercial recording, no licensed copy available, can't source it.
+  Built the playback plumbing instead; audio file is user-supplied.
+- **Files:** `components/WrappedStory.jsx` only.
+  - `AUDIO_SRC = '/wrapped-theme.mp3'` — user drops the file in `public/`.
+  - `<audio ref loop preload="auto">` mounted inside the story frame.
+  - `tryPlay()` best-effort play() with a caught promise (autoplay policy).
+    Story is opened by a tap (Home banner) so the first play() usually lands;
+    fallback retries play() on the next slide-advance tap.
+  - Effect ties playback to `open && soundOn`; pauses + rewinds on close/mute.
+  - Hold-to-pause also pauses audio; release resumes.
+  - 🔊/🔇 mute toggle button added to the header (left of the × close).
+  - Missing file → play() rejects → caught → silent, no crash.
+- **Verification:** `npm run build` clean. Re-used the temp
+  `app/wrapped-preview/page.jsx` harness (deleted after) to confirm in the
+  in-app browser: mute button renders beside close, story still plays through
+  with no app-level console errors despite no audio file present. Real audio
+  can't be heard in the headless pane, but the mechanism is verified.
+- **Follow-up for the user:** add `public/wrapped-theme.mp3` (a file you own the
+  rights to) for music to actually play.

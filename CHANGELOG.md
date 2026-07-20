@@ -12,6 +12,16 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-20 (Wrapped music)
+- **[feat]** Wrapped now plays background music while you watch. A 🔊/🔇 button
+  in the story header mutes/unmutes; music pauses when you hold-to-pause a slide
+  and stops when you close. **You must supply the audio yourself** — drop a file
+  you have the rights to at `public/wrapped-theme.mp3` (the code looks for exactly
+  that path). Until that file exists, Wrapped simply plays silently — nothing
+  breaks. (I couldn't include the official Shakira/FIFA 2026 track — it's
+  copyrighted and I can't source it.)
+  _Files: components/WrappedStory.jsx. By: Claude Code._
+
 ## 2026-07-20 (Wrapped)
 - **[feat]** Added a "Your AdeYaar '26 Wrapped" — a Spotify-Wrapped-style
   full-screen story that replays your tournament in stats: total bets, total
