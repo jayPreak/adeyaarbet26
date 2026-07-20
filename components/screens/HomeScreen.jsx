@@ -3,10 +3,21 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { CURRENCY_SYMBOL } from '@/lib/currency';
-import { getSpecialLabel } from '@/lib/specials';
+import { getSpecialLabel, getSpecial } from '@/lib/specials';
 import { HeroMatch, SectionHead, MatchCard } from '@/components';
 import LiveStreamPanel from '@/components/LiveStreamPanel';
 import { fetchActivityDirect } from '@/lib/browserQueries';
+import { SettlementCard } from '@/components/screens/BetsScreen';
+import { SettlementPlan } from '@/components/screens/LeaderboardScreen';
+
+// Tournament is "settled" once the cup winner special's resolvesTs has
+// passed — same gate SpecialsScreen uses to move cards to "Settled". Once
+// true, Home surfaces the final real-money settlement up top instead of
+// burying it in the Bets/Leaders tabs.
+function isTournamentSettled() {
+  const cw = getSpecial('cup_winner');
+  return !!(cw?.resolvesTs && new Date(cw.resolvesTs).getTime() < Date.now());
+}
 
 function relativeTime(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -220,8 +231,18 @@ export default function HomeScreen({ matches = [], balance, bets = [], onBet, on
     );
   }
 
+  const tournamentSettled = isTournamentSettled();
+
   return (
     <div>
+      {tournamentSettled && (
+        <>
+          <SectionHead title="🏆 Tournament settled — final money" more="Full plan" onMore={() => onNav('bets')} />
+          <SettlementCard user={user} bets={bets} />
+          <SettlementPlan user={user} />
+        </>
+      )}
+
       {featured?.status === 'live' && <LiveStreamPanel match={featured} />}
 
       {featured && <HeroMatch match={featured} onBet={onBet} poolData={poolMap[featured.id]} allUsers={allUsers} myBets={bets.filter(b => (b.match_id || b.matchId) === featured.id && b.status === 'pending' && (b.kind === 'match' || b.kind === 'penalty'))} onCancelBet={onCancelBet} userId={user?.id} />}

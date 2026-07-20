@@ -107,7 +107,9 @@ lib/
   data.js                  — Static: MATCHES, TEAM, FRIENDS, getMatch(), getTeam(),
                              getMatchKickoffTs(), isMatchBettingOpen(), MATCH_BET_CUTOFF_MS
   ledger.js                — computeBalance(), computeRealisedBalance(), resolveMatchBets()
-  specials.js              — SPECIALS registry, getSpecial(id), GOLDEN_BOOT_CANDIDATES
+  specials.js              — SPECIALS registry, getSpecial(id). NOTE: no 'golden_boot'
+                             entry exists in SPECIALS[] as of 2026-07-20 — see
+                             failure mode #23.
   props.js                 — Pure helpers for match props settlement (scoreline/o-u/pens)
   achievements.js          — Leaderboard "Titles", computed client-side
   odds.js, settlement.js, third-place-qualifiers.js, cup-winner.js — domain helpers
@@ -313,8 +315,8 @@ Unlike `place_cup_winner_bet` (which rejects if you already have a pending bet),
 ### 6. Double-Tap Race Condition
 Two rapid POST requests can both pass the balance check before either completes. Frontend should disable the button on first tap (set `submitting = true`). The RPC's `FOR UPDATE` prevents some races but not all.
 
-### 7. Specials Without Settlement RPCs
-`continent`, `h2h`, `golden_boot` have NO `settle_*` RPC. Bets can be placed but settlement requires manual SQL: `UPDATE bets SET status='won', payout=X WHERE ...` and `UPDATE bets SET status='lost' WHERE ...`. Build the RPCs if you want auto-settlement.
+### 7. Specials Without Settlement RPCs (⚠️ CORRECTED 2026-07-20 — this was stale)
+This used to say `continent`/`h2h`/`golden_boot` have no settlement RPC and need manual `UPDATE bets` — **that's wrong and dangerous advice.** `public.settle_special(p_match_id, p_kind, p_winner)` (migration `016_indexes_and_settle_specials.sql`, revoked to `service_role`-only in `022`) handles all three generically: it locks the pool, pays proportional payouts to everyone whose `pick = p_winner`, and marks the rest `lost`. If nobody's `pick` matches `p_winner` (e.g. you pass the wrong string), it silently refunds the *entire* pool instead — always verify the exact `pick` value stored in `bets` before calling this with real money on the line. Never hand-write `UPDATE bets SET status=...` — that bypasses the `FOR UPDATE` lock and the `activity` log insert. See `scripts/settle-tournament-2026.sql` for the actual end-of-tournament-2026 calls.
 
 ### 8. The `_topup` Convention
 Admin top-ups are stored as bets with `match_id = '_topup'`. These are ALWAYS filtered out in leaderboard, settlement, and bet display. Any query on `bets` should exclude `_topup` unless it's computing raw balance.
@@ -444,6 +446,38 @@ across six files — `app/api/init/route.js`, `app/api/fifa/matches/route.js`,
 `app/api/goalscorer-players/[matchId]/route.js` (reversed label→id), and
 `lib/schedule-sync.js`. If you touch one you MUST touch all six or display and settlement
 diverge. Correct: `289292`→Final→`FIN-1`, `289291`→3rd→`3RD-1`.
+
+### 23. `golden_boot` special is dead code — no UI path to place a bet
+`lib/specials.js`'s `SPECIALS[]` array has no `id: 'golden_boot'` entry (only
+`SPECIAL_LABEL_OVERRIDES.GOLDEN_BOOT` for display labels — that's just a
+string, not a registration). `components/GoldenBootBetModal.jsx` calls
+`getSpecial('golden_boot')` and would crash on `GB.options` if ever rendered,
+but it's never imported by any screen, layout, or context — same trap as
+`AdeYaarApp.jsx` (#11). The backend (`place_special_bet`, `settle_special`)
+fully supports `kind='golden_boot'`, so this is a pure frontend wiring gap,
+not a DB/RPC gap. Before assuming any golden_boot bets exist to settle, check
+`SELECT * FROM bets WHERE match_id='GOLDEN_BOOT'` — it's plausibly always
+been empty. If you want the feature live: add a proper entry to `SPECIALS[]`
+with real `options` (player list), wire `GoldenBootBetModal` into
+`app/(tabs)/layout.jsx` with an open-state in `BettingContext.jsx`, and add a
+card to `SpecialsScreen.jsx` — follow the "Adding a new special bet" recipe
+below.
+
+### 24. Cowork/sandboxed-agent sessions may have NO network path to Supabase or GitHub
+An agent working from a Cowork-style sandboxed shell can have `git fetch`
+work (public read) while `git push` fails with no credentials, and outbound
+requests to `*.supabase.co` (and even `raw.githubusercontent.com`,
+`codeload.github.com`, `api.github.com`) get `403 blocked-by-allowlist` from
+a local egress proxy — there's no DNS route to the internet at all outside
+that allowlist. If you're an agent in this situation: don't fabricate
+success. Verify with `curl -sI <url>` (look for `X-Proxy-Error:
+blocked-by-allowlist`) and `git push --dry-run`, then hand back a concrete,
+ready-to-run script/diff instead of pretending the write happened. Also: this
+repo's mounted working directory can reject `rm`/`unlink`/`git reset --hard`
+with `Operation not permitted` even as the file's own owner — that's Cowork's
+file-delete safety gate, not a real OS permission problem. Call
+`allow_cowork_file_delete` (name may differ per host) before concluding the
+filesystem is broken.
 
 ---
 

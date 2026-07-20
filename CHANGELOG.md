@@ -12,6 +12,36 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-20
+- **[feat]** Home tab now shows the final real-money settlement once the
+  tournament is over — your personal "you owe / you receive" card and the
+  full who-pays-whom plan, right at the top of Home instead of only living
+  on the Bets/Leaders tabs. Reuses the existing settlement components as-is
+  (no new money math), gated by whether the cup-winner special has resolved.
+  _Files: components/screens/HomeScreen.jsx. By: Claude._
+- **[chore]** Added `scripts/settle-tournament-2026.sql` with the real-world
+  2026 World Cup results (Spain won the Final 1-0 AET over Argentina; Mbappé
+  won the Golden Boot with 10 goals; England beat France 6-4 for 3rd; the
+  semifinalists were Spain, Argentina, France, England) mapped to the actual
+  settlement RPCs (`settle_cup_winner`, `settle_special`,
+  `settle_final_four`). **These have NOT been run yet** — see docs/ai/STATE.md
+  and the note below.
+- **[docs]** Fixed several stale spots in `CLAUDE.md`: the "Specials Without
+  Settlement RPCs" failure mode (#7) claimed continent/h2h/golden_boot need
+  manual `UPDATE bets` — they don't, `settle_special` already handles all
+  three and hand-editing `bets` would have bypassed the row lock. Also
+  removed a reference to a `GOLDEN_BOOT_CANDIDATES` export that doesn't
+  exist, and documented that the Golden Boot special has no live UI path
+  (dead code, see new failure mode #23).
+- ⚠️ **Could not actually settle any bets or push this commit myself.** The
+  session I ran in had no network route to Supabase (`*.supabase.co` blocked
+  by the sandbox's egress allowlist) and no GitHub push credentials. See
+  failure mode #24. Someone with real DB/GitHub access needs to run
+  `scripts/settle-tournament-2026.sql` and push this branch.
+  _Files: CLAUDE.md, docs/ai/STATE.md, scripts/settle-tournament-2026.sql. By: Claude._
+
+---
+
 ## 2026-07-16
 - **[fix]** The Final and 3rd-place kickoff dates were swapped. The DB had the
   Final on Jul 19 IST and 3rd place on Jul 20 IST; the real schedule is 3rd place

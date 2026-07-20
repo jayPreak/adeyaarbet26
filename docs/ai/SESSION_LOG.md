@@ -258,3 +258,82 @@ Newest entries at the TOP (below this header block).
 - **Verification:** `/api/init` schedule now returns FIN-1 → Mon 20 Jul 12:30am IST,
   3RD-1 → Sun 19 Jul 2:30am IST (matches screenshot). `npm run build` clean.
 - **Left undone:** commit + push (this session).
+
+## 2026-07-20 — Attempt final tournament settlement + Home settlement display
+
+- **Task:** User asked to pull latest main (discard local changes), settle all
+  pending special bets and any pending bets now that the World Cup has ended,
+  surface the final resolved amounts on the Home page, run tests, review, and
+  push a final commit to main.
+- **Environment blockers hit immediately (see CLAUDE.md failure mode #24):**
+  - The mounted repo folder rejected `rm`/`git reset --hard`/`git pull` with
+    `Operation not permitted` on `.git/index.lock`, `.git/objects/maintenance.lock`,
+    and several tracked files — this was Cowork's file-delete safety gate, not
+    a real OS/lock issue. Resolved via `allow_cowork_file_delete`, then
+    `git fetch && git reset --hard origin/main && git clean -fd` succeeded
+    cleanly (repo now at `f6acd59`, working tree matches origin/main exactly).
+  - `git push` has no credentials in this sandbox (`could not read Username
+    for 'https://github.com'`) — confirmed via `--dry-run`. No `gh` CLI, no
+    token in env.
+  - All outbound requests to `*.supabase.co` (and `api.github.com`,
+    `raw.githubusercontent.com`, `codeload.github.com`) return `403
+    blocked-by-allowlist` from the sandbox's egress proxy — confirmed via
+    `curl -sI` and DNS lookups (`getaddrinfo EAI_AGAIN`, `network unreachable`).
+    No Supabase MCP connector was available either (checked the registry).
+  - **Net effect: I could not read the `bets` table, could not run any
+    settlement RPC, and could not push.** Everything below is prepared but
+    unexecuted against the real DB/remote.
+- **Research done (WebSearch, all sourced):** FIFA World Cup 2026 Final —
+  Spain 1-0 Argentina (AET, Ferran Torres 106'). 3rd place — England 6-4
+  France. Golden Boot — Mbappé, 10 goals (Messi 2nd, 8 — so Messi beats
+  Ronaldo's 3 for the h2h special). Semifinalists — Spain, Argentina, France,
+  England. Total tournament goals: could NOT get a single authoritative final
+  figure (saw conflicting mid-tournament snapshots: "175/177 goals", "294
+  goals through 101 matches") — deliberately left `total_goals` unsettled
+  rather than guess on a real-money over/under.
+- **Code inspected to build the settlement script:**
+  `lib/specials.js` (SPECIALS registry — discovered `golden_boot` has no
+  entry at all), `components/GoldenBootBetModal.jsx` (imports `getSpecial
+  ('golden_boot')` which would be `null` — confirmed via grep it's never
+  rendered anywhere, so this bet type is unreachable dead code, same class
+  of bug as `AdeYaarApp.jsx`), migrations `016_indexes_and_settle_specials.sql`
+  (`settle_special` — generic RPC that already covers continent/h2h/
+  golden_boot; CLAUDE.md failure mode #7 was wrong claiming otherwise, fixed
+  it), `022_revoke_settle_rpcs_and_fix_cancel_timing.sql` (confirms
+  service_role-only grants), `032_props_duels_final_four.sql`
+  (`settle_final_four(text[])` signature).
+- **Deliverable:** `scripts/settle-tournament-2026.sql` — every settlement
+  RPC call needed, with the exact real-world winner values filled in for cup
+  winner / continent / h2h / final four, explicit sanity-check SELECTs before
+  each destructive call, and loud warnings on golden_boot (unknown `pick`
+  format, likely zero rows) and total_goals (unresolved figure — don't guess).
+- **Home page change (this part I *could* do — pure file edits, no network
+  needed):** `components/screens/HomeScreen.jsx` now renders the existing
+  `SettlementCard` (from `BetsScreen.jsx`) and `SettlementPlan` (from
+  `LeaderboardScreen.jsx`) at the top of Home, gated by
+  `isTournamentSettled()` (checks `getSpecial('cup_winner').resolvesTs` vs
+  now — same pattern `SpecialsScreen.jsx` already uses to move cards to
+  "Settled"). Deliberately did NOT reimplement any settlement math — both
+  components already read `settlementByUser`/`/api/settlement`, which is the
+  one normalized-to-zero-sum source of truth (failure mode #14). Verified no
+  new circular-import issue (BetsScreen/LeaderboardScreen already import from
+  each other; HomeScreen isn't imported by either).
+- **Verification:** `npm test` → 356/356 passed. `rm -rf .next && npm run
+  build` → clean, all 60 routes generated, `/home` bundle grew from prior
+  size to 10.2 kB (expected — two new components pulled in). Could not do a
+  live manual check against prod (no network), and could not verify the
+  settlement script against real DB rows for the same reason.
+- **Left undone / follow-ups (all require someone with real DB + GitHub
+  access):**
+  1. Run `scripts/settle-tournament-2026.sql` against prod, resolving
+     `total_goals` and `golden_boot` first (per the warnings in that file).
+  2. Verify match-level bets (group/R32/R16/QF/SF/3rd/Final) actually got
+     auto-settled by `/api/auto-resolve` throughout the tournament — spot
+     check per the query in the script; if `SUPABASE_SERVICE_ROLE_KEY` was
+     ever missing on Vercel (known risk, failure mode #10) some may be stuck
+     pending.
+  3. Check `challenges` for any still-`accepted` duels on FIN-1/3RD-1/SF that
+     need `settle_challenges`.
+  4. `git push origin main` this commit.
+  5. Decide whether to fix or delete the dead `golden_boot` UI (failure mode
+     #23) — separate from settlement, no urgency.

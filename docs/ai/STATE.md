@@ -5,11 +5,14 @@ Update this whenever your change alters what's live, fixes/introduces a known is
 or creates a pending manual step. Keep it current — this is state, not history
 (history goes in SESSION_LOG.md).
 
-_Last updated: 2026-07-11_
+_Last updated: 2026-07-20_
 
 ## Tournament phase
-- FIFA World Cup 2026, mid-tournament (knockout stage era: R32/QF features shipped,
-  migrations through 040). QF-1 & QF-2 settled; QF-3, QF-4, SF, FIN pending.
+- **Tournament is OVER.** Real-world Final: **Spain beat Argentina 1-0 (AET)**,
+  Ferran Torres 106'. 3rd place: **England beat France 6-4**. Golden Boot:
+  **Mbappé, 10 goals** (Messi 2nd, 8). Semifinalists: Spain, Argentina, France,
+  England. See `scripts/settle-tournament-2026.sql` (added 2026-07-20) for the
+  exact RPC calls to run.
 - Real money among ~10 friends; settlement happens at tournament end.
 - Final = **Spain vs Argentina** (FIN-1, Mon 20 Jul IST / 2026-07-19 19:00 UTC);
   3rd place = **France vs England** (3RD-1, Sun 19 Jul IST / 2026-07-18 21:00 UTC).
@@ -50,6 +53,14 @@ _Last updated: 2026-07-11_
 - **UI cancel flow** now enumerates match vs duel counts and shows explicit
   confirmation copy before firing the cancel API.
 
+## What's live (2026-07-20)
+- **Home tab now shows the final real-money settlement** once the cup-winner
+  special's `resolvesTs` has passed (`isTournamentSettled()` in
+  `HomeScreen.jsx`): reuses the existing `SettlementCard` (personal
+  owe/receive, from `BetsScreen.jsx`) and `SettlementPlan` (who-pays-whom,
+  from `LeaderboardScreen.jsx`) components as-is — no new settlement math was
+  added, per the single-source-of-truth rule in failure mode #14.
+
 ## Known issues / risks
 - **⚠️ Committed secrets in git history (open-source blocker):** the Postgres DB
   password, project ref, and anon JWT were committed in docs. They're redacted from
@@ -60,7 +71,19 @@ _Last updated: 2026-07-11_
   set before relying on auto-resolve settling props/duels.
 - **RLS is disabled on `news_cache` and `spatial_ref_sys`** — exposed to the anon key.
 - `continent`, `h2h`, `golden_boot` still have no auto-settlement (manual SQL or
-  `settle_special` at tournament end).
+  `settle_special` at tournament end). See `scripts/settle-tournament-2026.sql`.
+  **Not yet run** — this agent session had no network access to Supabase from
+  its sandbox (`*.supabase.co` blocked by the allowlist), so settlement RPCs
+  could not actually be executed. Someone with DB access needs to run the
+  script and verify against `bets`.
+- **`GOLDEN_BOOT_CANDIDATES` referenced in this file's own file-layout table
+  (line ~110) does not exist anywhere in the codebase — that's stale.** Worse:
+  `lib/specials.js`'s `SPECIALS[]` has no `golden_boot` entry at all, and
+  `components/GoldenBootBetModal.jsx` is never imported/rendered anywhere
+  (same dead-code trap as `AdeYaarApp.jsx`, #11). There is almost certainly no
+  way anyone ever placed a `golden_boot` bet through the UI. Confirm via
+  `SELECT * FROM bets WHERE match_id='GOLDEN_BOOT'` before assuming it needs
+  settling — if it's empty, this can be deleted as truly dead code.
 - No server-side auth on API routes (accepted risk for friend group).
 - `components/AdeYaarApp.jsx` is dead code and still in the tree — deleting it is a
   candidate cleanup, but verify nothing imports it first.
