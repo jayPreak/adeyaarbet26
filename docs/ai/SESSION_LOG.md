@@ -57,6 +57,18 @@ Newest entries at the TOP (below this header block).
 - **Left undone / follow-ups:** Total Goals still needs manual settlement once a
   trustworthy final goal count is available.
 
+## 2026-07-20 (final) — Settled Total Goals per user-confirmed final tally
+- **Task:** User confirmed the tournament's final goal tally as 308 (and re-confirmed
+  Cup Winner = Spain, already settled) and asked to settle the remaining special bet.
+- **Changes:** Ran `settle_special('TOTAL_GOALS','total_goals','over')` (308 > 299.5) —
+  4 settled, ₹1400 pool, ₹1100 winning pool. Updated `docs/ai/STATE.md`.
+- **Decisions:** Checked `pick` distribution on pending `TOTAL_GOALS` bets first (both
+  'over' and 'under' present) before calling `settle_special`, per failure mode #7.
+- **Verification:** Confirmed settled count/pool matched the pending pool exactly
+  (7 pending bets total → 4 over + 3 under, 4 settled as winners).
+- **Left undone / follow-ups:** None — all special bets are now settled. Real-money
+  settlement via the `settlements` table remains a human decision.
+
 ## 2026-07-11 — Root-caused cancel_bets duel corruption; strict RPCs + trigger; P&L graph duel tooltip
 - **Task:** User (Vaper) reported his two won QF-2 duels were missing from his P&L
   graph despite showing correctly on the Duels tab. Trace, root-cause, fix, and

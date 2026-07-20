@@ -12,6 +12,12 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-20 (final)
+- **[chore]** Settled the last open special bet: **Total Goals O/U 299.5** →
+  over (final tally confirmed at 308 goals), 4 winners, ₹1400 pool. All
+  special bets for the tournament are now settled. _Files: docs/ai/STATE.md,
+  docs/ai/SESSION_LOG.md. By: Claude._
+
 ## 2026-07-20 (later)
 - **[chore]** Actually ran the settlement RPCs the prior entry below could only
   prepare: **Cup Winner** settled to Spain (2 payouts), **Winning Continent**
