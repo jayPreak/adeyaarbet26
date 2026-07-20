@@ -12,6 +12,16 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-20 (later)
+- **[chore]** Actually ran the settlement RPCs the prior entry below could only
+  prepare: **Cup Winner** settled to Spain (2 payouts), **Winning Continent**
+  settled to UEFA (6 payouts). Golden Boot and Messi-v-Ronaldo/Final Four had
+  nothing pending to settle. **Total Goals O/U is still open** — couldn't find
+  a trustworthy final goal count for the tournament, so left it pending rather
+  than guess with real money on the line. The Home tab settlement card now
+  reflects the real final numbers for everyone. _Files: none (DB-only via
+  Supabase RPCs), docs/ai/STATE.md, docs/ai/SESSION_LOG.md. By: Claude._
+
 ## 2026-07-20
 - **[feat]** Home tab now shows the final real-money settlement once the
   tournament is over — your personal "you owe / you receive" card and the

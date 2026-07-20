@@ -18,6 +18,45 @@ Newest entries at the TOP (below this header block).
 
 ---
 
+## 2026-07-20 (later) — Executed end-of-tournament settlement RPCs against prod
+- **Task:** User asked to pull latest main, settle all pending special bets now that
+  the World Cup is over, confirm the final settlement shows correctly on Home, test,
+  and push the "final commit" to main.
+- **Changes:** No code changes — this session executed the RPC calls that
+  `scripts/settle-tournament-2026.sql` (added in the prior session's commit `3ac2ee0`)
+  had prepared but could not run. Also updated `docs/ai/STATE.md`.
+- **Decisions:**
+  - Unlike the prior session, this sandbox had working network access via
+    `npx supabase db query --linked` (confirmed with `SELECT 1` before touching bets).
+  - Checked `pick` distributions on `CUP_WINNER`/`CONTINENT` pending bets before calling
+    `settle_special`/`settle_cup_winner`, per failure mode #7 — confirmed 'ESP' and 'UEFA'
+    were real picks in the pool, not going to trigger an accidental full-pool refund.
+  - Ran `settle_cup_winner('ESP')` → 2 payouts, ₹8900 pool. Ran
+    `settle_special('CONTINENT','continent','UEFA')` → 6 settled, ₹2750 pool.
+  - Confirmed `GOLDEN_BOOT` has 0 pending rows (only cancelled) — failure mode #23's
+    dead-code theory holds, nothing to settle.
+  - Confirmed `MESSI_V_RONALDO` (h2h) and `FINAL_FOUR` had no pending rows left — both
+    were already settled by an earlier process, not this script.
+  - **Did NOT settle `TOTAL_GOALS`** (7 pending bets, ₹1400 pool). WebSearch for the
+    tournament's final goal tally returned inconsistent numbers across sources (175,
+    294, 307 quoted in different places/dates) — not trustworthy enough to bet real
+    money on. Left pending per the script's own explicit warning; needs someone to
+    find/compute an authoritative final total before calling `settle_special`.
+  - Also spot-checked all match-level bets (`match`/`penalty`/`scoreline`/`over_under`/
+    `pens`/`goalscorer`/`challenge`) — zero pending rows anywhere, so auto-resolve had
+    already handled all of those correctly during the tournament.
+- **Gotchas / learnings:** The prior session's sandbox network restriction was
+  environment-specific, not universal — this session's `npx supabase db query --linked`
+  worked fine on the first try. Don't assume a documented network limitation from an
+  earlier session still applies; re-verify with a cheap `SELECT 1` first.
+- **Verification:** `npm test` → 356/356 passing. `rm -rf .next && npm run build` →
+  clean. Hit `curl localhost:3000/api/settlement` directly (full browser login via
+  Google OAuth isn't automatable headlessly) and confirmed the new Cup Winner/Continent
+  payouts flow into the computed transactions/positions that `SettlementCard`/
+  `SettlementPlan` on the Home tab render.
+- **Left undone / follow-ups:** Total Goals still needs manual settlement once a
+  trustworthy final goal count is available.
+
 ## 2026-07-11 — Root-caused cancel_bets duel corruption; strict RPCs + trigger; P&L graph duel tooltip
 - **Task:** User (Vaper) reported his two won QF-2 duels were missing from his P&L
   graph despite showing correctly on the Duels tab. Trace, root-cause, fix, and

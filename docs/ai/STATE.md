@@ -61,6 +61,23 @@ _Last updated: 2026-07-20_
   from `LeaderboardScreen.jsx`) components as-is — no new settlement math was
   added, per the single-source-of-truth rule in failure mode #14.
 
+## Settlement executed (2026-07-20)
+- Ran `scripts/settle-tournament-2026.sql` against prod via `npx supabase db query --linked`
+  (this session had working network access, unlike the prior one that only prepared the script).
+- **Cup Winner** → `settle_cup_winner('ESP')`: 2 payouts, ₹8900 pool, ₹1750 winning pool. Settled.
+- **Continent** → `settle_special('CONTINENT','continent','UEFA')`: 6 settled, ₹2750 pool, ₹2250 winning pool. Settled.
+- **Golden Boot**: confirmed 0 pending rows (only 4 cancelled) — dead-code theory in failure mode
+  #23 confirmed correct, nothing to settle.
+- **Messi v Ronaldo (h2h)** and **Final Four**: already had `won`/`lost` rows, no `pending` left —
+  already settled before this session (not by this script).
+- **Total Goals O/U 299.5**: ⚠️ still NOT settled — 7 pending bets, ₹1400 pool. WebSearch for the
+  final tournament goal tally returned inconsistent numbers across sources (175, 294, 307 goals
+  quoted in different places), so per the script's own warning this was left alone rather than
+  guessed. Get an authoritative final total (FIFA official stats page, or sum of final scores for
+  all 104 `match_schedule` rows) before running `settle_special('TOTAL_GOALS','total_goals','over'|'under')`.
+- Verified via `/api/settlement` (which the Home tab's `SettlementCard`/`SettlementPlan` consume)
+  that the new payouts flow through correctly.
+
 ## Known issues / risks
 - **⚠️ Committed secrets in git history (open-source blocker):** the Postgres DB
   password, project ref, and anon JWT were committed in docs. They're redacted from
@@ -94,10 +111,10 @@ _Last updated: 2026-07-20_
   file header.
 
 ## Pending manual steps (end of tournament)
-- Settle: cup winner (`settle_cup_winner`), continent/h2h/golden boot
-  (`settle_special` or SQL), total goals
-  (`settle_special('TOTAL_GOALS','total_goals','over'|'under')`),
-  final four (`settle_final_four`), then real-money settlement via settlements table.
+- Cup winner, continent, h2h, golden boot, final four are all settled (see "Settlement executed"
+  above). Only remaining: **Total Goals** — needs a verified final goal count before calling
+  `settle_special('TOTAL_GOALS','total_goals','over'|'under')`. Then real-money settlement via the
+  `settlements` table is a human decision (the Home/Bets tabs just show the computed plan).
 
 ## Testing
 - `npm test` — Jest unit tests (financial math). Must pass before push.
