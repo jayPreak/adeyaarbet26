@@ -12,6 +12,12 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-20 (Wrapped fix)
+- **[fix]** The giant "bets placed" number on Wrapped slide 2 was a fixed size
+  and got clipped by the screen edges for 3-digit totals (e.g. 113). It now
+  scales to the number of digits and stays centred, so any count fits cleanly.
+  _Files: components/WrappedStory.jsx. By: Claude Code._
+
 ## 2026-07-20 (Wrapped redesign)
 - **[feat]** Reskinned all 14 Wrapped story slides to match the polished
   "AdeYaar Wrapped" design kit — each slide now has its own colour (a family of

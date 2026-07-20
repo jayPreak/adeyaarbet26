@@ -230,15 +230,22 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
       </>
     ) });
 
-    // 02 · BETS PLACED
-    s.push({ hue: HUE.bets, stage: (
-      <>
-        <Kicker hue={HUE.bets}>Bets Placed</Kicker>
-        <div style={{ position: 'absolute', top: -52, right: -30, font: `900 340px/0.8 ${MONO}`, letterSpacing: '-0.05em', transform: 'rotate(-8deg)', background: 'linear-gradient(100deg,#fff 25%, oklch(0.82 0.16 262) 50%, #fff 75%)', backgroundSize: '220% auto', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', animation: 'wShimmer 4s linear infinite' }}>{w.totalBets}</div>
-        <div style={{ position: 'absolute', bottom: 74, left: 2, font: `800 32px/1 ${SANS}`, letterSpacing: '-0.01em', color: '#fff' }}>across {w.distinctMatches} matches</div>
-        <Caption>Certified fixture-list menace. Not a single kickoff got past you.</Caption>
-      </>
-    ) });
+    // 02 · BETS PLACED — size the giant number to its digit count so 3+ digit
+    // totals never clip against the frame edges.
+    {
+      const dg = String(w.totalBets).length;
+      const numSize = dg >= 4 ? 150 : dg === 3 ? 210 : dg === 2 ? 300 : 340;
+      s.push({ hue: HUE.bets, stage: (
+        <>
+          <Kicker hue={HUE.bets}>Bets Placed</Kicker>
+          <div style={{ position: 'absolute', top: 40, left: 0, right: 0, textAlign: 'center', overflow: 'hidden' }}>
+            <span style={{ display: 'inline-block', font: `900 ${numSize}px/0.82 ${MONO}`, letterSpacing: '-0.05em', transform: 'rotate(-8deg)', background: 'linear-gradient(100deg,#fff 25%, oklch(0.82 0.16 262) 50%, #fff 75%)', backgroundSize: '220% auto', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', animation: 'wShimmer 4s linear infinite' }}>{w.totalBets}</span>
+          </div>
+          <div style={{ position: 'absolute', bottom: 74, left: 2, font: `800 32px/1 ${SANS}`, letterSpacing: '-0.01em', color: '#fff' }}>across {w.distinctMatches} matches</div>
+          <Caption>Certified fixture-list menace. Not a single kickoff got past you.</Caption>
+        </>
+      ) });
+    }
 
     // 03 · TOTAL STAKED
     s.push({ hue: HUE.staked, stage: (
