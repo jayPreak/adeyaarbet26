@@ -24,7 +24,7 @@ const VIGNETTE = 'radial-gradient(150% 55% at 50% 112%, rgba(0,0,0,0.55), transp
 const HUE = {
   intro: 300, bets: 262, staked: 190, biggestBet: 70, hitRate: 132,
   biggestWin: 165, roughestLoss: 26, favTeam: 275, duel: 350, specials: 315,
-  rank: 92, net: 148, netNeg: 26, personality: 220, outro: 85,
+  rank: 92, net: 148, netNeg: 26, personality: 220, outro: 85, recap: 300,
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -180,10 +180,11 @@ function Confetti({ hues }) {
   );
 }
 
-export default function WrappedStory({ open, onClose, bets, matches = [], allChallenges = [], settlementByUser = {}, allUsers = [], user }) {
-  const [index, setIndex] = useState(0);
+export default function WrappedStory({ open, onClose, bets, matches = [], allChallenges = [], settlementByUser = {}, allUsers = [], user, initialIndex = 0 }) {
+  const [index, setIndex] = useState(initialIndex);
   const [paused, setPaused] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
+  const [shared, setShared] = useState(null); // null | 'copied' | 'failed'
   const holdTimer = useRef(null);
   const heldRef = useRef(false);
   const audioRef = useRef(null);
@@ -209,6 +210,39 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
   );
 
   const firstName = (user?.user_metadata?.name || user?.display_name || user?.email || 'You').split(' ')[0].split('@')[0];
+
+  // Share: native share sheet on mobile (WhatsApp etc.), clipboard fallback.
+  const handleShare = useCallback(async () => {
+    const t = getTeam(w.favTeam);
+    const url = (typeof window !== 'undefined' && window.location.origin) || 'https://adeyaarbet26.vercel.app';
+    const lines = [
+      `${firstName}'s AdeYaar '26 Wrapped 🏆`,
+      '',
+      `⚽ ${w.totalBets} bets across ${w.distinctMatches} matches`,
+      `🎯 ${w.winRate}% hit rate`,
+    ];
+    if (w.biggestWin) lines.push(`🤑 Biggest win +${fmtMoney(w.biggestWin.profit)}`);
+    lines.push(`💰 Net ${fmtNet(w.net)}`);
+    if (w.rank) lines.push(`🏅 Ranked #${w.rank} of ${w.totalPlayers}`);
+    if (w.duelTotal > 0) lines.push(`⚔️ Duels ${w.duelWins}–${w.duelLosses}`);
+    if (w.favTeam) lines.push(`${t?.flag || ''} Ride-or-die: ${t?.name || w.favTeam}`);
+    lines.push(`${w.personality.emoji} ${w.personality.title}`, '', `Play yours 👉 ${url}`);
+    const text = lines.join('\n');
+    try {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        await navigator.share({ title: "AdeYaar '26 Wrapped", text });
+        return;
+      }
+    } catch (e) {
+      if (e?.name === 'AbortError') return; // user dismissed the share sheet
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShared('copied');
+    } catch {
+      setShared('failed');
+    }
+  }, [w, firstName]);
 
   const slides = useMemo(() => {
     const s = [];
@@ -495,7 +529,49 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
         </div>
         <Caption center>See you next tournament. Bring the trash talk. 💬</Caption>
       </>
-    ), foot: 'outro' });
+    ) });
+
+    // 15 · RECAP CARD — everything on one shareable screen
+    {
+      const t = getTeam(w.favTeam);
+      const netPos = w.net >= 0;
+      const tiles = [
+        { label: 'Bets', value: w.totalBets, sub: `${w.distinctMatches} matches` },
+        { label: 'Staked', value: fmtMoney(w.totalWagered) },
+        { label: 'Hit rate', value: `${w.winRate}%`, sub: `${w.wonCount}/${w.settledCount} won` },
+        { label: 'Net result', value: fmtNet(w.net), accent: netPos ? 'oklch(0.85 0.18 148)' : 'oklch(0.75 0.2 25)' },
+      ];
+      if (w.rank) tiles.push({ label: 'Rank', value: `#${w.rank}`, sub: `of ${w.totalPlayers}` });
+      if (w.biggestWin) tiles.push({ label: 'Biggest win', value: `+${fmtMoney(w.biggestWin.profit)}`, accent: 'oklch(0.85 0.18 148)' });
+      if (w.duelTotal > 0) tiles.push({ label: 'Duels', value: `${w.duelWins}–${w.duelLosses}` });
+      if (w.favTeam) tiles.push({ label: 'Ride-or-die', value: `${t?.flag || ''} ${w.favTeam}`, sub: `×${w.favTeamN}` });
+      s.push({ hue: HUE.recap, stage: (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
+          <div><span style={kickerCss(HUE.recap)}>Your Season, Wrapped</span></div>
+          <div style={{ font: `800 30px/1.02 ${SANS}`, letterSpacing: '-0.02em', color: '#fff', marginTop: 10 }}>{firstName}&apos;s AdeYaar &apos;26</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9, marginTop: 16 }}>
+            {tiles.map((ti) => (
+              <div key={ti.label} style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.13)', borderRadius: 14, padding: '11px 13px' }}>
+                <div style={{ font: `800 9.5px/1 ${SANS}`, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)' }}>{ti.label}</div>
+                <div style={{ font: `800 23px/1.05 ${MONO}`, letterSpacing: '-0.02em', color: ti.accent || '#fff', marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ti.value}</div>
+                {ti.sub && <div style={{ font: `600 10.5px/1.2 ${SANS}`, color: 'rgba(255,255,255,0.6)', marginTop: 3 }}>{ti.sub}</div>}
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderRadius: 14, background: 'rgba(0,0,0,0.28)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            <span style={{ fontSize: 40, lineHeight: 1 }}>{w.personality.emoji}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ font: `800 9.5px/1 ${SANS}`, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)' }}>Your persona</div>
+              <div style={{ font: `800 22px/1.1 ${SANS}`, letterSpacing: '-0.01em', color: '#fff', marginTop: 4 }}>{w.personality.title}</div>
+            </div>
+          </div>
+          <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 8, opacity: 0.6 }}>
+            <div style={{ width: 18, height: 18, borderRadius: 5, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>⚽</div>
+            <span style={{ font: `700 11px/1 ${SANS}`, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.7)' }}>ADEYAAR &apos;26 · WORLD CUP</span>
+          </div>
+        </div>
+      ), foot: 'share' });
+    }
 
     return s;
   }, [w, firstName]);
@@ -504,7 +580,7 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
   const next = useCallback(() => setIndex(i => (i >= count - 1 ? i : i + 1)), [count]);
   const prev = useCallback(() => setIndex(i => (i <= 0 ? 0 : i - 1)), []);
 
-  useEffect(() => { if (open) { setIndex(0); setPaused(false); } }, [open]);
+  useEffect(() => { if (open) { setIndex(0); setPaused(false); setShared(null); } }, [open]);
 
   useEffect(() => {
     const a = audioRef.current;
@@ -604,9 +680,17 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
           </div>
 
           {/* Footer */}
-          {current.foot === 'outro' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
-              <button onClick={onClose} style={{ height: 54, borderRadius: 27, background: '#fff', border: 'none', font: `800 16px/1 ${SANS}`, color: '#141414', cursor: 'pointer', pointerEvents: 'auto' }}>Done</button>
+          {current.foot === 'share' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+              {shared && (
+                <div style={{ textAlign: 'center', font: `700 12px/1 ${SANS}`, color: shared === 'copied' ? 'oklch(0.85 0.16 148)' : 'oklch(0.8 0.16 25)' }}>
+                  {shared === 'copied' ? '✓ Copied — paste it anywhere' : 'Couldn\'t share — try again'}
+                </div>
+              )}
+              <button onClick={handleShare} style={{ height: 54, borderRadius: 27, background: '#fff', border: 'none', font: `800 16px/1 ${SANS}`, color: '#141414', cursor: 'pointer', pointerEvents: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span style={{ fontSize: 17 }}>↗</span> Share my Wrapped
+              </button>
+              <button onClick={onClose} style={{ height: 46, borderRadius: 23, background: 'transparent', border: '1px solid rgba(255,255,255,0.25)', font: `700 14px/1 ${SANS}`, color: '#fff', cursor: 'pointer', pointerEvents: 'auto' }}>Done</button>
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', font: `600 11.5px/1 ${MONO}`, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', marginTop: current.foot === 'rank' ? 12 : 8 }}>
