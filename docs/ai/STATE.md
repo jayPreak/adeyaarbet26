@@ -5,7 +5,7 @@ Update this whenever your change alters what's live, fixes/introduces a known is
 or creates a pending manual step. Keep it current — this is state, not history
 (history goes in SESSION_LOG.md).
 
-_Last updated: 2026-07-20_
+_Last updated: 2026-07-21_
 
 ## Tournament phase
 - **Tournament is OVER.** Real-world Final: **Spain beat Argentina 1-0 (AET)**,
@@ -66,6 +66,18 @@ _Last updated: 2026-07-20_
   from existing context data (`bets`, `allChallenges`, `settlementByUser`,
   `allUsers`) — no new API/RPC/DB. `net` uses the settlement-normalized value
   (failure mode #14); duel record reads `allChallenges` (full history).
+  **2026-07-21:** the recap slide's "Share my Wrapped" button now shares/
+  downloads an actual PNG of the recap card (`html-to-image`'s `toPng`),
+  falling back to the old plain-text share/clipboard only if image capture
+  throws.
+
+## iOS in-app-browser layout fix (2026-07-21)
+- The main app shell (`body`, `.stage`, `.app`, `.phone-frame` on mobile) used
+  bare `100dvh`, which can misbehave in iOS in-app browsers (WhatsApp, etc.) —
+  same root cause as the earlier bottom-sheet `--vvh` fix. All four now use the
+  `vh; dvh; calc(var(--vvh, 1vh) * 100)` fallback chain already used by `.sheet`.
+  Not verified on a real iOS device from this environment — flag if the
+  tab-bar-overlaps-content report recurs.
 
 ## Settlement executed (2026-07-20)
 - Ran `scripts/settle-tournament-2026.sql` against prod via `npx supabase db query --linked`

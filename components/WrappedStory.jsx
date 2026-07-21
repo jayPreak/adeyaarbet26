@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { toPng } from 'html-to-image';
 import { getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { fmtMoney, fmtNet } from '@/lib/currency';
 import { getSpecial, getSpecialLabel } from '@/lib/specials';
@@ -188,6 +189,8 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
   const holdTimer = useRef(null);
   const heldRef = useRef(false);
   const audioRef = useRef(null);
+  const recapRef = useRef(null);
+  const [sharing, setSharing] = useState(false);
 
   const tryPlay = useCallback(() => {
     const a = audioRef.current;
@@ -211,8 +214,12 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
 
   const firstName = (user?.user_metadata?.name || user?.display_name || user?.email || 'You').split(' ')[0].split('@')[0];
 
-  // Share: native share sheet on mobile (WhatsApp etc.), clipboard fallback.
+  // Share: renders the recap card to a PNG and shares/downloads THAT image
+  // (native share sheet with a file attachment on mobile; plain download on
+  // desktop). Falls back to copying the text summary if image capture fails.
   const handleShare = useCallback(async () => {
+    if (sharing) return;
+    setSharing(true);
     const t = getTeam(w.favTeam);
     const url = (typeof window !== 'undefined' && window.location.origin) || 'https://adeyaarbet26.vercel.app';
     const lines = [
@@ -228,21 +235,47 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
     if (w.favTeam) lines.push(`${t?.flag || ''} Ride-or-die: ${t?.name || w.favTeam}`);
     lines.push(`${w.personality.emoji} ${w.personality.title}`, '', `Play yours 👉 ${url}`);
     const text = lines.join('\n');
+
+    try {
+      const node = recapRef.current;
+      if (!node) throw new Error('recap node not mounted');
+      const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true });
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const fileName = `adeyaar-wrapped-${firstName.toLowerCase()}.png`;
+      const file = new File([blob], fileName, { type: 'image/png' });
+
+      if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: "AdeYaar '26 Wrapped", text, files: [file] });
+        setSharing(false);
+        return;
+      }
+
+      // No file-share support (most desktop browsers) — trigger a download.
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = fileName;
+      link.click();
+      setShared('copied');
+      setSharing(false);
+      return;
+    } catch (e) {
+      if (e?.name === 'AbortError') { setSharing(false); return; } // user dismissed the share sheet
+    }
+
+    // Image capture/share failed outright — fall back to a text summary.
     try {
       if (typeof navigator !== 'undefined' && navigator.share) {
         await navigator.share({ title: "AdeYaar '26 Wrapped", text });
-        return;
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShared('copied');
       }
-    } catch (e) {
-      if (e?.name === 'AbortError') return; // user dismissed the share sheet
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      setShared('copied');
     } catch {
       setShared('failed');
     }
-  }, [w, firstName]);
+    setSharing(false);
+  }, [w, firstName, sharing]);
 
   const slides = useMemo(() => {
     const s = [];
@@ -546,7 +579,7 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
       if (w.duelTotal > 0) tiles.push({ label: 'Duels', value: `${w.duelWins}–${w.duelLosses}` });
       if (w.favTeam) tiles.push({ label: 'Ride-or-die', value: `${t?.flag || ''} ${w.favTeam}`, sub: `×${w.favTeamN}` });
       s.push({ hue: HUE.recap, stage: (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
+        <div ref={recapRef} style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: slideBg(HUE.recap) }}>
           <div><span style={kickerCss(HUE.recap)}>Your Season, Wrapped</span></div>
           <div style={{ font: `800 30px/1.02 ${SANS}`, letterSpacing: '-0.02em', color: '#fff', marginTop: 10 }}>{firstName}&apos;s AdeYaar &apos;26</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9, marginTop: 16 }}>
@@ -684,11 +717,11 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
               {shared && (
                 <div style={{ textAlign: 'center', font: `700 12px/1 ${SANS}`, color: shared === 'copied' ? 'oklch(0.85 0.16 148)' : 'oklch(0.8 0.16 25)' }}>
-                  {shared === 'copied' ? '✓ Copied — paste it anywhere' : 'Couldn\'t share — try again'}
+                  {shared === 'copied' ? '✓ Saved — check your downloads/gallery' : 'Couldn\'t share — try again'}
                 </div>
               )}
-              <button onClick={handleShare} style={{ height: 54, borderRadius: 27, background: '#fff', border: 'none', font: `800 16px/1 ${SANS}`, color: '#141414', cursor: 'pointer', pointerEvents: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <span style={{ fontSize: 17 }}>↗</span> Share my Wrapped
+              <button onClick={handleShare} disabled={sharing} style={{ height: 54, borderRadius: 27, background: '#fff', border: 'none', font: `800 16px/1 ${SANS}`, color: '#141414', cursor: sharing ? 'default' : 'pointer', opacity: sharing ? 0.7 : 1, pointerEvents: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span style={{ fontSize: 17 }}>↗</span> {sharing ? 'Preparing image…' : 'Share my Wrapped'}
               </button>
               <button onClick={onClose} style={{ height: 46, borderRadius: 23, background: 'transparent', border: '1px solid rgba(255,255,255,0.25)', font: `700 14px/1 ${SANS}`, color: '#fff', cursor: 'pointer', pointerEvents: 'auto' }}>Done</button>
             </div>

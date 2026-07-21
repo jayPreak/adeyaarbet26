@@ -12,6 +12,21 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-21
+- **[feat]** Wrapped's "Share my Wrapped" button now shares/downloads an actual
+  image of your final recap card (all your stats + persona in one PNG) instead
+  of just plain text. On phones with native image-share support (iOS Safari,
+  in-app browsers like WhatsApp) it opens the share sheet with the picture
+  attached; on desktop it downloads the PNG. Falls back to the old text summary
+  if image capture fails for any reason.
+  _Files: components/WrappedStory.jsx, package.json (added html-to-image). By: Claude Code._
+- **[fix]** On some iOS in-app browsers (e.g. opening the app link from
+  WhatsApp), the bottom tab bar could overlap the last bit of page content
+  because `100dvh` doesn't always recompute reliably in those webviews. Applied
+  the same `--vvh` (real visible-viewport-height) fix already used for bottom
+  sheets to the main app shell's height too.
+  _Files: app/globals.css. By: Claude Code._
+
 ## 2026-07-20 (Wrapped close fix)
 - **[fix]** The close (×) button and the "Done" button on Wrapped didn't close
   the story — the invisible tap-to-advance layer sat on top of them and ate the

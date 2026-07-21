@@ -505,3 +505,47 @@ Newest entries at the TOP (below this header block).
 - **Verify:** `rm -rf .next && npm run build` clean; `npm test` 356/356.
 - **Note:** kit's slide 00 (Home entry redesign) intentionally NOT applied —
   user asked for "designs only slides". Existing Home banner kept.
+
+---
+
+## 2026-07-21 — Wrapped image share + iOS in-app-browser height fix
+- **Task:** (1) make Wrapped's share button share an image of the final stats
+  card, not just copy-paste text. (2) User reported the site "looks weird" on
+  iOS — screenshot showed the bottom tab bar overlapping the last line of Home
+  content, opened via WhatsApp's in-app browser.
+- **Image share:** added `html-to-image` (`toPng`). Gave the recap slide's
+  outer div (slide 15 in `computeWrapped`'s `slides` array) a `ref` and its own
+  explicit `background: slideBg(HUE.recap)` (previously it relied on a sibling
+  absolutely-positioned background layer, which `toPng` wouldn't have captured
+  since it doesn't clone siblings outside the target node). `handleShare` now:
+  renders that node to a PNG (`pixelRatio: 2`), converts to a `File`, and uses
+  `navigator.canShare({files})` to decide file-share vs desktop-download vs
+  (only if capture itself throws) the old text-share/clipboard fallback. Added
+  a `sharing` state to disable the button during capture (project convention:
+  disable on first tap to avoid double-fire).
+- **iOS in-app-browser layout:** root caused via memory of the earlier
+  `--vvh` fix (see CLAUDE.md invariant on iOS Safari bottom sheets / dvh) —
+  the same WebKit dvh-recompute inconsistency that broke bottom sheets also
+  applies to the top-level `.app`/`.phone-frame`/`.stage`/`body` heights,
+  which were still pure `100dvh` with no `--vvh` fallback. In an in-app webview
+  (WhatsApp's browser chrome sits outside the page's own viewport calc), a
+  miscomputed `.app` height pushes/overlaps the flex-bottom `.tabbar` over the
+  scrollable content above it. Applied the existing `vh; dvh; calc(var(--vvh,
+  1vh) * 100)` fallback chain (already used by `.sheet`) to all four selectors
+  in `app/globals.css`. Could not repro or screenshot-verify on a real iOS
+  in-app browser from this environment (no such device/webview available) —
+  this is the same class of bug as the earlier `--vvh` sheet fix and reuses
+  its already-shipped JS (`--vvh` is set in `app/(tabs)/layout.jsx` via
+  `window.visualViewport`), so no new wiring was needed, only extending which
+  CSS rules consume the var.
+- **Verify:** `npm test` 356/356; `rm -rf .next && npm run build` clean.
+  Manually exercised the Wrapped share flow in the Claude Browser preview
+  (desktop path: click → PNG downloads, status message updates, no console
+  errors). Did not have a real iOS device to confirm the tab-bar fix visually.
+- **Gotcha for future agents:** if this iOS report recurs after this fix,
+  it's NOT the same root cause — check `getComputedStyle(document.documentElement)
+  .getPropertyValue('--vvh')` on the actual device first (per the original
+  `--vvh` memory note), since a Chromium-based preview tool pass here does not
+  prove the real-device fix.
+  _Files: components/WrappedStory.jsx, package.json, package-lock.json,
+  app/globals.css, CHANGELOG.md. By: Claude Code._
