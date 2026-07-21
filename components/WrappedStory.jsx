@@ -579,7 +579,7 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
       if (w.duelTotal > 0) tiles.push({ label: 'Duels', value: `${w.duelWins}–${w.duelLosses}` });
       if (w.favTeam) tiles.push({ label: 'Ride-or-die', value: `${t?.flag || ''} ${w.favTeam}`, sub: `×${w.favTeamN}` });
       s.push({ hue: HUE.recap, stage: (
-        <div ref={recapRef} style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: slideBg(HUE.recap) }}>
+        <div ref={recapRef} style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: slideBg(HUE.recap), padding: '4px 18px 18px' }}>
           <div><span style={kickerCss(HUE.recap)}>Your Season, Wrapped</span></div>
           <div style={{ font: `800 30px/1.02 ${SANS}`, letterSpacing: '-0.02em', color: '#fff', marginTop: 10 }}>{firstName}&apos;s AdeYaar &apos;26</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9, marginTop: 16 }}>

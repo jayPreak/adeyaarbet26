@@ -13,6 +13,9 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 ---
 
 ## 2026-07-21
+- **[fix]** Wrapped's recap card (the final shareable slide) had no side/bottom
+  padding, so its stat tiles ran edge-to-edge in the shared PNG. Added padding.
+  _Files: components/WrappedStory.jsx. By: Claude Code._
 - **[feat]** Wrapped's "Share my Wrapped" button now shares/downloads an actual
   image of your final recap card (all your stats + persona in one PNG) instead
   of just plain text. On phones with native image-share support (iOS Safari,
