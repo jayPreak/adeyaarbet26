@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { toPng } from 'html-to-image';
 import { getMatch, getTeam, fmtKnockoutStage } from '@/lib/data';
 import { fmtMoney, fmtNet } from '@/lib/currency';
@@ -191,6 +192,8 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
   const audioRef = useRef(null);
   const recapRef = useRef(null);
   const [sharing, setSharing] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const tryPlay = useCallback(() => {
     const a = audioRef.current;
@@ -640,7 +643,7 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
     return () => window.removeEventListener('keydown', onKey);
   }, [open, next, prev, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted || typeof document === 'undefined') return null;
 
   const onDown = () => {
     heldRef.current = false;
@@ -661,7 +664,13 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
   const nn = String(index + 1).padStart(2, '0');
   const total = String(count).padStart(2, '0');
 
-  return (
+  // Portal to <body> — WrappedStory is mounted deep inside the .app/.phone-frame
+  // tree, which has overflow:hidden. On iOS Safari a `position:fixed` descendant
+  // of an overflow:hidden ancestor can get contained within that ancestor's box
+  // instead of the real viewport (same root cause as Toast — see components/CLAUDE.md
+  // failure mode #17), so the story renders squeezed between the app header/tab
+  // bar instead of covering the whole screen. Portalling out of that tree fixes it.
+  return createPortal((
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000', color: '#fff', display: 'flex', justifyContent: 'center', overscrollBehavior: 'contain' }}>
       <div style={{ position: 'relative', width: '100%', maxWidth: 440, height: '100%', overflow: 'hidden', background: '#08080c' }}>
         <audio ref={audioRef} src={AUDIO_SRC} loop preload="auto" />
@@ -756,5 +765,5 @@ export default function WrappedStory({ open, onClose, bets, matches = [], allCha
         @keyframes wWobble { 0%,100% { transform: translateX(-50%) rotate(-4deg); } 50% { transform: translateX(-50%) rotate(4deg); } }
       `}</style>
     </div>
-  );
+  ), document.body);
 }

@@ -76,8 +76,16 @@ _Last updated: 2026-07-21_
   bare `100dvh`, which can misbehave in iOS in-app browsers (WhatsApp, etc.) —
   same root cause as the earlier bottom-sheet `--vvh` fix. All four now use the
   `vh; dvh; calc(var(--vvh, 1vh) * 100)` fallback chain already used by `.sheet`.
-  Not verified on a real iOS device from this environment — flag if the
-  tab-bar-overlaps-content report recurs.
+  **This was NOT the actual bug** — see below.
+
+## Wrapped full-screen-overlay fix (2026-07-21, real iPhone 15 report)
+- The `--vvh` fix above didn't help because the real bug was different:
+  `WrappedStory` renders inside `.app`/`.phone-frame` (`overflow:hidden`), and
+  its `position:fixed` root got contained within that ancestor's box on iOS
+  Safari instead of covering the real viewport — same class of bug as `Toast`
+  (failure mode #17). Fixed by portalling `WrappedStory` to `document.body`,
+  same pattern as Toast. Not yet re-confirmed on the reporting user's actual
+  iPhone — flag if the overlap/squeeze report recurs after this deploys.
 
 ## Settlement executed (2026-07-20)
 - Ran `scripts/settle-tournament-2026.sql` against prod via `npx supabase db query --linked`

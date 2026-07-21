@@ -28,6 +28,13 @@ AdeYaarApp.jsx silently does nothing.
   (failure mode #14) and `allChallenges` (full history, not the narrowed
   `challenges`) for the duel record. Story mechanics (auto-advance, tap-nav,
   hold-to-pause, keyboard, progress bars) live entirely in the component.
+  Renders via `createPortal` to `document.body` (same as `Toast`, failure mode
+  #17) — it's opened from deep inside `.app`/`.phone-frame`, and a `position:
+  fixed` descendant of that `overflow:hidden` ancestor can get contained
+  within it on iOS Safari instead of covering the real viewport. The share
+  button (recap slide) captures that slide's DOM node to a PNG via
+  `html-to-image` and shares/downloads the image (falls back to text share
+  only if capture throws).
 - `LiveStreamPanel.jsx` — collapsible embedded live-video player rendered on Home
   above the hero card when a match is live. Reads mirror URLs from
   `lib/streams.js:getStreams(matchId)`; renders nothing if the id has no mapping.

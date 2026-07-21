@@ -12,6 +12,17 @@ Human-readable log of every change made to AdeYaar 26 — including changes made
 
 ---
 
+## 2026-07-21 (real iPhone report)
+- **[fix]** On a real iPhone (not reproducible in any preview tool), Wrapped
+  didn't cover the whole screen — it rendered squeezed between the app's own
+  header and bottom tab bar instead of full-screen, because it's mounted deep
+  inside `.app`/`.phone-frame` (which has `overflow: hidden`) and iOS Safari
+  can contain a `position: fixed` descendant within that ancestor's box
+  instead of the real viewport. Same root cause already fixed for `Toast` (see
+  components/CLAUDE.md failure mode #17) — portalled WrappedStory to
+  `document.body` the same way, with the same SSR-safe `mounted` guard.
+  _Files: components/WrappedStory.jsx. By: Claude Code._
+
 ## 2026-07-21
 - **[fix]** Wrapped's recap card (the final shareable slide) had no side/bottom
   padding, so its stat tiles ran edge-to-edge in the shared PNG. Added padding.

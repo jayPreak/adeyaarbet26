@@ -549,3 +549,37 @@ Newest entries at the TOP (below this header block).
   prove the real-device fix.
   _Files: components/WrappedStory.jsx, package.json, package-lock.json,
   app/globals.css, CHANGELOG.md. By: Claude Code._
+
+---
+
+## 2026-07-21 (follow-up) — real iPhone report: the --vvh fix wasn't it
+- **Correction:** the `--vvh` height fix above (applied to `.app`/`.phone-frame`/
+  `.stage`/`body`) did NOT fix the real report. User sent a screenshot from an
+  actual iPhone 15: the AdeYaar app's own header/stats-bar and tab bar were
+  visible ABOVE and BELOW the Wrapped slide, meaning Wrapped wasn't covering
+  the screen at all — it was rendering in normal document flow inside the app
+  shell, not as a full-viewport overlay.
+- **Actual root cause:** `WrappedStory` is mounted directly inside
+  `HomeScreen.jsx`, deep inside `.app`/`.phone-frame` (which has `overflow:
+  hidden`, `position: relative`). Its root is `position: fixed; inset: 0`, but
+  iOS Safari has a long-standing quirk where a `fixed` descendant of certain
+  `overflow:hidden`/stacking-context ancestors gets contained within that
+  ancestor's box instead of the true viewport — exactly the bug already
+  documented and fixed for `Toast` (`components/CLAUDE.md` failure mode #17,
+  "Toast renders via portal to document.body").
+- **Fix:** portalled `WrappedStory`'s root to `document.body` via
+  `createPortal`, mirroring Toast's pattern exactly, including the `mounted`
+  state + `typeof document === 'undefined'` guard so SSR (and the
+  `wrapped-preview` harness, which opens with `open=true` on first render)
+  doesn't throw on `document` access before hydration.
+  _Files: components/WrappedStory.jsx, components/CLAUDE.md, CHANGELOG.md._
+- **Gotcha for future agents:** any full-screen `position:fixed` overlay
+  component added under `.app`/`.phone-frame` should be portalled to
+  `document.body` from the start — don't wait for an iOS bug report. Toast and
+  WrappedStory are both now this pattern; check for it before adding a third
+  overlay-style component the old way.
+- **Verify:** `npm test` 356/356; `rm -rf .next && npm run build` clean;
+  manually opened `/wrapped-preview` in the Claude Browser preview and
+  confirmed the story still renders full-screen with no console errors post-
+  portal. Could not verify on the actual iPhone 15 from this environment.
+  By: Claude Code.
