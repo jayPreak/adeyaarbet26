@@ -75,6 +75,7 @@ export default function H2HBetModal({ open, onClose, user, onPlaced }) {
   };
 
   const handleCancel = async (betId) => {
+    if (!confirm('Cancel this bet? Your stake will be refunded.')) return;
     try {
       const res = await fetch('/api/special-bet', {
         method: 'DELETE',

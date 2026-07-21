@@ -203,6 +203,7 @@ export default function ThirdPlaceQualifierBetModal({ open, onClose, user, onPla
 
   async function handleCancel() {
     if (!myBet?.id || !user) return;
+    if (!confirm('Cancel this bet? Your stake will be refunded.')) return;
     setSubmitting(true);
     setError(null);
     try {

@@ -78,6 +78,7 @@ export default function TotalGoalsBetModal({ open, onClose, user, onPlaced, matc
 
   async function handleCancel() {
     if (!myBet?.id || !user) return;
+    if (!confirm('Cancel this bet? Your stake will be refunded.')) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/special-bet', {

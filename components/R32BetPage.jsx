@@ -103,6 +103,7 @@ export default function R32BetPage({ variant = 'flop' }) {
 
   async function handleCancel() {
     if (!myBet || submitting) return;
+    if (!confirm('Cancel this bet? Your stake will be refunded.')) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/special-bet', {

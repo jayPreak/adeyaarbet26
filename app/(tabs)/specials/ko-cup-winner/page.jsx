@@ -94,6 +94,7 @@ export default function KOCupWinnerPage() {
 
   async function handleCancel() {
     if (!myBet || !user) return;
+    if (!confirm('Cancel this bet? Your stake will be refunded.')) return;
     setSubmitting(true);
     try {
       const res = await fetch('/api/special-bet', {

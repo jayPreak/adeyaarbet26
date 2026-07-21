@@ -123,6 +123,7 @@ export default function FinalFourPage() {
 
   async function handleCancel() {
     if (!myBet || !user) return;
+    if (!confirm('Cancel this bet? Your stake will be refunded.')) return;
     setSubmitting(true);
     setError(null);
     try {
