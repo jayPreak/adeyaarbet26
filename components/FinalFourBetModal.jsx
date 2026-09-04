@@ -53,7 +53,7 @@ export function qfDeadlineTs(matches = []) {
 }
 
 export default function FinalFourBetModal({ open, onClose, user, onPlaced, matches = [] }) {
-  const deadline = qfDeadlineTs(matches);
+  const deadline = qfDeadlineTs();
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!open) return;

@@ -1457,7 +1457,7 @@ export function BetCard({ bet, onCancelBet, kickoffTs, cupWinnerDeadlineTs, pool
       </div>
 
 
-      {bet.status === 'pending' && kickoffMs && Date.now() >= kickoffMs && Date.now() < kickoffMs + 9000000 && (
+      {bet.status === 'pending' && !!kickoffMs && Date.now() >= kickoffMs && Date.now() < kickoffMs + 9000000 && (
         <WatchLive home={match.home} away={match.away} />
       )}
 

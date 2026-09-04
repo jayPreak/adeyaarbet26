@@ -307,7 +307,7 @@ export function BettingProvider({ children }) {
           if (Array.isArray(data.fifaMatches)) setFifaData(data.fifaMatches);
           if (Array.isArray(data.knockout)) setKnockoutData(data.knockout);
         }
-      } catch { /* non-blocking */ }
+      } catch (e) { console.warn('[betting] FIFA data fetch failed:', e?.message || e); }
     })();
 
     return () => { cancelled = true; };
@@ -332,7 +332,8 @@ export function BettingProvider({ children }) {
       sessionStorage.setItem(key, String(Date.now()));
       // keepalive: browser lets this outlive the current tab if the user
       // navigates away. No await, no .then — completely detached.
-      try { fetch('/api/auto-resolve', { keepalive: true }); } catch {}
+      fetch('/api/auto-resolve', { keepalive: true })
+        .catch((e) => console.warn('[betting] auto-resolve kick failed:', e?.message || e));
     }, 5000);
     return () => clearTimeout(t);
   }, [user?.id]);

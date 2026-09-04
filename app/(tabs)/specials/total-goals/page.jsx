@@ -146,7 +146,7 @@ export default function TotalGoalsPage() {
             <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
               {finishedCount} of {TOTAL_GOALS_MATCH_COUNT} matches played · {pacePerMatch} goals/match
             </div>
-            {projectedTotal && (
+            {projectedTotal > 0 && (
               <div style={{ fontSize: 12, color: projectedTotal > TOTAL_GOALS_LINE ? 'var(--win)' : 'var(--loss)', marginTop: 6, fontWeight: 600 }}>
                 Projected: ~{projectedTotal} goals ({projectedTotal > TOTAL_GOALS_LINE ? 'Over' : 'Under'} pace)
               </div>
