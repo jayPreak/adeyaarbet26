@@ -250,6 +250,6 @@ describe('getMinBet — group stage matches', () => {
     expect(getMinBet('R16-4')).toBe(100);
     expect(getMinBet('QF-2')).toBe(250);
     expect(getMinBet('SF-1')).toBe(350);
-    expect(getMinBet('FIN-1')).toBe(1000);
+    expect(getMinBet('FIN-1')).toBe(500);
   });
 });
